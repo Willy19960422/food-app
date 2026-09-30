@@ -20,7 +20,6 @@
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<!-- 鎖定明確版本的 Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
 <style>
 :root{
@@ -141,8 +140,8 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .serving-chip{flex:1;text-align:center;padding:7px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink);font-weight:500}
 .serving-chip.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
 
-.tool-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.tool-btn{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 8px;font-size:13px;font-weight:500;margin:0;display:flex;align-items:center;justify-content:center}
+.tool-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.tool-btn{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 6px;font-size:12px;font-weight:500;margin:0;display:flex;align-items:center;justify-content:center}
 .tool-btn:active{border-color:var(--brand);color:var(--brand)}
 
 .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
@@ -240,9 +239,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <label><input type="radio" name="addMeal" value="snack"><span>點心</span></label>
     </div>
 
+    <!-- 常吃組合與工具列 -->
     <div class="tool-actions">
       <button class="tool-btn" id="copyYesterdayMealBtn">複製昨日這餐</button>
       <button class="tool-btn" id="toggleQuickKcalBtn">快速自訂熱量</button>
+      <button class="tool-btn" id="toggleCombosBtn" style="background:var(--brand-light);color:var(--brand);font-weight:700">常吃組合套餐</button>
     </div>
 
     <div id="boxQuickKcal" class="fold-box hide" style="margin-bottom:12px">
@@ -257,6 +258,17 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
         </div>
       </div>
       <button id="qkAddBtn" style="margin-top:10px">確認計入這餐</button>
+    </div>
+
+    <!-- 常吃組合管理面板 -->
+    <div id="boxCombos" class="fold-box hide" style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:6px">我的常吃組合套餐</div>
+      <div class="mute" style="font-size:12px;margin-bottom:8px">可將今天這餐的品項存成組合，或一鍵加入套餐：</div>
+      <div id="combosListContainer" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+      <div class="row">
+        <input id="comboNameInput" placeholder="套餐名稱（例如：黃金早餐）">
+        <button id="saveCurrentMealAsComboBtn" style="margin-top:0">儲存這餐為組合</button>
+      </div>
     </div>
 
     <div id="recentFoodsSection" class="recent-box hide">
@@ -306,7 +318,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <h2 id="fName" style="margin-top:4px"></h2>
       <div class="mute" id="fInfo"></div>
       
-      <!-- 結構化份數與重量換算面板 -->
       <div style="background:var(--bg);padding:10px;border-radius:10px;margin:10px 0">
         <label style="margin-top:0">食用計量方式</label>
         <div class="segmented" style="margin:6px 0">
@@ -422,7 +433,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
             <div class="serving-chip" data-v="2">2 份</div>
           </div>
         </div>
-        <!-- 使用 .hide 類別控制，不再直接操作 style.display 以免破壞排版 -->
         <div id="selBoxModeWeight" class="hide">
           <label id="selWeightLabel">實際食用重量 (公克 / 毫升)</label>
           <input id="selWeightInput" type="number" step="1" min="1" placeholder="例如 150">
@@ -585,6 +595,7 @@ let S = {
   me: null,
   log: {},
   customFavorites: [],
+  mealCombos: [], // 第二階段：常吃組合套餐
   pendingSyncQueue: [],
   pendingDeleteQueue: [],
   theme: "system"
@@ -616,6 +627,7 @@ function loadUserData(uid) {
     me: null,
     log: {},
     customFavorites: [],
+    mealCombos: [],
     pendingSyncQueue: [],
     pendingDeleteQueue: [],
     theme: S.theme || "system"
@@ -636,9 +648,9 @@ function loadUserData(uid) {
 
   S.stateOwnerId = uid || null;
   if (!S.customFavorites) S.customFavorites = [];
+  if (!S.mealCombos) S.mealCombos = [];
   if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
   if (!S.pendingDeleteQueue) S.pendingDeleteQueue = [];
-  // 社群食物庫不存入 localStorage，防止 5MB 容量限制與金鑰外流
 }
 
 const save = () => {
@@ -808,7 +820,6 @@ async function handleAuthFlow() {
           const { data, error } = await sbClient.from('user_profiles').select('*').eq('user_id', targetUid).maybeSingle();
           if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
           
-          // 嚴格個人資料讀取防護：若發生錯誤且非純粹查無資料，終止並報錯，絕不盲目覆蓋
           if (error) {
             $("authErrMsg").style.color = "var(--warn)";
             $("authErrMsg").textContent = "讀取個人資料失敗，請檢查網路後重新整理";
@@ -860,7 +871,6 @@ async function handleAuthFlow() {
   }
 }
 
-// 雲端同步管線：修正合併覆蓋邏輯（有就取代、沒有才新增）
 async function runSyncPipeline() {
   const currentSession = loginSessionId;
   const activeUser = currentUser;
@@ -965,9 +975,9 @@ async function runSyncPipeline() {
           if (!serverLogs[d]) serverLogs[d] = [];
           const idx = serverLogs[d].findIndex(s => s.id === item.id);
           if (idx >= 0) {
-            serverLogs[d][idx] = item; // 有就取代
+            serverLogs[d][idx] = item;
           } else {
-            serverLogs[d].push(item); // 沒有才新增
+            serverLogs[d].push(item);
           }
         });
       });
@@ -1177,6 +1187,7 @@ $("signOutBtn").onclick = async () => {
     me: null,
     log: {},
     customFavorites: [],
+    mealCombos: [],
     pendingSyncQueue: [],
     pendingDeleteQueue: [],
     theme: S.theme || "system"
@@ -1184,21 +1195,9 @@ $("signOutBtn").onclick = async () => {
   handleAuthFlow();
 };
 
-async function loadServerConfig(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
-  if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
-  try {
-    const { data } = await sbClient.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
-    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
-    if (data && data.value) {
-      S.geminiKey = data.value;
-    }
-  } catch(e) {}
-}
-
 async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
   if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
   try {
-    // 嚴格只抓已驗證或自己建立的商品，解決一次下載整張表的問題
     const { data, error } = await sbClient.from('custom_foods').select('*').or(`is_verified.eq.true,created_by.eq.${targetUid}`);
     if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
 
@@ -1307,7 +1306,6 @@ function renderFoodList() {
     return;
   }
 
-  // 效能優化：限制最多顯示前 50 筆
   container.innerHTML = filtered.slice(0, 50).map((item, idx) => `
     <div class="food-card ${chosenFood && chosenFood.name === item.name ? 'selected' : ''}" data-idx="${idx}">
       <div style="flex:1">
@@ -1426,7 +1424,6 @@ bindChipGroup("cfChips", "cfN");
 
 function enableDesktopDragScroll(el) {
   if (!el) return;
-  // 修正桌機橫向滾動會卡住頁面上下滾動的問題
   el.addEventListener("wheel", e => {
     if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
       e.preventDefault();
@@ -1485,6 +1482,106 @@ $("foodSearch").oninput = () => {
   searchDebounceTimer = setTimeout(renderFoodList, 200);
 };
 
+// 第二階段：常吃組合套餐功能互動邏輯
+$("toggleCombosBtn").onclick = () => {
+  $("boxCombos").classList.toggle("hide");
+  if (!$("boxCombos").classList.contains("hide")) {
+    renderCombosList();
+  }
+};
+
+function renderCombosList() {
+  const container = $("combosListContainer");
+  if (!container) return;
+
+  const combos = S.mealCombos || [];
+  if (!combos.length) {
+    container.innerHTML = `<div class="mute" style="font-size:13px">尚未建立任何常吃組合套餐。</div>`;
+    return;
+  }
+
+  container.innerHTML = combos.map((combo, idx) => {
+    const totalKcal = combo.items.reduce((acc, item) => acc + Math.round(item.k * (item.n || 1)), 0);
+    const summaryStr = combo.items.map(i => `${i.name} (${Math.round(i.n*100)/100}份)`).join("、");
+    return `
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700;font-size:14px">${esc(combo.name)} <span style="color:var(--kcal);font-size:12px">(${totalKcal} kcal)</span></div>
+          <div class="mute" style="font-size:11px">${esc(summaryStr)}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="sm" data-applycombo="${idx}" style="margin:0;padding:4px 8px">加入這餐</button>
+          <button class="sm ghost" data-delcombo="${idx}" style="margin:0;padding:4px 8px;color:var(--warn);border-color:var(--warn)">刪除</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// 儲存今天這餐為常吃組合套餐
+$("saveCurrentMealAsComboBtn").onclick = () => {
+  const comboName = $("comboNameInput").value.trim();
+  if (!comboName) return alert("請輸入套餐名稱！");
+
+  const currentMealKey = getSelectedMeal();
+  const dayLogs = S.log[today()] || [];
+  const mealItems = dayLogs.filter(item => (item.meal || "snack") === currentMealKey);
+
+  if (!mealItems.length) return alert(`今天在【${({breakfast:"早餐",lunch:"午餐",dinner:"晚餐",snack:"點心"}[currentMealKey])}】沒有任何飲食紀錄可存為組合。`);
+
+  const comboItems = mealItems.map(item => ({
+    name: item.name,
+    k: item.k,
+    p: item.p,
+    f: item.f,
+    c: item.c,
+    n: item.n || 1
+  }));
+
+  S.mealCombos.push({
+    name: comboName,
+    items: comboItems
+  });
+  save();
+
+  $("comboNameInput").value = "";
+  renderCombosList();
+  alert(`✓ 成功將【${comboName}】存入常吃組合套餐！`);
+};
+
+// 套用或刪除套餐
+$("combosListContainer").onclick = async e => {
+  const applyIdx = e.target.dataset.applycombo;
+  const delIdx = e.target.dataset.delcombo;
+
+  if (applyIdx !== undefined) {
+    const combo = S.mealCombos[applyIdx];
+    if (!combo) return;
+
+    if (!confirm(`確定要將套餐【${combo.name}】中的 ${combo.items.length} 項食物加入目前的餐別嗎？`)) return;
+
+    for (const item of combo.items) {
+      await addLog({
+        name: item.name,
+        k: item.k,
+        p: item.p,
+        f: item.f,
+        c: item.c
+      }, item.n);
+    }
+
+    showView("today");
+    return;
+  }
+
+  if (delIdx !== undefined) {
+    if (!confirm("確定要刪除這個常吃組合套餐嗎？")) return;
+    S.mealCombos.splice(delIdx, 1);
+    save();
+    renderCombosList();
+  }
+};
+
 // 食物庫確認加入
 $("cfAdd").onclick = () => {
   if (!chosenFood) return alert("請先選取食物");
@@ -1527,7 +1624,6 @@ function validateNutrition(name, k, p, f, c) {
   if (k < 0 || k > 3500) return "單項食物熱量請填寫在 0 ~ 3500 kcal 之間。";
   if (p < 0 || p > 300 || f < 0 || f > 300 || c < 0 || c > 300) return "營養素數值請填寫在合理範圍 (0 ~ 300g) 內。";
   
-  // 營養防呆提示
   const estimatedKcal = p * 4 + c * 4 + f * 9;
   if (estimatedKcal > 0 && Math.abs(k - estimatedKcal) / estimatedKcal > 0.35) {
     if (!confirm(`⚠️ 系統試算熱量約為 ${Math.round(estimatedKcal)} 大卡，與您填寫的 ${k} 大卡差距較大。確定要繼續儲存嗎？`)) {
@@ -1582,7 +1678,7 @@ $("mAdd").onclick = async () => {
         is_verified: false,
         created_by: targetUid
       }]);
-      if (error) alert("⚠️️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
+      if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
 
       if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
       await loadCommunityFoods();
@@ -2026,7 +2122,6 @@ const fileToBase64 = f => new Promise((res, rej) => {
   r.readAsDataURL(f);
 });
 
-// 安全的 Supabase Edge Function AI 辨識代理呼叫
 async function callGeminiVision(prompt, file) {
   const base64Data = await fileToBase64(file);
   const mimeType = file.type || "image/jpeg";
@@ -2365,7 +2460,7 @@ $("saveNew").onclick = async () => {
   const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
 
   const errMsg = validateNutrition(n, k, p, f, c);
-  if (errMsg) return alert(errMsg);
+  if (errMsg) return alert("⚠️ " + errMsg);
 
   const targetUid = currentUser.id;
   const targetSession = loginSessionId;
