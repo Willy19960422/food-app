@@ -172,9 +172,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card">
     <h2 id="authTitle">登入您的帳號</h2>
     <label>Email 信箱</label>
-    <input id="authEmail" type="email" placeholder="請輸入帳號" autocomplete="email">
+    <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="email">
     <label>密碼</label>
-    <input id="authPass" type="password" placeholder="請輸入密碼" autocomplete="current-password">
+    <input id="authPass" type="password" placeholder="密碼至少 6 碼" autocomplete="current-password">
     <button id="authPrimaryBtn"><span>立即登入</span></button>
     <button class="ghost" id="authToggleBtn">還沒有帳號？點此註冊</button>
     <div id="authErrMsg" class="auth-msg"></div>
@@ -301,14 +301,30 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div class="badge" id="fSrc">資料來源</div>
       <h2 id="fName" style="margin-top:4px"></h2>
       <div class="mute" id="fInfo"></div>
-      <label>份數</label>
-      <input id="serv" type="number" step="0.5" min="0.5" value="1">
-      <div class="serving-chips" id="servChips">
-        <div class="serving-chip" data-v="0.5">0.5 份</div>
-        <div class="serving-chip active" data-v="1">1 份</div>
-        <div class="serving-chip" data-v="1.5">1.5 份</div>
-        <div class="serving-chip" data-v="2">2 份</div>
+      
+      <!-- 第一批：結構化份數與重量換算面板 -->
+      <div style="background:var(--bg);padding:10px;border-radius:10px;margin:10px 0">
+        <label style="margin-top:0">食用計量方式</label>
+        <div class="segmented" style="margin:6px 0">
+          <button id="calcModeServ" class="active">按份數</button>
+          <button id="calcModeWeight">按重量 (g/ml)</button>
+        </div>
+        <div id="boxModeServ">
+          <label>份數</label>
+          <input id="serv" type="number" step="0.5" min="0.5" value="1">
+          <div class="serving-chips" id="servChips" style="margin-top:6px">
+            <div class="serving-chip" data-v="0.5">0.5 份</div>
+            <div class="serving-chip active" data-v="1">1 份</div>
+            <div class="serving-chip" data-v="1.5">1.5 份</div>
+            <div class="serving-chip" data-v="2">2 份</div>
+          </div>
+        </div>
+        <div id="boxModeWeight" class="hide">
+          <label id="weightInputLabel">實際食用重量 (公克 / 毫升)</label>
+          <input id="actualWeightInput" type="number" step="1" min="1" placeholder="例如 150">
+        </div>
       </div>
+
       <div class="tag" id="fTag"></div>
       <button id="addBtn">加入紀錄</button>
     </div>
@@ -385,14 +401,30 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <div id="selectedFoodInfo" class="hide" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
       <div style="font-weight:700;font-size:16px" id="selFoodName"></div>
       <div class="mute" id="selFoodDetail" style="margin-bottom:8px"></div>
-      <label>份數</label>
-      <input id="cfN" type="number" step="0.5" min="0.5" value="1">
-      <div class="serving-chips" id="cfChips">
-        <div class="serving-chip" data-v="0.5">0.5 份</div>
-        <div class="serving-chip active" data-v="1">1 份</div>
-        <div class="serving-chip" data-v="1.5">1.5 份</div>
-        <div class="serving-chip" data-v="2">2 份</div>
+      
+      <!-- 第一批：食物庫選取後的結構化換算面板 -->
+      <div style="background:var(--bg);padding:10px;border-radius:10px;margin:10px 0">
+        <label style="margin-top:0">食用計量方式</label>
+        <div class="segmented" style="margin:6px 0">
+          <button id="selModeServ" class="active">按份數</button>
+          <button id="selModeWeight">按重量 (g/ml)</button>
+        </div>
+        <div id="selBoxModeServ">
+          <label>份數</label>
+          <input id="cfN" type="number" step="0.5" min="0.5" value="1">
+          <div class="serving-chips" id="cfChips" style="margin-top:6px">
+            <div class="serving-chip" data-v="0.5">0.5 份</div>
+            <div class="serving-chip active" data-v="1">1 份</div>
+            <div class="serving-chip" data-v="1.5">1.5 份</div>
+            <div class="serving-chip" data-v="2">2 份</div>
+          </div>
+        </div>
+        <div id="selBoxModeWeight" class="hide">
+          <label id="selWeightLabel">實際食用重量 (公克 / 毫升)</label>
+          <input id="selWeightInput" type="number" step="1" min="1" placeholder="例如 150">
+        </div>
       </div>
+
       <button id="cfAdd">確認加入這餐</button>
     </div>
   </div>
@@ -415,6 +447,12 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <label>品項名稱</label>
     <input id="mName" placeholder="例如：香煎雞腿排溫沙拉">
     
+    <!-- 第一批：新增結構化重量與基準欄位 -->
+    <div class="row">
+      <div><label>標示基準</label><select id="mBasisType"><option value="serving">每份</option><option value="100g">每100g/ml</option></select></div>
+      <div><label>每份重量 (g/ml，選填)</label><input id="mServingWeight" type="number" placeholder="例如 105"></div>
+    </div>
+
     <div class="row">
       <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
       <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
@@ -534,7 +572,6 @@ let loginSessionId = null;
 let isHandlingAuth = false;
 let pendingAuthTarget = null;
 
-// 非同步請求序號追蹤（徹底防止舊查詢結果錯配）
 let lookupSequenceId = 0;
 let photoSequenceId = 0;
 let mealSequenceId = 0;
@@ -671,7 +708,7 @@ async function checkUser() {
   }
 }
 
-// 徹底清空相機掃描結果與表單畫面殘留
+// 徹底清空相機掃描結果與表單畫面殘留，並解鎖所有按鈕
 function purgeScannerUI() {
   curItem = null;
   curBarcode = null;
@@ -683,6 +720,18 @@ function purgeScannerUI() {
   if ($("estAdd")) $("estAdd").classList.add("hide");
   if ($("scanMsg")) $("scanMsg").textContent = "";
   if ($("mealMsg")) $("mealMsg").textContent = "";
+
+  // 確保按鈕解除停用與隱藏 Loading
+  if ($("photoBtn")) $("photoBtn").disabled = false;
+  if ($("mealBtn")) $("mealBtn").disabled = false;
+  if ($("photoLoading")) $("photoLoading").classList.add("hide");
+  if ($("mealLoading")) $("mealLoading").classList.add("hide");
+  if ($("scanLoading")) $("scanLoading").classList.add("hide");
+
+  if ($("photo")) $("photo").value = "";
+  if ($("mealPic")) $("mealPic").value = "";
+  if ($("manual")) $("manual").value = "";
+  
   stopScan();
 }
 
@@ -698,7 +747,6 @@ async function handleAuthFlow() {
       const currentSession = generateUUID();
       loginSessionId = currentSession;
 
-      // 切換帳號時遞增序號作廢所有進行中的非同步查詢
       lookupSequenceId++;
       photoSequenceId++;
       mealSequenceId++;
@@ -1124,7 +1172,9 @@ async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (c
           cat: cat,
           subCat: subCat,
           barcode: row.barcode,
-          createdBy: row.created_by
+          createdBy: row.created_by,
+          basisType: row.basis_type || "serving",
+          servingWeight: Number(row.serving_weight) || 0
         };
       });
       save();
@@ -1216,7 +1266,7 @@ function renderFoodList() {
           <span>${esc(item.name)}</span>
           <span class="cat-tag">${esc(item.subCat || item.cat || "外食")}</span>
         </div>
-        <div class="food-subinfo">${esc(item.basis)}</div>
+        <div class="food-subinfo">${esc(item.basis)} ${item.servingWeight ? `(${item.servingWeight}g)` : ''}</div>
         <div class="macro-pills">
           <span class="pill pill-kcal">${item.k} kcal</span>
           <span class="pill pill-pro">P ${item.p}g</span>
@@ -1238,15 +1288,75 @@ function renderFoodList() {
   });
 }
 
+// 第一批新功能：選取食物後的結構化份量/重量換算
+let selCalcMode = "serv"; // "serv" 或 "weight"
+
 function selectFoodItem(item) {
   chosenFood = item;
   $("selectedFoodInfo").classList.remove("hide");
   $("selFoodName").textContent = item.name;
-  $("selFoodDetail").textContent = `每 ${item.basis}：${item.k} 大卡・蛋白質 ${item.p}g・脂肪 ${item.f}g・碳水 ${item.c}g`;
+  
+  const hasWeight = item.servingWeight && item.servingWeight > 0;
+  
+  if (hasWeight) {
+    $("selModeWeight").style.display = "block";
+    $("selWeightLabel").textContent = `實際食用重量 (g/ml，每份基準 ${item.servingWeight}g)`;
+  } else {
+    $("selModeWeight").style.display = "none";
+  }
+
+  updateSelFoodDetailDisplay();
+  
   $("cfN").value = 1;
+  $("selWeightInput").value = hasWeight ? item.servingWeight : "";
+  setSelCalcMode("serv");
+  
   document.querySelectorAll("#cfChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
   renderFoodList();
 }
+
+function setSelCalcMode(mode) {
+  selCalcMode = mode;
+  $("selModeServ").classList.toggle("active", mode === "serv");
+  $("selModeWeight").classList.toggle("active", mode === "weight");
+  $("selBoxModeServ").classList.toggle("hide", mode !== "serv");
+  $("selBoxModeWeight").classList.toggle("hide", mode !== "weight");
+}
+
+$("selModeServ").onclick = () => setSelCalcMode("serv");
+$("selModeWeight").onclick = () => setSelCalcMode("weight");
+
+function updateSelFoodDetailDisplay() {
+  if (!chosenFood) return;
+  const item = chosenFood;
+  if (selCalcMode === "serv") {
+    const n = +$("cfN").value || 1;
+    $("selFoodDetail").textContent = `每 ${item.basis}：${Math.round(item.k * n)} 大卡・蛋白質 ${Math.round(item.p * n * 10)/10}g・脂肪 ${Math.round(item.f * n * 10)/10}g・碳水 ${Math.round(item.c * n * 10)/10}g (${n} 份)`;
+  } else {
+    const w = +$("selWeightInput").value || 0;
+    if (item.servingWeight && item.servingWeight > 0) {
+      const ratio = w / item.servingWeight;
+      $("selFoodDetail").textContent = `食用 ${w}g：${Math.round(item.k * ratio)} 大卡・蛋白質 ${Math.round(item.p * ratio * 10)/10}g・脂肪 ${Math.round(item.f * ratio * 10)/10}g・碳水 ${Math.round(item.c * ratio * 10)/10}g`;
+    } else {
+      $("selFoodDetail").textContent = `請輸入有效重量`;
+    }
+  }
+}
+
+$("cfN").oninput = updateSelFoodDetailDisplay;
+$("selWeightInput").oninput = updateSelFoodDetailDisplay;
+
+// 相機掃描條碼後的結構化換算面板控制
+let scanCalcMode = "serv";
+function setScanCalcMode(mode) {
+  scanCalcMode = mode;
+  $("calcModeServ").classList.toggle("active", mode === "serv");
+  $("calcModeWeight").classList.toggle("active", mode === "weight");
+  $("boxModeServ").classList.toggle("hide", mode !== "serv");
+  $("boxModeWeight").classList.toggle("hide", mode !== "weight");
+}
+$("calcModeServ").onclick = () => setScanCalcMode("serv");
+$("calcModeWeight").onclick = () => setScanCalcMode("weight");
 
 function bindChipGroup(groupId, inputId) {
   $(groupId).onclick = e => {
@@ -1278,7 +1388,7 @@ function enableDesktopDragScroll(el) {
     isDown = true;
     isDragging = false;
     startX = e.pageX - el.offsetLeft;
-    scrollLeft = e.scrollLeft;
+    scrollLeft = el.scrollLeft;
   });
   window.addEventListener("mouseup", () => {
     if (isDown) {
@@ -1292,7 +1402,7 @@ function enableDesktopDragScroll(el) {
     const x = e.pageX - el.offsetLeft;
     const walk = (x - startX) * 1.5;
     if (Math.abs(walk) > 4) isDragging = true;
-    el.scrollLeft = scrollLeft - walk;
+    el.scrollLeft = scrollLeft - walk; // 修正變數筆誤
   });
   el.addEventListener("click", e => {
     if (isDragging) { e.stopPropagation(); e.preventDefault(); }
@@ -1324,16 +1434,31 @@ $("foodSearch").oninput = () => {
   searchDebounceTimer = setTimeout(renderFoodList, 200);
 };
 
+// 確認加入食物庫選取的項目（支援份數與重量比例換算）
 $("cfAdd").onclick = () => {
-  if (!chosenFood) return alert("請先選取食物");
-  const servings = +$("cfN").value || 1;
+  if (!chosenFood) return alert("Please select a food item first.");
+  let finalServings = 1;
+  let logName = chosenFood.name + "（" + chosenFood.basis + "）";
+  let multiplier = 1;
+
+  if (selCalcMode === "serv") {
+    finalServings = +$("cfN").value || 1;
+    multiplier = finalServings;
+  } else {
+    const w = +$("selWeightInput").value || 0;
+    if (w <= 0 || !chosenFood.servingWeight) return alert("請輸入有效的食用重量！");
+    multiplier = w / chosenFood.servingWeight;
+    logName = `${chosenFood.name} (${w}g)`;
+    finalServings = Math.round(multiplier * 10) / 10;
+  }
+
   addLog({
-    name: chosenFood.name + "（" + chosenFood.basis + "）",
-    k: chosenFood.k,
-    p: chosenFood.p,
-    f: chosenFood.f,
-    c: chosenFood.c
-  }, servings);
+    name: logName,
+    k: Math.round(chosenFood.k * multiplier),
+    p: Math.round(chosenFood.p * multiplier * 10) / 10,
+    f: Math.round(chosenFood.f * multiplier * 10) / 10,
+    c: Math.round(chosenFood.c * multiplier * 10) / 10
+  }, finalServings);
 
   chosenFood = null;
   $("selectedFoodInfo").classList.add("hide");
@@ -1356,6 +1481,8 @@ $("mAdd").onclick = async () => {
   const p = +$("mP").value || 0;
   const f = +$("mF").value || 0;
   const c = +$("mC").value || 0;
+  const basisType = $("mBasisType").value;
+  const servingWeight = +$("mServingWeight").value || 0;
 
   const errMsg = validateNutrition(n, k, p, f, c);
   if (errMsg) return alert("⚠️ " + errMsg);
@@ -1364,7 +1491,7 @@ $("mAdd").onclick = async () => {
 
   if ($("mSaveFavorite").checked) {
     if (!S.customFavorites.some(item => item.name === n)) {
-      S.customFavorites.unshift({ name: n, basis: "1份", k, p, f, c, cat, subCat });
+      S.customFavorites.unshift({ name: n, basis: basisType === "100g" ? "每100g" : "每份", k, p, f, c, cat, subCat, basisType, servingWeight });
       save();
     }
   }
@@ -1378,13 +1505,15 @@ $("mAdd").onclick = async () => {
       const { error } = await sbClient.from('custom_foods').insert([{
         barcode: "custom_" + Date.now(),
         name: n,
-        basis: "1份",
+        basis: basisType === "100g" ? "每100g" : "每份",
         kcal: k,
         protein: p,
         fat: f,
         carbs: c,
         category: cat,
         sub_category: subCat,
+        basis_type: basisType,
+        serving_weight: servingWeight,
         is_verified: false,
         created_by: targetUid
       }]);
@@ -1397,7 +1526,7 @@ $("mAdd").onclick = async () => {
     }
   }
 
-  ["mName", "mK", "mP", "mF", "mC", "mSubCat"].forEach(i => {
+  ["mName", "mK", "mP", "mF", "mC", "mSubCat", "mServingWeight"].forEach(i => {
     const el = $(i);
     if (el) el.value = "";
   });
@@ -1856,6 +1985,7 @@ async function fetchOpenFoodFacts(barcode) {
     if (data.status !== 1 || !data.product) return null;
     const p = data.product, nut = p.nutriments || {};
     const isServing = nut["energy-kcal_serving"] !== undefined;
+    const servingWeight = Number(p.serving_quantity) || Number(nut["serving_size"]) || 0;
     return {
       name: p.product_name_zh || p.product_name || `商品 (${barcode})`,
       basis: isServing ? "每份" : "每100g",
@@ -1863,12 +1993,12 @@ async function fetchOpenFoodFacts(barcode) {
       p: Math.round(Number(isServing ? nut["proteins_serving"] : nut["proteins_100g"]) * 10) / 10 || 0,
       f: Math.round(Number(isServing ? nut["fat_serving"] : nut["fat_100g"]) * 10) / 10 || 0,
       c: Math.round(Number(isServing ? nut["carbohydrates_serving"] : nut["carbohydrates_100g"]) * 10) / 10 || 0,
+      servingWeight: servingWeight,
       source: "Open Food Facts"
     };
   } catch(e) { return null; }
 }
 
-// 嚴格帶有序列號防護的條碼查詢函式（徹底杜絕跨條碼/跨帳號查詢結果錯配）
 async function lookup(code) {
   const seq = ++lookupSequenceId;
   const targetUid = currentUser ? currentUser.id : null;
@@ -1883,11 +2013,18 @@ async function lookup(code) {
     try {
       const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', barcodeToLook).maybeSingle();
       
-      // await 後嚴格驗證序號、Session 與帳號
       if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
 
       if (data) {
-        it = { name: data.name, basis: data.basis, k: Number(data.kcal), p: Number(data.protein), f: Number(data.fat), c: Number(data.carbs) };
+        it = { 
+          name: data.name, 
+          basis: data.basis, 
+          k: Number(data.kcal), 
+          p: Number(data.protein), 
+          f: Number(data.fat), 
+          c: Number(data.carbs),
+          servingWeight: Number(data.serving_weight) || 0
+        };
         source = "Supabase 社群資料庫";
       }
     } catch(e){}
@@ -1899,7 +2036,6 @@ async function lookup(code) {
     if (it) source = "Open Food Facts 公共庫";
   }
 
-  // 最終確認結果依然屬於當前最新掃描條碼與身分
   if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
 
   $("scanLoading").classList.add("hide");
@@ -1915,11 +2051,93 @@ async function lookup(code) {
 
   $("fSrc").textContent = source;
   $("fName").textContent = it.name;
-  $("fInfo").textContent = `${it.basis || "每份"} ${it.k} 大卡・蛋白質 ${it.p} g・脂肪 ${it.f} g・碳水 ${it.c} g`;
+  $("fInfo").textContent = `${it.basis || "每份"} ${it.k} 大卡・蛋白質 ${it.p} g・脂肪 ${it.f} g・碳水 ${it.c} g ${it.servingWeight ? `(每份 ${it.servingWeight}g)` : ''}`;
   $("fTag").textContent = `條碼：${curBarcode}`;
+  
+  const hasWeight = it.servingWeight && it.servingWeight > 0;
+  if (hasWeight) {
+    $("calcModeWeight").style.display = "block";
+    $("weightInputLabel").textContent = `實際食用重量 (g/ml，每份基準 ${it.servingWeight}g)`;
+  } else {
+    $("calcModeWeight").style.display = "none";
+  }
+
   $("serv").value = 1;
+  $("actualWeightInput").value = hasWeight ? it.servingWeight : "";
+  setScanCalcMode("serv");
+
   document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
 }
+
+// 掃描加入紀錄（第一批：支援按份數或按重量比例換算）
+$("addBtn").onclick = async () => {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
+  if (!curItem) return;
+
+  let finalServings = 1;
+  let logName = curItem.name + "（" + curItem.basis + "）";
+  let multiplier = 1;
+
+  if (scanCalcMode === "serv") {
+    finalServings = +$("serv").value || 1;
+    multiplier = finalServings;
+  } else {
+    const w = +$("actualWeightInput").value || 0;
+    if (w <= 0 || !curItem.servingWeight) return alert("請輸入有效的食用重量！");
+    multiplier = w / curItem.servingWeight;
+    logName = `${curItem.name} (${w}g)`;
+    finalServings = Math.round(multiplier * 10) / 10;
+  }
+
+  const calculatedItem = {
+    name: logName,
+    k: Math.round(curItem.k * multiplier),
+    p: Math.round(curItem.p * multiplier * 10) / 10,
+    f: Math.round(curItem.f * multiplier * 10) / 10,
+    c: Math.round(curItem.c * multiplier * 10) / 10
+  };
+
+  const targetUid = currentUser.id;
+  const targetSession = loginSessionId;
+  const barcodeToSave = curBarcode;
+
+  addLog(calculatedItem, finalServings);
+  $("found").classList.add("hide");
+
+  if (sbClient && barcodeToSave) {
+    try {
+      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
+      
+      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+
+      if (!existing) {
+        const { error } = await sbClient.from('custom_foods').insert([{
+          barcode: barcodeToSave,
+          name: curItem.name,
+          basis: curItem.basis || "每份",
+          kcal: curItem.k,
+          protein: curItem.p,
+          fat: curItem.f,
+          carbs: curItem.c,
+          category: "超商鮮食",
+          basis_type: "serving",
+          serving_weight: curItem.servingWeight || 0,
+          is_verified: false,
+          created_by: targetUid
+        }]);
+
+        if (error) alert("⚠️ 飲食已記錄，但商品分享至社群庫失敗：" + error.message);
+
+        if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+        loadCommunityFoods();
+      }
+    } catch(err) {
+      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
+    }
+  }
+
+  showView("today");
+};
 
 async function addLog(it, n) {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
@@ -1960,58 +2178,11 @@ async function addLog(it, n) {
   }
 }
 
-$("addBtn").onclick = async () => {
-  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
-  const n = +$("serv").value || 1;
-  if (!curItem) return;
-
-  const targetUid = currentUser.id;
-  const targetSession = loginSessionId;
-  const barcodeToSave = curBarcode;
-  const itemToSave = curItem;
-
-  addLog(itemToSave, n);
-  $("found").classList.add("hide");
-
-  if (sbClient && barcodeToSave) {
-    try {
-      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
-      
-      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-      if (!existing) {
-        const { error } = await sbClient.from('custom_foods').insert([{
-          barcode: barcodeToSave,
-          name: itemToSave.name,
-          basis: itemToSave.basis || "每份",
-          kcal: itemToSave.k,
-          protein: itemToSave.p,
-          fat: itemToSave.f,
-          carbs: itemToSave.c,
-          category: "超商鮮食",
-          is_verified: false,
-          created_by: targetUid
-        }]);
-
-        if (error) alert("⚠️ 飲食已記錄，但商品分享至社群庫失敗：" + error.message);
-
-        if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-        loadCommunityFoods();
-      }
-    } catch(err) {
-      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
-    }
-  }
-
-  showView("today");
-};
-
 $("photoBtn").onclick = () => {
   if (!S.geminiKey) return alert("尚未載入辨識金鑰，請確認雲端已配置。");
   $("photo").click();
 };
 
-// 營養標示照片 AI 辨識加入序號與身分防護
 $("photo").onchange = async e => {
   const f = e.target.files[0];
   if (!f) return;
@@ -2130,7 +2301,6 @@ $("mealBtn").onclick = () => {
   $("mealPic").click();
 };
 
-// 餐點照片 AI 估算加入序號與身分防護
 $("mealPic").onchange = async e => {
   const f = e.target.files[0];
   if (!f) return;
