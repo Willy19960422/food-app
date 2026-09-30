@@ -14,8 +14,9 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 
 <!-- 瀏覽器分頁 Favicon (解決灰色地球圖示) -->
-<link rel="icon" type="image/png" href="icon-192.png">
-<link rel="shortcut icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<link rel="shortcut icon" type="image/png" href="./icon-192.png">
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
@@ -99,7 +100,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .pill-carb{background:rgba(56,161,105,0.12);color:var(--carb)}
 .cat-tag{font-size:11px;background:var(--bg);color:var(--mute);padding:1px 6px;border-radius:4px}
 
-.meal-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 16px}
+.meal-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}
 .meal-tabs label{margin:0;padding:9px 0;text-align:center;border:1px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;background:var(--card);color:var(--mute)}
 .meal-tabs input{display:none}
 .meal-tabs label:has(input:checked){border-color:var(--brand);background:var(--brand);color:var(--on);font-weight:700}
@@ -139,14 +140,24 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .serving-chip{flex:1;text-align:center;padding:7px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink);font-weight:500}
 .serving-chip.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
 
-/* 最近吃過晶片標籤樣式 */
-.recent-chips-box{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-top:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.recent-chips-box::-webkit-scrollbar{display:none}
-.recent-chip{width:auto;white-space:nowrap;padding:5px 12px;font-size:13px;border-radius:18px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;font-weight:500}
-.recent-chip:active{background:var(--brand-light);border-color:var(--brand)}
+/* 新增入口專屬重構排版樣式 */
+.tool-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tool-btn{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 8px;font-size:13px;font-weight:500;margin:0;display:flex;align-items:center;justify-content:center}
+.tool-btn:active{border-color:var(--brand);color:var(--brand)}
 
-/* 折疊盒樣式 */
-.fold-box{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.action-card{background:var(--brand);color:var(--on);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:opacity .15s}
+.action-card:active{opacity:0.85}
+.action-card .act-title{font-size:15px;font-weight:700}
+.action-card .act-desc{font-size:11px;opacity:0.85;line-height:1.2}
+
+.recent-box{background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.recent-chips-box{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.recent-chips-box::-webkit-scrollbar{display:none}
+.recent-chip{white-space:nowrap;padding:4px 10px;font-size:12px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.recent-chip span{color:var(--kcal);font-weight:700}
+
+.fold-box{margin-top:8px;padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -213,7 +224,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 4. 新增入口 (整合最近吃過與快速熱量) -->
+<!-- 4. 新增入口 (乾淨整齊的全新排版) -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -225,36 +236,47 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <label><input type="radio" name="addMeal" value="snack"><span>點心</span></label>
     </div>
 
-    <!-- 最近吃過品項晶片列 -->
-    <div id="recentFoodsSection" class="hide" style="margin-bottom:14px">
-      <label style="margin:0 0 4px">最近吃過（點擊帶入）：</label>
-      <div class="recent-chips-box" id="recentChips"></div>
+    <!-- 輔助工具捷徑 (純文字無 Emoji) -->
+    <div class="tool-actions">
+      <button class="tool-btn" id="copyYesterdayMealBtn">複製昨日這餐</button>
+      <button class="tool-btn" id="toggleQuickKcalBtn">快速自訂熱量</button>
     </div>
 
-    <button class="ghost" id="copyYesterdayMealBtn" style="margin-top:0;margin-bottom:12px">複製昨日這餐所有品項</button>
-
-    <button id="navToCamBtn" style="margin-top:0">相機辨識</button>
-    <div class="mute">掃描條碼 或 拍攝整盤餐點智慧估算</div>
-    <button id="navToListBtn">食物庫與手動輸入</button>
-    <div class="mute">快速挑選分類食物 或 建立社群共享品項</div>
-    
-    <!-- 快速熱量折疊區 -->
-    <button class="ghost" id="toggleQuickKcalBtn" style="margin-top:14px">⚡ 快速自訂熱量</button>
-    <div id="boxQuickKcal" class="fold-box hide">
+    <!-- 快速熱量輸入盒（預設折疊） -->
+    <div id="boxQuickKcal" class="fold-box hide" style="margin-bottom:12px">
       <div class="row">
         <div>
           <label style="margin-top:0">熱量 (大卡)</label>
           <input id="qkKcal" type="number" placeholder="例如 150">
         </div>
         <div>
-          <label style="margin-top:0">品項名稱（選填）</label>
+          <label style="margin-top:0">品項說明（選填）</label>
           <input id="qkName" placeholder="快速熱量">
         </div>
       </div>
       <button id="qkAddBtn" style="margin-top:10px">確認計入這餐</button>
     </div>
 
-    <button class="ghost" data-gotoday style="margin-top:12px">返回今日</button>
+    <!-- 最近吃過品項卡片 -->
+    <div id="recentFoodsSection" class="recent-box hide">
+      <div class="mute" style="font-size:12px;margin-bottom:6px">最近常吃（點擊直接計入）：</div>
+      <div class="recent-chips-box" id="recentChips"></div>
+    </div>
+
+    <!-- 核心功能雙欄大卡片 -->
+    <div class="action-grid">
+      <div class="action-card" id="navToCamBtn">
+        <div class="act-title">相機辨識</div>
+        <div class="act-desc">掃條碼 / 拍餐點估算</div>
+      </div>
+
+      <div class="action-card" id="navToListBtn">
+        <div class="act-title">食物資料庫</div>
+        <div class="act-desc">超商鮮食 / 自訂搜尋</div>
+      </div>
+    </div>
+
+    <button class="ghost sm" data-gotoday style="margin:8px auto 0;border:none;color:var(--mute)">返回今日主頁</button>
   </div>
 </section>
 
@@ -794,7 +816,7 @@ $("obSaveBtn").onclick = async () => {
   showView("today");
 };
 
-// 修改密碼相關操作
+// 修改密碼功能
 $("togglePwdBtn").onclick = () => {
   $("pwdFormBox").classList.toggle("hide");
   $("pwdMsg").textContent = "";
@@ -1226,7 +1248,7 @@ $("mAdd").onclick = async () => {
   showView("today");
 };
 
-// 產生「最近吃過」清單
+// 產生「最近吃過」清單（防呆截斷超長字串）
 function renderRecentFoods() {
   const recentSection = $("recentFoodsSection");
   const chipContainer = $("recentChips");
@@ -1254,11 +1276,14 @@ function renderRecentFoods() {
   }
 
   recentSection.classList.remove("hide");
-  chipContainer.innerHTML = allRecentItems.map((item, idx) => `
-    <div class="recent-chip" data-ridx="${idx}">
-      ${esc(item.name)} (${item.k}k)
-    </div>
-  `).join("");
+  chipContainer.innerHTML = allRecentItems.map((item, idx) => {
+    const displayName = item.name.length > 12 ? item.name.slice(0, 11) + '…' : item.name;
+    return `
+      <div class="recent-chip" data-ridx="${idx}">
+        ${esc(displayName)} <span>${Math.round(item.k)}k</span>
+      </div>
+    `;
+  }).join("");
 
   chipContainer.querySelectorAll(".recent-chip").forEach(el => {
     el.onclick = () => {
@@ -1278,7 +1303,7 @@ function renderRecentFoods() {
   });
 }
 
-// 快速熱量功能操作
+// 快速自訂熱量功能操作
 $("toggleQuickKcalBtn").onclick = () => {
   $("boxQuickKcal").classList.toggle("hide");
   if (!$("boxQuickKcal").classList.contains("hide")) {
