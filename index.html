@@ -8,19 +8,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--bg:#EDF3F0;--card:#fff;--ink:#12302B;--mute:#5F7A73;--line:#D3E0DB;--brand:#0F5C4F;--on:#fff;--kcal:#E8961E;--pro:#2F6FD0;--fat:#C0508A;--carb:#3E9B5B;--warn:#B3402A;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1A17;--card:#172924;--ink:#E4F1EC;--mute:#8FAAA2;--line:#284039;--brand:#4FC3AB;--on:#06201B}}
-:root[data-theme="dark"]{--bg:#0E1A17;--card:#172924;--ink:#E4F1EC;--mute:#8FAAA2;--line:#284039;--brand:#4FC3AB;--on:#06201B}
+:root{
+  --bg:#F4F7F5;--card:#FFFFFF;--ink:#142823;--mute:#647C75;--line:#E2ECE8;
+  --brand:#0F5C4F;--brand-light:#E6F3F0;--on:#FFFFFF;
+  --kcal:#ED8936;--pro:#3182CE;--fat:#D53F8C;--carb:#38A169;--warn:#E53E3E;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1715;--card:#162421;--ink:#E6F2EE;--mute:#8DAAA2;--line:#223631;
+    --brand:#4FC3AB;--brand-light:#132E28;--on:#081F1A
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1715;--card:#162421;--ink:#E6F2EE;--mute:#8DAAA2;--line:#223631;
+  --brand:#4FC3AB;--brand-light:#132E28;--on:#081F1A
+}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans TC",system-ui,sans-serif;padding-bottom:76px}
 main{max-width:520px;margin:0 auto;padding:16px}
-h1{font-size:22px;margin:4px 0 12px}h2{font-size:17px;margin:0 0 10px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
-.big{font-size:34px;font-weight:700;line-height:1.1}.mute{color:var(--mute);font-size:14px}
+h1{font-size:22px;margin:4px 0 12px;font-weight:700}h2{font-size:17px;margin:0 0 10px;font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 6px rgba(0,0,0,0.03)}
+.big{font-size:34px;font-weight:700;line-height:1.1}.mute{color:var(--mute);font-size:13px}
 .bar{margin:10px 0}.bar .t{display:flex;justify-content:space-between;font-size:14px}
-.track{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:4px}
+.track{height:9px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:4px}
 .fill{height:100%;border-radius:6px;transition:width .4s}
 label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 input,select{width:100%;padding:11px 12px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px}
@@ -28,11 +40,11 @@ input,select{width:100%;padding:11px 12px;font:inherit;color:var(--ink);backgrou
 button{font:inherit;font-weight:500;padding:12px 16px;border-radius:10px;border:0;background:var(--brand);color:var(--on);width:100%;margin-top:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
 button:disabled{opacity:0.65;cursor:not-allowed}
 button.ghost{background:transparent;color:var(--brand);border:1px solid var(--brand)}
-button.sm{width:auto;margin:0;padding:4px 10px;font-size:13px}
+button.sm{width:auto;margin:0;padding:5px 12px;font-size:13px}
 .goals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .goals label{margin:0;padding:10px 4px;text-align:center;border:1px solid var(--line);border-radius:10px;color:var(--ink);cursor:pointer}
 .goals input{display:none}.goals input:checked+span{font-weight:700;color:var(--brand)}
-.goals label:has(input:checked){border-color:var(--brand);background:var(--bg)}
+.goals label:has(input:checked){border-color:var(--brand);background:var(--brand-light)}
 #reader{width:100%;border-radius:12px;overflow:hidden}
 .item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .item:last-child{border:0}
@@ -40,7 +52,35 @@ nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);b
 nav button{margin:0;border-radius:0;background:transparent;color:var(--mute);padding:14px 0}
 nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--brand)}
 .tag{font-size:13px;color:var(--brand);margin-top:4px}.hide{display:none !important}.msg{color:var(--warn);font-size:14px;margin-top:8px}
-.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;background:var(--bg);color:var(--mute);margin-bottom:6px}
+
+/* 一級主分類標籤（大膠囊） */
+.main-cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;scrollbar-width:none}
+.main-cat-scroll::-webkit-scrollbar{display:none}
+.main-cat-btn{width:auto;white-space:nowrap;padding:7px 14px;font-size:14px;border-radius:22px;border:1px solid var(--line);background:var(--bg);color:var(--mute);margin:0;font-weight:500}
+.main-cat-btn.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700;box-shadow:0 2px 6px rgba(15,92,79,0.25)}
+
+/* 二級子分類標籤（小膠囊） */
+.sub-cat-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;scrollbar-width:none}
+.sub-cat-scroll::-webkit-scrollbar{display:none}
+.sub-cat-btn{width:auto;white-space:nowrap;padding:4px 10px;font-size:12px;border-radius:14px;border:1px dashed var(--line);background:transparent;color:var(--mute);margin:0}
+.sub-cat-btn.active{background:var(--brand-light);color:var(--brand);border-color:var(--brand);border-style:solid;font-weight:700}
+
+/* 精緻食物卡片與彩條指標 */
+.food-list{max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin:10px 0;padding-right:2px}
+.food-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all .15s}
+.food-card:hover{border-color:var(--brand);transform:translateY(-1px)}
+.food-card.selected{border-color:var(--brand);background:var(--brand-light);box-shadow:0 0 0 1px var(--brand)}
+.food-title{font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.food-subinfo{font-size:12px;color:var(--mute);margin-bottom:6px}
+
+/* 三大營養素微膠囊 (P, F, C 顏色明確化) */
+.macro-pills{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pill{font-size:11px;padding:1px 6px;border-radius:4px;font-weight:500;display:inline-flex;align-items:center}
+.pill-kcal{background:rgba(237,137,54,0.12);color:var(--kcal);font-weight:700}
+.pill-pro{background:rgba(49,130,206,0.12);color:var(--pro)}
+.pill-fat{background:rgba(213,63,140,0.12);color:var(--fat)}
+.pill-carb{background:rgba(56,161,105,0.12);color:var(--carb)}
+.cat-tag{font-size:11px;background:var(--bg);color:var(--mute);padding:1px 6px;border-radius:4px}
 
 .meal-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 16px}
 .meal-tabs label{margin:0;padding:9px 0;text-align:center;border:1px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;background:var(--card);color:var(--mute)}
@@ -65,26 +105,13 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .check-inline{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:var(--ink);cursor:pointer}
 .check-inline input{width:auto;margin:0}
 
-/* 專業轉圈 Loading 動畫樣式 */
 .loading-box{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 0;font-size:14px;color:var(--brand);font-weight:500}
 .spinner{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin 0.8s linear infinite}
 .spinner-btn{width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.cat-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;scrollbar-width:none}
-.cat-scroll::-webkit-scrollbar{display:none}
-.cat-scroll.dragging{cursor:grabbing}
-.cat-btn{width:auto;white-space:nowrap;padding:6px 12px;font-size:13px;border-radius:20px;border:1px solid var(--line);background:var(--bg);color:var(--mute);margin:0;pointer-events:auto}
-.cat-btn.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
-
-.food-list{max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:0 12px;margin:10px 0}
-.food-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
-.food-row:last-child{border-bottom:none}
-.food-row:hover{background:var(--bg)}
-.food-row.selected{background:rgba(15,92,79,0.08);border-radius:6px;padding:10px 6px}
-
 .serving-chips{display:flex;gap:8px;margin-top:6px}
-.serving-chip{flex:1;text-align:center;padding:6px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink)}
+.serving-chip{flex:1;text-align:center;padding:7px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink);font-weight:500}
 .serving-chip.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
 </style>
 </head>
@@ -94,7 +121,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 <section id="p-auth">
   <div class="auth-hero">
     <h1>食養紀錄</h1>
-    <p>智慧掃描 · 社群共享庫 · 飲食目標管理</p>
+    <p>智慧掃描 · 精準分類 · 飲食目標管理</p>
   </div>
   <div class="card">
     <h2 id="authTitle">登入您的帳號</h2>
@@ -214,16 +241,15 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button class="ghost" id="photoBtn">拍營養標示，自動填寫</button>
       <input id="photo" type="file" accept="image/*" capture="environment" class="hide">
       <div id="photoLoading" class="loading-box hide"><div class="spinner"></div></div>
-      <label>所屬分類</label>
+      <label>所屬情境分類</label>
       <select id="nCat">
         <option value="超商鮮食">超商鮮食</option>
-        <option value="飲品">飲品</option>
-        <option value="蛋豆肉">蛋豆肉</option>
-        <option value="主食">主食</option>
-        <option value="蔬果">蔬果</option>
-        <option value="便當小吃">便當小吃</option>
-        <option value="連鎖餐飲">連鎖餐飲</option>
+        <option value="外食餐飲">外食餐飲</option>
+        <option value="基礎食材">基礎食材</option>
+        <option value="飲品點心">飲品點心</option>
       </select>
+      <label>細部子分類（如：飯糰、高蛋白乳品）</label>
+      <input id="nSubCat" placeholder="例如：飯糰手捲、即食雞胸肉">
       <label>標示基準</label><select id="nB"><option>每份</option><option>每100g</option></select>
       <label>商品名稱</label><input id="nName">
       <div class="row">
@@ -252,7 +278,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 6. 整合食物庫 -->
+<!-- 6. 整合食物庫（雙層細節分類 ＋ 精緻卡片） -->
 <section id="p-list" class="hide">
   <h1>食物清單與自訂</h1>
   <button class="ghost" data-goadd style="margin:0 0 14px">返回選擇方式</button>
@@ -262,24 +288,28 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 
   <div id="boxSelectFood" class="card">
-    <input id="foodSearch" placeholder="搜尋食物名稱（例如：雞胸肉、飯糰）" style="margin-bottom:10px">
+    <input id="foodSearch" placeholder="搜尋食物（例如：雞胸肉、鮭魚飯糰）" style="margin-bottom:12px">
     
-    <div class="cat-scroll" id="catBar">
-      <button class="cat-btn active" data-cat="all">全部</button>
-      <button class="cat-btn" data-cat="我的常用">我的常用</button>
-      <button class="cat-btn" data-cat="主食">主食</button>
-      <button class="cat-btn" data-cat="蛋豆肉">蛋豆肉</button>
-      <button class="cat-btn" data-cat="蔬果">蔬果</button>
-      <button class="cat-btn" data-cat="飲品">飲品</button>
-      <button class="cat-btn" data-cat="便當小吃">便當小吃</button>
-      <button class="cat-btn" data-cat="超商鮮食">超商鮮食</button>
-      <button class="cat-btn" data-cat="連鎖餐飲">連鎖餐飲</button>
+    <!-- 一級主情境分類 -->
+    <div class="main-cat-scroll" id="mainCatBar">
+      <button class="main-cat-btn active" data-cat="all">全部食物</button>
+      <button class="main-cat-btn" data-cat="超商鮮食">超商鮮食</button>
+      <button class="main-cat-btn" data-cat="外食餐飲">外食餐飲</button>
+      <button class="main-cat-btn" data-cat="基礎食材">基礎食材</button>
+      <button class="main-cat-btn" data-cat="飲品點心">飲品點心</button>
+      <button class="main-cat-btn" data-cat="我的常用">我的常用</button>
     </div>
 
+    <!-- 二級子細節分類（連動更新） -->
+    <div class="sub-cat-scroll" id="subCatBar">
+      <button class="sub-cat-btn active" data-sub="all">全部子類</button>
+    </div>
+
+    <!-- 精緻食物清單 -->
     <div class="food-list" id="foodContainer"></div>
 
-    <div id="selectedFoodInfo" class="hide" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
-      <div style="font-weight:700" id="selFoodName"></div>
+    <div id="selectedFoodInfo" class="hide" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+      <div style="font-weight:700;font-size:16px" id="selFoodName"></div>
       <div class="mute" id="selFoodDetail" style="margin-bottom:8px"></div>
       <label>份數</label>
       <input id="cfN" type="number" step="0.5" min="0.5" value="1">
@@ -297,19 +327,19 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <h2>自訂食物建立</h2>
     <div class="mute" style="margin-bottom:10px">儲存後同步建立至雲端社群食物庫（經審核後開放全員共享）。</div>
     
-    <label>所屬分類</label>
+    <label>所屬情境分類</label>
     <select id="mCat">
-      <option value="便當小吃">便當小吃</option>
-      <option value="主食">主食</option>
-      <option value="蛋豆肉">蛋豆肉</option>
-      <option value="蔬果">蔬果</option>
-      <option value="飲品">飲品</option>
       <option value="超商鮮食">超商鮮食</option>
-      <option value="連鎖餐飲">連鎖餐飲</option>
+      <option value="外食餐飲">外食餐飲</option>
+      <option value="基礎食材">基礎食材</option>
+      <option value="飲品點心">飲品點心</option>
     </select>
 
+    <label>細部子分類標籤</label>
+    <input id="mSubCat" placeholder="例如：便當燴飯、手搖飲品、高蛋白乳品">
+
     <label>品項名稱</label>
-    <input id="mName" placeholder="例如：香煎雞腿排沙拉">
+    <input id="mName" placeholder="例如：香煎雞腿排溫沙拉">
     
     <div class="row">
       <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
@@ -427,8 +457,21 @@ let sbClient = null;
 let currentUser = null;
 let realtimeChannel = null;
 let isSignUpMode = false;
-let currentCatFilter = "all";
+
+// 雙層分類狀態
+let currentMainCat = "all";
+let currentSubCat = "all";
 let chosenFood = null;
+
+// 二級細節分類對照表
+const SUB_CAT_MAP = {
+  "all": ["全部子類"],
+  "超商鮮食": ["全部", "7-11 鮮食", "全家鮮食", "飯糰手捲", "三明治吐司", "便當燴飯", "即食雞胸肉"],
+  "外食餐飲": ["全部", "便當小吃", "麵食湯水", "速食連鎖", "台式小吃"],
+  "基礎食材": ["全部", "蛋豆肉", "主食澱粉", "蔬菜水果"],
+  "飲品點心": ["全部", "高蛋白乳品", "無糖茶飲", "手搖飲品", "輕食點心"],
+  "我的常用": ["全部"]
+};
 
 function initSupabase() {
   try {
@@ -497,6 +540,7 @@ async function handleAuthFlow() {
   } else {
     $("bottomNav").classList.remove("hide");
     loadMe();
+    renderSubCategoryBar();
     renderFoodList();
     renderToday();
     showView("today");
@@ -554,7 +598,6 @@ $("authToggleBtn").onclick = () => {
   $("authErrMsg").textContent = "";
 };
 
-/* 登入／註冊：按鈕轉圈 Loading 模式，杜絕生硬文字 */
 $("authPrimaryBtn").onclick = async () => {
   if (!sbClient) return;
   const email = $("authEmail").value.trim(), password = $("authPass").value.trim();
@@ -718,22 +761,32 @@ async function flushPendingSyncQueue() {
   save();
 }
 
+/* 核心：載入 Supabase custom_foods，支援多層級分類映射 */
 async function loadCommunityFoods() {
   if (!sbClient) return;
   try {
     const { data, error } = await sbClient.from('custom_foods').select('*');
     if (!error && data) {
-      S.communityFoods = data.map(row => ({
-        name: row.name,
-        basis: row.basis || "1份",
-        k: Number(row.kcal) || 0,
-        p: Number(row.protein) || 0,
-        f: Number(row.fat) || 0,
-        c: Number(row.carbs) || 0,
-        cat: row.category || "便當小吃",
-        barcode: row.barcode,
-        createdBy: row.created_by
-      }));
+      S.communityFoods = data.map(row => {
+        let cat = row.category || "外食餐飲";
+        // 舊資料自動歸類映射
+        if (cat === "便當小吃" || cat === "連鎖餐飲") cat = "外食餐飲";
+        if (cat === "主食" || cat === "蛋豆肉" || cat === "蔬果") cat = "基礎食材";
+        if (cat === "飲品") cat = "飲品點心";
+
+        return {
+          name: row.name,
+          basis: row.basis || "1份",
+          k: Number(row.kcal) || 0,
+          p: Number(row.protein) || 0,
+          f: Number(row.fat) || 0,
+          c: Number(row.carbs) || 0,
+          cat: cat,
+          subCat: row.sub_category || "",
+          barcode: row.barcode,
+          createdBy: row.created_by
+        };
+      });
       save();
       renderFoodList();
     }
@@ -761,6 +814,21 @@ function getCombinedFoodList() {
   return result;
 }
 
+/* 二級子分類動態產生 */
+function renderSubCategoryBar() {
+  const bar = $("subCatBar");
+  if (!bar) return;
+  const list = SUB_CAT_MAP[currentMainCat] || ["全部"];
+  
+  bar.innerHTML = list.map((sub, idx) => `
+    <button class="sub-cat-btn ${idx === 0 ? 'active' : ''}" data-sub="${sub === '全部' || sub === '全部子類' ? 'all' : sub}">
+      ${esc(sub)}
+    </button>
+  `).join("");
+  currentSubCat = "all";
+}
+
+/* 雙層篩選與精緻卡片渲染 */
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
@@ -769,27 +837,48 @@ function renderFoodList() {
   const allFoods = getCombinedFoodList();
 
   const filtered = allFoods.filter(item => {
-    const matchesCat = currentCatFilter === "all" ? true : (item.cat === currentCatFilter || (currentCatFilter === "我的常用" && item.isFav));
-    const matchesSearch = !keyword ? true : item.name.toLowerCase().includes(keyword);
-    return matchesCat && matchesSearch;
+    // 一級分類
+    const matchMain = (currentMainCat === "all") 
+      ? true 
+      : (currentMainCat === "我的常用" ? item.isFav : item.cat === currentMainCat);
+
+    // 二級分類 (比對子分類欄位或名稱關鍵字)
+    let matchSub = true;
+    if (currentSubCat !== "all") {
+      matchSub = (item.subCat && item.subCat.includes(currentSubCat)) || item.name.includes(currentSubCat);
+    }
+
+    // 搜尋比對
+    const matchSearch = !keyword ? true : (item.name.toLowerCase().includes(keyword) || (item.subCat && item.subCat.toLowerCase().includes(keyword)));
+
+    return matchMain && matchSub && matchSearch;
   });
 
   if (!filtered.length) {
-    container.innerHTML = `<div class="empty-meal" style="text-align:center;padding:24px 0">查無食物項目，可切換至「手動自訂」新增！</div>`;
+    container.innerHTML = `<div class="empty-meal" style="text-align:center;padding:32px 0">查無對應食物，可切換分類或至「手動自訂」建立！</div>`;
     return;
   }
 
   container.innerHTML = filtered.map((item, idx) => `
-    <div class="food-row ${chosenFood && chosenFood.name === item.name ? 'selected' : ''}" data-idx="${idx}">
-      <div>
-        <div style="font-weight:500">${esc(item.name)} <span class="badge">${esc(item.cat || "外食")}</span></div>
-        <div class="mute">${item.basis}・${item.k} 大卡・P ${item.p}g / F ${item.f}g / C ${item.c}g</div>
+    <div class="food-card ${chosenFood && chosenFood.name === item.name ? 'selected' : ''}" data-idx="${idx}">
+      <div style="flex:1">
+        <div class="food-title">
+          <span>${esc(item.name)}</span>
+          <span class="cat-tag">${esc(item.subCat || item.cat || "外食")}</span>
+        </div>
+        <div class="food-subinfo">${esc(item.basis)}</div>
+        <div class="macro-pills">
+          <span class="pill pill-kcal">${item.k} kcal</span>
+          <span class="pill pill-pro">P ${item.p}g</span>
+          <span class="pill pill-fat">F ${item.fat !== undefined ? item.fat : item.f}g</span>
+          <span class="pill pill-carb">C ${item.c}g</span>
+        </div>
       </div>
-      <button class="sm ghost" data-pick="${idx}">選取</button>
+      <button class="sm ghost" data-pick="${idx}" style="margin-left:12px">選取</button>
     </div>
   `).join("");
 
-  container.querySelectorAll("[data-pick], .food-row").forEach(el => {
+  container.querySelectorAll("[data-pick], .food-card").forEach(el => {
     el.onclick = (e) => {
       const idx = e.currentTarget.dataset.idx || e.currentTarget.dataset.pick;
       if (idx !== undefined) {
@@ -825,61 +914,60 @@ function bindChipGroup(groupId, inputId) {
 bindChipGroup("servChips", "serv");
 bindChipGroup("cfChips", "cfN");
 
-function setupCatBarDesktopScroll() {
-  const catBar = $("catBar");
-  if (!catBar) return;
-
-  catBar.addEventListener("wheel", e => {
+/* 桌面滑鼠橫向滾動與拖曳通用函式 */
+function enableDesktopDragScroll(el) {
+  if (!el) return;
+  el.addEventListener("wheel", e => {
     if (e.deltaY !== 0) {
       e.preventDefault();
-      catBar.scrollLeft += e.deltaY;
+      el.scrollLeft += e.deltaY;
     }
   }, { passive: false });
 
-  let isDown = false;
-  let startX = 0;
-  let scrollLeft = 0;
-  let isDragging = false;
-
-  catBar.addEventListener("mousedown", e => {
+  let isDown = false, startX = 0, scrollLeft = 0, isDragging = false;
+  el.addEventListener("mousedown", e => {
     isDown = true;
     isDragging = false;
-    catBar.classList.add("dragging");
-    startX = e.pageX - catBar.offsetLeft;
-    scrollLeft = catBar.scrollLeft;
+    startX = e.pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
   });
-
   window.addEventListener("mouseup", () => {
     if (isDown) {
       isDown = false;
-      catBar.classList.remove("dragging");
       setTimeout(() => { isDragging = false; }, 50);
     }
   });
-
-  catBar.addEventListener("mousemove", e => {
+  el.addEventListener("mousemove", e => {
     if (!isDown) return;
     e.preventDefault();
-    const x = e.pageX - catBar.offsetLeft;
+    const x = e.pageX - el.offsetLeft;
     const walk = (x - startX) * 1.5;
     if (Math.abs(walk) > 4) isDragging = true;
-    catBar.scrollLeft = scrollLeft - walk;
+    el.scrollLeft = scrollLeft - walk;
   });
-
-  catBar.addEventListener("click", e => {
-    if (isDragging) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
+  el.addEventListener("click", e => {
+    if (isDragging) { e.stopPropagation(); e.preventDefault(); }
   }, true);
 }
 
-$("catBar").onclick = e => {
-  const btn = e.target.closest(".cat-btn");
+// 一級分類切換
+$("mainCatBar").onclick = e => {
+  const btn = e.target.closest(".main-cat-btn");
   if (!btn) return;
-  document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  currentCatFilter = btn.dataset.cat;
+  currentMainCat = btn.dataset.cat;
+  renderSubCategoryBar();
+  renderFoodList();
+};
+
+// 二級分類切換
+$("subCatBar").onclick = e => {
+  const btn = e.target.closest(".sub-cat-btn");
+  if (!btn) return;
+  document.querySelectorAll(".sub-cat-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentSubCat = btn.dataset.sub;
   renderFoodList();
 };
 
@@ -913,6 +1001,7 @@ const cleanBarcode = bc => String(bc || "").replace(/[^0-9a-zA-Z_-]/g, "").trim(
 $("mAdd").onclick = async () => {
   const k = +$("mK").value, n = $("mName").value.trim();
   const cat = $("mCat").value;
+  const subCat = $("mSubCat").value.trim() || "";
   const p = +$("mP").value || 0;
   const f = +$("mF").value || 0;
   const c = +$("mC").value || 0;
@@ -924,7 +1013,7 @@ $("mAdd").onclick = async () => {
 
   if ($("mSaveFavorite").checked) {
     if (!S.customFavorites.some(item => item.name === n)) {
-      S.customFavorites.unshift({ name: n, basis: "1份", k, p, f, c, cat });
+      S.customFavorites.unshift({ name: n, basis: "1份", k, p, f, c, cat, subCat });
       save();
     }
   }
@@ -940,6 +1029,7 @@ $("mAdd").onclick = async () => {
         fat: f,
         carbs: c,
         category: cat,
+        sub_category: subCat,
         is_verified: false,
         created_by: currentUser.id
       }]);
@@ -949,7 +1039,7 @@ $("mAdd").onclick = async () => {
     } catch(err) {}
   }
 
-  ["mName", "mK", "mP", "mF", "mC"].forEach(i => {
+  ["mName", "mK", "mP", "mF", "mC", "mSubCat"].forEach(i => {
     const el = $(i);
     if (el) el.value = "";
   });
@@ -1481,11 +1571,12 @@ $("saveNew").onclick = async () => {
   const f = +$("nF").value || 0;
   const c = +$("nC").value || 0;
   const cat = $("nCat").value || "超商鮮食";
+  const subCat = $("nSubCat").value.trim() || "";
 
   const errMsg = validateNutrition(n, k, p, f, c);
   if (errMsg) return alert("⚠️ " + errMsg);
 
-  const it = { name: n, basis: $("nB").value, k, p, f, c, category: cat };
+  const it = { name: n, basis: $("nB").value, k, p, f, c, category: cat, subCat };
   addLog(it, 1);
 
   if (sbClient && currentUser && curBarcode) {
@@ -1499,6 +1590,7 @@ $("saveNew").onclick = async () => {
         fat: it.f,
         carbs: it.c,
         category: it.category,
+        sub_category: it.subCat,
         is_verified: false,
         created_by: currentUser.id
       }], { onConflict: 'barcode' });
@@ -1596,7 +1688,8 @@ $("hDays").onclick = e => {
 
 window.addEventListener("DOMContentLoaded", () => {
   initSupabase();
-  setupCatBarDesktopScroll();
+  enableDesktopDragScroll($("mainCatBar"));
+  enableDesktopDragScroll($("subCatBar"));
 });
 </script>
 </body>
