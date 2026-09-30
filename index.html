@@ -306,6 +306,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div id="reader"></div>
       <button id="startBtn">開啟相機掃條碼</button>
       <button class="ghost" id="shotBtn">拍照掃條碼（相機打不開時用）</button>
+      <!-- 補上 capture="environment" 讓手機直接叫出相機鏡頭拍攝 -->
       <input id="shot" type="file" accept="image/*" capture="environment" class="hide">
       <label>或手動輸入條碼</label>
       <input id="manual" inputmode="numeric" placeholder="例如 4710088410009">
@@ -346,6 +347,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <div class="card hide" id="newForm">
       <h2>社群資料庫尚無此商品</h2>
       <div class="mute">可手動輸入，或拍攝包裝營養標示自動填入。</div>
+      <!-- 補上 capture="environment" -->
       <button class="ghost" id="photoBtn">拍營養標示，自動填寫</button>
       <input id="photo" type="file" accept="image/*" capture="environment" class="hide">
       <div id="photoLoading" class="loading-box hide"><div class="spinner"></div></div>
@@ -377,6 +379,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <h2>拍餐點智慧估算</h2>
       <div class="mute">拍攝餐點，自動分析盤中食材並預估熱量。</div>
       <button id="mealBtn">拍攝或上傳餐點照片</button>
+      <!-- 補上 capture="environment" 讓拍餐點按鈕直接開啟相機 -->
       <input id="mealPic" type="file" accept="image/*" capture="environment" class="hide">
       <div id="mealLoading" class="loading-box hide"><div class="spinner"></div></div>
       <div id="estList" style="margin-top:12px"></div>
@@ -595,7 +598,7 @@ let S = {
   me: null,
   log: {},
   customFavorites: [],
-  mealCombos: [], // 第二階段：常吃組合套餐
+  mealCombos: [],
   pendingSyncQueue: [],
   pendingDeleteQueue: [],
   theme: "system"
@@ -1482,107 +1485,6 @@ $("foodSearch").oninput = () => {
   searchDebounceTimer = setTimeout(renderFoodList, 200);
 };
 
-// 第二階段：常吃組合套餐功能互動邏輯
-$("toggleCombosBtn").onclick = () => {
-  $("boxCombos").classList.toggle("hide");
-  if (!$("boxCombos").classList.contains("hide")) {
-    renderCombosList();
-  }
-};
-
-function renderCombosList() {
-  const container = $("combosListContainer");
-  if (!container) return;
-
-  const combos = S.mealCombos || [];
-  if (!combos.length) {
-    container.innerHTML = `<div class="mute" style="font-size:13px">尚未建立任何常吃組合套餐。</div>`;
-    return;
-  }
-
-  container.innerHTML = combos.map((combo, idx) => {
-    const totalKcal = combo.items.reduce((acc, item) => acc + Math.round(item.k * (item.n || 1)), 0);
-    const summaryStr = combo.items.map(i => `${i.name} (${Math.round(i.n*100)/100}份)`).join("、");
-    return `
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-weight:700;font-size:14px">${esc(combo.name)} <span style="color:var(--kcal);font-size:12px">(${totalKcal} kcal)</span></div>
-          <div class="mute" style="font-size:11px">${esc(summaryStr)}</div>
-        </div>
-        <div style="display:flex;gap:4px">
-          <button class="sm" data-applycombo="${idx}" style="margin:0;padding:4px 8px">加入這餐</button>
-          <button class="sm ghost" data-delcombo="${idx}" style="margin:0;padding:4px 8px;color:var(--warn);border-color:var(--warn)">刪除</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-// 儲存今天這餐為常吃組合套餐
-$("saveCurrentMealAsComboBtn").onclick = () => {
-  const comboName = $("comboNameInput").value.trim();
-  if (!comboName) return alert("請輸入套餐名稱！");
-
-  const currentMealKey = getSelectedMeal();
-  const dayLogs = S.log[today()] || [];
-  const mealItems = dayLogs.filter(item => (item.meal || "snack") === currentMealKey);
-
-  if (!mealItems.length) return alert(`今天在【${({breakfast:"早餐",lunch:"午餐",dinner:"晚餐",snack:"點心"}[currentMealKey])}】沒有任何飲食紀錄可存為組合。`);
-
-  const comboItems = mealItems.map(item => ({
-    name: item.name,
-    k: item.k,
-    p: item.p,
-    f: item.f,
-    c: item.c,
-    n: item.n || 1
-  }));
-
-  S.mealCombos.push({
-    name: comboName,
-    items: comboItems
-  });
-  save();
-
-  $("comboNameInput").value = "";
-  renderCombosList();
-  alert(`✓ 成功將【${comboName}】存入常吃組合套餐！`);
-};
-
-// 套用或刪除套餐
-$("combosListContainer").onclick = async e => {
-  const applyIdx = e.target.dataset.applycombo;
-  const delIdx = e.target.dataset.delcombo;
-
-  if (applyIdx !== undefined) {
-    const combo = S.mealCombos[applyIdx];
-    if (!combo) return;
-
-    if (!confirm(`確定要將套餐【${combo.name}】中的 ${combo.items.length} 項食物加入目前的餐別嗎？`)) return;
-
-    for (const item of combo.items) {
-      await addLog({
-        name: item.name,
-        k: item.k,
-        p: item.p,
-        f: item.f,
-        c: item.c
-      }, item.n);
-    }
-
-    showView("today");
-    return;
-  }
-
-  if (delIdx !== undefined) {
-    if (!confirm("確定要刪除這個常吃組合套餐嗎？")) return;
-    S.mealCombos.splice(delIdx, 1);
-    save();
-    renderCombosList();
-  }
-};
-
-// 食物庫確認加入
 $("cfAdd").onclick = () => {
   if (!chosenFood) return alert("請先選取食物");
   let finalServings = 1;
@@ -1755,6 +1657,103 @@ $("toggleQuickKcalBtn").onclick = () => {
   $("boxQuickKcal").classList.toggle("hide");
   if (!$("boxQuickKcal").classList.contains("hide")) {
     $("qkKcal").focus();
+  }
+};
+
+$("toggleCombosBtn").onclick = () => {
+  $("boxCombos").classList.toggle("hide");
+  if (!$("boxCombos").classList.contains("hide")) {
+    renderCombosList();
+  }
+};
+
+function renderCombosList() {
+  const container = $("combosListContainer");
+  if (!container) return;
+
+  const combos = S.mealCombos || [];
+  if (!combos.length) {
+    container.innerHTML = `<div class="mute" style="font-size:13px">尚未建立任何常吃組合套餐。</div>`;
+    return;
+  }
+
+  container.innerHTML = combos.map((combo, idx) => {
+    const totalKcal = combo.items.reduce((acc, item) => acc + Math.round(item.k * (item.n || 1)), 0);
+    const summaryStr = combo.items.map(i => `${i.name} (${Math.round(i.n*100)/100}份)`).join("、");
+    return `
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700;font-size:14px">${esc(combo.name)} <span style="color:var(--kcal);font-size:12px">(${totalKcal} kcal)</span></div>
+          <div class="mute" style="font-size:11px">${esc(summaryStr)}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="sm" data-applycombo="${idx}" style="margin:0;padding:4px 8px">加入這餐</button>
+          <button class="sm ghost" data-delcombo="${idx}" style="margin:0;padding:4px 8px;color:var(--warn);border-color:var(--warn)">刪除</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+$("saveCurrentMealAsComboBtn").onclick = () => {
+  const comboName = $("comboNameInput").value.trim();
+  if (!comboName) return alert("請輸入套餐名稱！");
+
+  const currentMealKey = getSelectedMeal();
+  const dayLogs = S.log[today()] || [];
+  const mealItems = dayLogs.filter(item => (item.meal || "snack") === currentMealKey);
+
+  if (!mealItems.length) return alert(`今天在【${({breakfast:"早餐",lunch:"午餐",dinner:"晚餐",snack:"點心"}[currentMealKey])}】沒有任何飲食紀錄可存為組合。`);
+
+  const comboItems = mealItems.map(item => ({
+    name: item.name,
+    k: item.k,
+    p: item.p,
+    f: item.f,
+    c: item.c,
+    n: item.n || 1
+  }));
+
+  S.mealCombos.push({
+    name: comboName,
+    items: comboItems
+  });
+  save();
+
+  $("comboNameInput").value = "";
+  renderCombosList();
+  alert(`✓ 成功將【${comboName}】存入常吃組合套餐！`);
+};
+
+$("combosListContainer").onclick = async e => {
+  const applyIdx = e.target.dataset.applycombo;
+  const delIdx = e.target.dataset.delcombo;
+
+  if (applyIdx !== undefined) {
+    const combo = S.mealCombos[applyIdx];
+    if (!combo) return;
+
+    if (!confirm(`確定要將套餐【${combo.name}】中的 ${combo.items.length} 項食物加入目前的餐別嗎？`)) return;
+
+    for (const item of combo.items) {
+      await addLog({
+        name: item.name,
+        k: item.k,
+        p: item.p,
+        f: item.f,
+        c: item.c
+      }, item.n);
+    }
+
+    showView("today");
+    return;
+  }
+
+  if (delIdx !== undefined) {
+    if (!confirm("確定要刪除這個常吃組合套餐嗎？")) return;
+    S.mealCombos.splice(delIdx, 1);
+    save();
+    renderCombosList();
   }
 };
 
@@ -2113,488 +2112,6 @@ $("themeGroup").onchange = e => {
   if (e.target && e.target.name === "appTheme") {
     applyTheme(e.target.value);
   }
-};
-
-const fileToBase64 = f => new Promise((res, rej) => {
-  const r = new FileReader();
-  r.onload = () => res(r.result.split(",")[1]);
-  r.onerror = rej;
-  r.readAsDataURL(f);
-});
-
-async function callGeminiVision(prompt, file) {
-  const base64Data = await fileToBase64(file);
-  const mimeType = file.type || "image/jpeg";
-
-  const { data: { session } } = await sbClient.auth.getSession();
-  if (!session) throw new Error("請先登入後再使用 AI 辨識。");
-
-  const functionUrl = `${SB_URL}/functions/v1/gemini-vision`;
-
-  const res = await fetch(functionUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${session.access_token}`
-    },
-    body: JSON.stringify({ prompt, mimeType, dataBase64: base64Data })
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `AI 辨識服務異常 (${res.status})`);
-  }
-  return await res.json();
-}
-
-let qr = null, curBarcode = null, curItem = null;
-function stopScan() {
-  if (qr && qr.isScanning) { qr.stop().catch(() => {}); }
-  $("startBtn").textContent = "開啟相機掃條碼";
-}
-
-$("startBtn").onclick = async () => {
-  if (qr && qr.isScanning) { stopScan(); return; }
-  if (typeof Html5Qrcode === "undefined") return;
-  qr = qr || new Html5Qrcode("reader");
-  try {
-    await qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 140 } }, code => {
-      if (isScanCoolingDown) return;
-      isScanCoolingDown = true;
-      setTimeout(() => { isScanCoolingDown = false; }, 1500);
-
-      stopScan();
-      lookup(cleanBarcode(code));
-    });
-    $("startBtn").textContent = "關閉相機";
-    $("scanMsg").textContent = "";
-  } catch(e) {
-    $("scanMsg").textContent = "相機無法開啟，請改用拍照上傳。";
-  }
-};
-
-$("shotBtn").onclick = () => $("shot").click();
-$("shot").onchange = async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  if (typeof Html5Qrcode === "undefined") return;
-  $("scanLoading").classList.remove("hide");
-  $("scanMsg").textContent = "";
-  try {
-    qr = qr || new Html5Qrcode("reader");
-    const code = await qr.scanFile(f, false);
-    lookup(cleanBarcode(code));
-  } catch(err) {
-    $("scanMsg").textContent = "讀不到條碼，請重拍或手動輸入。";
-  } finally {
-    $("scanLoading").classList.add("hide");
-    e.target.value = "";
-  }
-};
-
-$("lookBtn").onclick = () => {
-  const c = cleanBarcode($("manual").value);
-  if (c) lookup(c);
-};
-
-async function fetchOpenFoodFacts(barcode) {
-  try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.status !== 1 || !data.product) return null;
-    const p = data.product, nut = p.nutriments || {};
-    const isServing = nut["energy-kcal_serving"] !== undefined;
-    const kcal = Number(isServing ? nut["energy-kcal_serving"] : nut["energy-kcal_100g"]);
-    if (!kcal || kcal <= 0) return null;
-
-    const servingWeight = Number(p.serving_quantity) || Number(nut["serving_size"]) || 0;
-    return {
-      name: p.product_name_zh || p.product_name || `商品 (${barcode})`,
-      basis: isServing ? "每份" : "每100g",
-      k: Math.round(kcal),
-      p: Math.round(Number(isServing ? nut["proteins_serving"] : nut["proteins_100g"]) * 10) / 10 || 0,
-      f: Math.round(Number(isServing ? nut["fat_serving"] : nut["fat_100g"]) * 10) / 10 || 0,
-      c: Math.round(Number(isServing ? nut["carbohydrates_serving"] : nut["carbohydrates_100g"]) * 10) / 10 || 0,
-      basisType: isServing ? "serving" : "100g",
-      servingWeight: servingWeight,
-      source: "Open Food Facts"
-    };
-  } catch(e) { return null; }
-}
-
-async function lookup(code) {
-  const seq = ++lookupSequenceId;
-  const targetUid = currentUser ? currentUser.id : null;
-  const targetSession = loginSessionId;
-  const barcodeToLook = cleanBarcode(code);
-
-  $("scanLoading").classList.remove("hide");
-  $("scanMsg").textContent = "";
-  let it = null, source = "";
-
-  if (sbClient) {
-    try {
-      const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', barcodeToLook).maybeSingle();
-      
-      if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-      if (data) {
-        it = { 
-          name: data.name, 
-          basis: data.basis, 
-          k: Number(data.kcal), 
-          p: Number(data.protein), 
-          f: Number(data.fat), 
-          c: Number(data.carbs),
-          basisType: data.basis_type || "serving",
-          servingWeight: Number(data.serving_weight) || 0
-        };
-        source = "Supabase 社群資料庫";
-      }
-    } catch(e){}
-  }
-
-  if (!it) {
-    it = await fetchOpenFoodFacts(barcodeToLook);
-    if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-    if (it) source = "Open Food Facts 公共庫";
-  }
-
-  if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-  $("scanLoading").classList.add("hide");
-  curBarcode = barcodeToLook;
-  curItem = it;
-  $("found").classList.toggle("hide", !it);
-  $("newForm").classList.toggle("hide", !!it);
-
-  if (!it) {
-    $("nName").value = ""; $("nK").value = ""; $("nP").value = ""; $("nF").value = ""; $("nC").value = "";
-    return;
-  }
-
-  $("fSrc").textContent = source;
-  $("fName").textContent = it.name;
-  $("fInfo").textContent = `${it.basis || "每份"} ${it.k} 大卡・蛋白質 ${it.p} g・脂肪 ${it.f} g・碳水 ${it.c} g ${it.servingWeight ? `(每份 ${it.servingWeight}g)` : ''}`;
-  $("fTag").textContent = `條碼：${curBarcode}`;
-  
-  const is100g = it.basisType === "100g";
-  const hasWeight = it.servingWeight && it.servingWeight > 0;
-  
-  if (is100g || hasWeight) {
-    $("calcModeWeight").classList.remove("hide");
-    $("weightInputLabel").textContent = is100g ? "實際食用重量 (g/ml，每 100g 基準)" : `實際食用重量 (g/ml，每份基準 ${it.servingWeight}g)`;
-  } else {
-    $("calcModeWeight").classList.add("hide");
-  }
-
-  $("serv").value = 1;
-  $("actualWeightInput").value = is100g ? 100 : (hasWeight ? it.servingWeight : "");
-  setScanCalcMode("serv");
-
-  document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
-}
-
-$("addBtn").onclick = async () => {
-  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
-  if (!curItem) return;
-
-  const itemToSave = { ...curItem };
-  const barcodeToSave = curBarcode;
-  const targetUid = currentUser.id;
-  const targetSession = loginSessionId;
-
-  let finalServings = 1;
-  let logName = itemToSave.name + "（" + itemToSave.basis + "）";
-  let multiplier = 1;
-
-  if (scanCalcMode === "serv") {
-    finalServings = +$("serv").value || 1;
-    multiplier = finalServings;
-  } else {
-    const w = +$("actualWeightInput").value || 0;
-    if (w <= 0) return alert("請輸入有效的食用重量！");
-    if (itemToSave.basisType === "100g") {
-      multiplier = w / 100;
-    } else if (itemToSave.servingWeight && itemToSave.servingWeight > 0) {
-      multiplier = w / itemToSave.servingWeight;
-    } else {
-      return alert("此商品未提供每份重量基準，無法進行重量換算。");
-    }
-    logName = `${itemToSave.name} (${w}g)`;
-    finalServings = multiplier;
-  }
-
-  addLog({
-    name: logName,
-    k: itemToSave.k,
-    p: itemToSave.p,
-    f: itemToSave.f,
-    c: itemToSave.c
-  }, finalServings);
-
-  $("found").classList.add("hide");
-
-  if (sbClient && barcodeToSave) {
-    try {
-      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
-      
-      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-      if (!existing) {
-        const { error } = await sbClient.from('custom_foods').insert([{
-          barcode: barcodeToSave,
-          name: itemToSave.name,
-          basis: itemToSave.basis || "每份",
-          kcal: itemToSave.k,
-          protein: itemToSave.p,
-          fat: itemToSave.f,
-          carbs: itemToSave.c,
-          category: "超商鮮食",
-          basis_type: itemToSave.basisType || "serving",
-          serving_weight: itemToSave.servingWeight || 0,
-          is_verified: false,
-          created_by: targetUid
-        }]);
-
-        if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
-
-        if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-        loadCommunityFoods();
-      }
-    } catch(err) {
-      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
-    }
-  }
-
-  showView("today");
-};
-
-async function addLog(it, n) {
-  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
-  const mealKey = getSelectedMeal();
-  const timeStr = new Date().toTimeString().slice(0, 5);
-  const logId = generateUUID();
-
-  const logItem = {
-    id: logId,
-    name: it.name,
-    k: it.k,
-    p: it.p,
-    f: it.f,
-    c: it.c,
-    n: n,
-    meal: mealKey,
-    t: timeStr
-  };
-
-  (S.log[today()] = S.log[today()] || []).push(logItem);
-  S.pendingSyncQueue.push({
-    id: logId,
-    date: today(),
-    meal: mealKey,
-    name: it.name,
-    n: n,
-    k: it.k,
-    p: it.p,
-    f: it.f,
-    c: it.c,
-    t: timeStr
-  });
-  save();
-  renderToday();
-
-  if (sbClient && currentUser && navigator.onLine) {
-    runSyncPipeline();
-  }
-}
-
-$("photoBtn").onclick = () => {
-  $("photo").click();
-};
-
-$("photo").onchange = async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const seq = ++photoSequenceId;
-  const targetUid = currentUser ? currentUser.id : null;
-  const targetSession = loginSessionId;
-
-  $("photoLoading").classList.remove("hide");
-  $("photoBtn").disabled = true;
-  $("scanMsg").textContent = "";
-
-  try {
-    const r = await callGeminiVision("你是營養標籤讀取助理。請從照片讀出商品名、基準（\"每份\"或\"每100g\"）、熱量(kcal)、蛋白質(g)、脂肪(g)、碳水(g)。回傳 JSON：{\"name\":\"\",\"basis\":\"每份\",\"k\":0,\"p\":0,\"f\":0,\"c\":0}", f);
-    
-    if (seq !== photoSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-    if (r.name) $("nName").value = r.name;
-    $("nB").value = r.basis === "每100g" ? "每100g" : "每份";
-    $("nK").value = r.k || 0;
-    $("nP").value = r.p || 0;
-    $("nF").value = r.f || 0;
-    $("nC").value = r.c || 0;
-  } catch(err) {
-    if (seq === photoSequenceId && loginSessionId === targetSession) {
-      $("scanMsg").textContent = "AI 辨識失敗：" + err.message;
-    }
-  } finally {
-    if (seq === photoSequenceId) {
-      $("photoLoading").classList.add("hide");
-      $("photoBtn").disabled = false;
-      e.target.value = "";
-    }
-  }
-};
-
-$("saveNew").onclick = async () => {
-  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
-  const n = $("nName").value.trim();
-  const k = +$("nK").value;
-  const p = +$("nP").value || 0;
-  const f = +$("nF").value || 0;
-  const c = +$("nC").value || 0;
-  const cat = $("nCat").value || "超商鮮食";
-  const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
-
-  const errMsg = validateNutrition(n, k, p, f, c);
-  if (errMsg) return alert("⚠️ " + errMsg);
-
-  const targetUid = currentUser.id;
-  const targetSession = loginSessionId;
-  const barcodeToSave = curBarcode;
-
-  const it = { name: n, basis: $("nB").value, k, p, f, c, category: cat, subCat };
-  addLog(it, 1);
-
-  if (sbClient && barcodeToSave) {
-    try {
-      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
-      
-      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-      if (!existing) {
-        const { error } = await sbClient.from('custom_foods').insert([{
-          barcode: barcodeToSave,
-          name: it.name,
-          basis: it.basis,
-          kcal: it.k,
-          protein: it.p,
-          fat: it.f,
-          carbs: it.c,
-          category: it.category,
-          sub_category: it.subCat,
-          is_verified: false,
-          created_by: targetUid
-        }]);
-
-        if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
-
-        if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-        loadCommunityFoods();
-      }
-    } catch(e) {
-      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
-    }
-  }
-
-  $("newForm").classList.add("hide");
-  showView("today");
-};
-
-let EST = [];
-function showEst() {
-  $("estList").innerHTML = EST.map((e, i) => `
-    <div class="item">
-      <div>
-        <input type="checkbox" data-c="${i}" ${e.on ? "checked" : ""}> ${esc(e.name)}
-        <div class="mute">${esc(e.portion || "")}・蛋白質 ${Math.round(e.p)} g</div>
-      </div>
-      <input type="number" data-k="${i}" value="${Math.round(e.k)}" style="width:84px">
-    </div>
-  `).join("");
-  $("estAdd").classList.toggle("hide", !EST.length);
-}
-
-$("estList").onchange = e => {
-  const t = e.target;
-  if (t.dataset.c !== undefined) EST[t.dataset.c].on = t.checked;
-  if (t.dataset.k !== undefined) {
-    const x = EST[t.dataset.k], r = (+t.value || 0) / (x.k || 1);
-    x.p *= r; x.f *= r; x.c *= r; x.k = +t.value || 0;
-  }
-};
-
-$("mealBtn").onclick = () => {
-  $("mealPic").click();
-};
-
-$("mealPic").onchange = async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const seq = ++mealSequenceId;
-  const targetUid = currentUser ? currentUser.id : null;
-  const targetSession = loginSessionId;
-
-  $("mealLoading").classList.remove("hide");
-  $("mealBtn").disabled = true;
-  $("mealMsg").textContent = "";
-
-  try {
-    const r = await callGeminiVision("請拆解餐點中的每樣食物與主副食，以台灣份量估算熱量。只回傳 JSON：{\"items\":[{\"name\":\"食物名稱\",\"portion\":\"份量說明\",\"k\":熱量大卡,\"p\":蛋白質克數,\"f\":脂肪克數,\"c\":碳水克數}]}", f);
-    
-    if (seq !== mealSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-    EST = (r.items || []).map(x => ({
-      name: String(x.name || "食物"),
-      portion: x.portion || "",
-      k: +x.k || 0,
-      p: +x.p || 0,
-      f: +x.f || 0,
-      c: +x.c || 0,
-      on: true
-    }));
-    showEst();
-    if (!EST.length) $("mealMsg").textContent = "未能辨識出餐點內容";
-  } catch(err) {
-    if (seq === mealSequenceId && loginSessionId === targetSession) {
-      $("mealMsg").textContent = "AI 估算失敗：" + err.message;
-    }
-  } finally {
-    if (seq === mealSequenceId) {
-      $("mealLoading").classList.add("hide");
-      $("mealBtn").disabled = false;
-      e.target.value = "";
-    }
-  }
-};
-
-$("estAdd").onclick = () => {
-  const on = EST.filter(x => x.on && x.k > 0);
-  if (!on.length) return alert("沒有選取任何項目。");
-  on.forEach(x => addLog({ name: x.name, k: x.k, p: x.p, f: x.f, c: x.c }, 1));
-  EST = [];
-  showEst();
-  showView("today");
-};
-
-function renderHist() {
-  const max = today();
-  $("hDate").max = max;
-  const d = $("hDate").value || max;
-  const L = S.log[d] || [], T = sumList(L), g = calc(S.me);
-  $("hSum").innerHTML = `<div class="big">${Math.round(T.k)} <span class="mute">大卡／目標 ${g.kcal}</span></div><div class="mute">蛋白質 ${Math.round(T.p)} g・脂肪 ${Math.round(T.f)} g・碳水 ${Math.round(T.c)} g</div>`;
-  $("hLog").innerHTML = renderMealSection(d, false);
-
-  const days = Object.keys(S.log).filter(k => (S.log[k] || []).length && k <= max).sort().reverse();
-  $("hDays").innerHTML = days.length ? days.map(k => `<div class="item" data-d="${k}" style="cursor:pointer"><span>${k}</span><span>${Math.round(sumList(S.log[k]).k)} 大卡</span></div>`).join("") : '<div class="mute">尚無紀錄。</div>';
-}
-$("hDate").onchange = renderHist;
-$("hDays").onclick = e => {
-  const r = e.target.closest("[data-d]");
-  if (r) { $("hDate").value = r.dataset.d; renderHist(); }
 };
 
 window.addEventListener("DOMContentLoaded", () => {
