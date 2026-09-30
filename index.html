@@ -134,6 +134,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .serving-chips{display:flex;gap:8px;margin-top:6px}
 .serving-chip{flex:1;text-align:center;padding:7px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink);font-weight:500}
 .serving-chip.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
+
+/* 修改密碼折疊盒 */
+.pwd-box{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -390,26 +393,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card"><h2>最近紀錄</h2><div id="hDays"></div></div>
 </section>
 
-<!-- 8. 個人設定頁 -->
+<!-- 8. 個人設定頁 (全新規劃順序) -->
 <section id="p-me" class="hide">
-  <h1>我的設定與目標</h1>
+  <h1>設定</h1>
 
-  <!-- 外觀主題切換卡片 -->
-  <div class="card">
-    <h2>外觀主題模式</h2>
-    <div class="theme-options" id="themeGroup">
-      <label><input type="radio" name="appTheme" value="system" checked><span>跟隨系統</span></label>
-      <label><input type="radio" name="appTheme" value="light"><span>淺色模式</span></label>
-      <label><input type="radio" name="appTheme" value="dark"><span>深色模式</span></label>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>雲端帳號</h2>
-    <div id="userEmailTag" style="font-weight:700;margin-bottom:12px"></div>
-    <button class="ghost" id="signOutBtn" style="color:var(--warn);border-color:var(--warn)">登出帳號</button>
-  </div>
-
+  <!-- 順序 1：修改個人目標 -->
   <div class="card">
     <h2>修改個人目標</h2>
     <div class="goals">
@@ -434,7 +422,36 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </select>
     <button id="saveMe">更新目標</button>
   </div>
+
+  <!-- 順序 2：XX：每日目標 (試算結果卡片) -->
   <div class="card" id="result"></div>
+
+  <!-- 順序 3：外觀主題 -->
+  <div class="card">
+    <h2>外觀主題</h2>
+    <div class="theme-options" id="themeGroup">
+      <label><input type="radio" name="appTheme" value="system" checked><span>跟隨系統</span></label>
+      <label><input type="radio" name="appTheme" value="light"><span>淺色模式</span></label>
+      <label><input type="radio" name="appTheme" value="dark"><span>深色模式</span></label>
+    </div>
+  </div>
+
+  <!-- 順序 4：帳號 (包含修改密碼與登出) -->
+  <div class="card">
+    <h2>帳號</h2>
+    <div id="userEmailTag" style="font-weight:700;margin-bottom:12px;color:var(--ink)"></div>
+    
+    <button class="ghost" id="togglePwdBtn" style="margin-top:0;margin-bottom:8px">修改登入密碼</button>
+
+    <div id="pwdFormBox" class="pwd-box hide">
+      <label style="margin-top:0">新密碼</label>
+      <input id="newPasswordInput" type="password" placeholder="請輸入至少 6 碼新密碼" autocomplete="new-password">
+      <button id="savePasswordBtn">確認變更密碼</button>
+      <div id="pwdMsg" class="auth-msg"></div>
+    </div>
+
+    <button class="ghost" id="signOutBtn" style="color:var(--warn);border-color:var(--warn);margin-top:12px">登出帳號</button>
+  </div>
 </section>
 </main>
 
@@ -575,7 +592,7 @@ async function handleAuthFlow() {
     return;
   }
 
-  $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
+  $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
   loadServerConfig();
   await syncLogsFromSupabase();
   await flushPendingSyncQueue();
@@ -742,6 +759,51 @@ $("obSaveBtn").onclick = async () => {
   loadMe();
   renderFoodList();
   showView("today");
+};
+
+// 修改密碼相關操作
+$("togglePwdBtn").onclick = () => {
+  $("pwdFormBox").classList.toggle("hide");
+  $("pwdMsg").textContent = "";
+  $("newPasswordInput").value = "";
+};
+
+$("savePasswordBtn").onclick = async () => {
+  if (!sbClient || !currentUser) return;
+  const newPwd = $("newPasswordInput").value.trim();
+  const msgEl = $("pwdMsg");
+
+  if (!newPwd || newPwd.length < 6) {
+    msgEl.style.color = "var(--warn)";
+    msgEl.textContent = "密碼長度請至少包含 6 個字元。";
+    return;
+  }
+
+  const btn = $("savePasswordBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner-btn"></div>`;
+  msgEl.textContent = "";
+
+  try {
+    const { error } = await sbClient.auth.updateUser({ password: newPwd });
+    if (error) {
+      msgEl.style.color = "var(--warn)";
+      msgEl.textContent = "密碼變更失敗：" + error.message;
+    } else {
+      msgEl.style.color = "var(--brand)";
+      msgEl.textContent = "✓ 密碼已成功更新！";
+      $("newPasswordInput").value = "";
+      setTimeout(() => {
+        $("pwdFormBox").classList.add("hide");
+      }, 1800);
+    }
+  } catch(e) {
+    msgEl.style.color = "var(--warn)";
+    msgEl.textContent = "網路異常，請稍後重試。";
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "確認變更密碼";
+  }
 };
 
 $("signOutBtn").onclick = async () => {
@@ -1086,7 +1148,7 @@ $("mAdd").onclick = async () => {
   const subCat = $("mSubCat").value.trim().replace(/\s+/g, "") || "";
   const p = +$("mP").value || 0;
   const f = +$("mF").value || 0;
-  const c = +$("mC").value || 0;
+  const c = +$("nC").value || 0;
 
   const errMsg = validateNutrition(n, k, p, f, c);
   if (errMsg) return alert("⚠️ " + errMsg);
@@ -1339,7 +1401,7 @@ function renderMe() {
     <h2>${GN[S.me.goal]}：每日目標</h2>
     <div class="big">${t.kcal} <span class="mute">大卡</span></div>
     <div class="mute">基礎代謝 ${t.bmr}・每日總消耗 ${t.tdee}</div>
-    <p>蛋白質 ${t.p} g 脂肪 ${t.f} g 碳水 ${t.c} g</p>
+    <p style="margin:8px 0 0">蛋白質 ${t.p} g 脂肪 ${t.f} g 碳水 ${t.c} g</p>
     ${t.floored ? '<div class="msg">已套用安全下限，不建議再低於此熱量。</div>' : ''}
   `;
 }
