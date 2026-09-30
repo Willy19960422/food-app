@@ -69,13 +69,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .spinner{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* 分類標籤滑動條 */
 .cat-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
 .cat-scroll::-webkit-scrollbar{display:none}
 .cat-btn{width:auto;white-space:nowrap;padding:6px 12px;font-size:13px;border-radius:20px;border:1px solid var(--line);background:var(--bg);color:var(--mute);margin:0}
 .cat-btn.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
 
-/* 食物挑選清單卡片 */
 .food-list{max-height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:0 12px;margin:10px 0}
 .food-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
 .food-row:last-child{border-bottom:none}
@@ -190,7 +188,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div class="mute" id="fInfo"></div>
       <label>份數</label><input id="serv" type="number" step="0.5" min="0.5" value="1">
       <div class="tag" id="fTag"></div>
-      <button id="addBtn">加入紀錄</button>
+      <button id="addBtn">加入紀錄（自動收錄社群庫）</button>
     </div>
     <div class="card hide" id="newForm">
       <h2>社群資料庫尚無此商品</h2>
@@ -236,7 +234,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 6. 整合食物庫（標籤分類＋即時搜尋＋自選分類手動輸入） -->
+<!-- 6. 整合食物庫 -->
 <section id="p-list" class="hide">
   <h1>食物清單與自訂</h1>
   <button class="ghost" data-goadd style="margin:0 0 14px">返回選擇方式</button>
@@ -245,11 +243,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <button id="listModeManual">手動自訂</button>
   </div>
 
-  <!-- 分類篩選與清單 -->
   <div id="boxSelectFood" class="card">
     <input id="foodSearch" placeholder="搜尋食物名稱（例如：雞胸肉、飯糰）" style="margin-bottom:10px">
     
-    <!-- 分類橫向滑動按鈕 -->
     <div class="cat-scroll" id="catBar">
       <button class="cat-btn active" data-cat="all">全部</button>
       <button class="cat-btn" data-cat="我的常用">我的常用</button>
@@ -262,7 +258,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button class="cat-btn" data-cat="連鎖餐飲">連鎖餐飲</button>
     </div>
 
-    <!-- 食物即時顯示列表 -->
     <div class="food-list" id="foodContainer"></div>
 
     <div id="selectedFoodInfo" class="hide" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
@@ -274,7 +269,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </div>
   </div>
 
-  <!-- 手動自訂輸入 (支援分類選擇與社群共享) -->
   <div id="boxManualFood" class="card hide">
     <h2>自訂食物建立</h2>
     <div class="mute" style="margin-bottom:10px">儲存後將同步至雲端社群食物庫，往後在分類中隨時能直接選取。</div>
@@ -372,7 +366,7 @@ let S = {
   me: null,
   log: {},
   customFavorites: [],
-  communityFoods: [], // 雲端社群食物共享快取
+  communityFoods: [],
   geminiKey: ""
 };
 
@@ -405,7 +399,6 @@ let isSignUpMode = false;
 let currentCatFilter = "all";
 let chosenFood = null;
 
-/* 內建常見食物清單 */
 const BASE_CF = [
   ["白飯","1碗(約200g)",280,5,0.5,62,"主食"],
   ["糙米飯","1碗",260,6,2,55,"主食"],
@@ -437,7 +430,6 @@ const BASE_CF = [
   ["星巴克 美式咖啡","大杯",22,1,0,4,"連鎖餐飲"]
 ];
 
-/* 初始化 Supabase */
 function initSupabase() {
   try {
     if (window.supabase && typeof window.supabase.createClient === "function") {
@@ -464,7 +456,6 @@ async function checkUser() {
   }
 }
 
-/* 核心流程切換 */
 async function handleAuthFlow() {
   if (!currentUser) {
     if (realtimeChannel && sbClient) {
@@ -479,7 +470,7 @@ async function handleAuthFlow() {
   $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
   loadServerConfig();
   await syncLogsFromSupabase();
-  await loadCommunityFoods(); // 載入社群共享食物
+  await loadCommunityFoods();
   subscribeRealtime();
 
   if (!S.me) {
@@ -511,7 +502,6 @@ async function handleAuthFlow() {
   }
 }
 
-/* 全自動即時同步（WebSocket 推播） */
 function subscribeRealtime() {
   if (!sbClient || !currentUser || realtimeChannel) return;
   realtimeChannel = sbClient
@@ -549,7 +539,6 @@ function showOnlySection(secId) {
   window.scrollTo(0, 0);
 }
 
-/* 登入／註冊 */
 $("authToggleBtn").onclick = () => {
   isSignUpMode = !isSignUpMode;
   $("authTitle").textContent = isSignUpMode ? "註冊新帳號" : "登入您的帳號";
@@ -584,7 +573,6 @@ $("authPrimaryBtn").onclick = async () => {
   }
 };
 
-/* 完成 Onboarding */
 $("obSaveBtn").onclick = async () => {
   const target = {
     goal: document.querySelector('[name=ob-goal]:checked').value,
@@ -673,7 +661,6 @@ async function syncLogsFromSupabase() {
   }
 }
 
-/* 核心：載入雲端社群食物共享庫（所有人都能讀取） */
 async function loadCommunityFoods() {
   if (!sbClient) return;
   try {
@@ -687,6 +674,7 @@ async function loadCommunityFoods() {
         f: Number(row.fat) || 0,
         c: Number(row.carbs) || 0,
         cat: row.category || "便當小吃",
+        barcode: row.barcode,
         createdBy: row.created_by
       }));
       save();
@@ -697,18 +685,15 @@ async function loadCommunityFoods() {
   }
 }
 
-/* 組合所有食物資料：個人常用 + 社群共享 + 內建預設 */
 function getCombinedFoodList() {
   const result = [];
   const addedNames = new Set();
 
-  // 1. 我的自訂常用
   (S.customFavorites || []).forEach(f => {
     result.push({ ...f, cat: "我的常用", isFav: true });
     addedNames.add(f.name);
   });
 
-  // 2. 社群雲端共享食物
   (S.communityFoods || []).forEach(f => {
     if (!addedNames.has(f.name)) {
       result.push({ ...f, isCommunity: true });
@@ -716,7 +701,6 @@ function getCombinedFoodList() {
     }
   });
 
-  // 3. 內建基礎食物
   BASE_CF.forEach(b => {
     if (!addedNames.has(b[0])) {
       result.push({
@@ -735,7 +719,6 @@ function getCombinedFoodList() {
   return result;
 }
 
-/* 渲染分類與搜尋過濾的食物清單 */
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
@@ -764,7 +747,6 @@ function renderFoodList() {
     </div>
   `).join("");
 
-  // 綁定點擊整行或按鈕選取
   container.querySelectorAll("[data-pick], .food-row").forEach(el => {
     el.onclick = (e) => {
       const idx = e.currentTarget.dataset.idx || e.currentTarget.dataset.pick;
@@ -783,7 +765,6 @@ function selectFoodItem(item) {
   renderFoodList();
 }
 
-/* 分類標籤點擊切換 */
 $("catBar").onclick = e => {
   const btn = e.target.closest(".cat-btn");
   if (!btn) return;
@@ -793,10 +774,8 @@ $("catBar").onclick = e => {
   renderFoodList();
 };
 
-/* 搜尋即時過濾 */
 $("foodSearch").oninput = renderFoodList;
 
-/* 確認加入所選食物 */
 $("cfAdd").onclick = () => {
   if (!chosenFood) return alert("請先選取食物");
   const servings = +$("cfN").value || 1;
@@ -823,10 +802,8 @@ $("mAdd").onclick = async () => {
   const f = +$("mF").value || 0;
   const c = +$("mC").value || 0;
 
-  // 1. 加入當日飲食紀錄
   addLog({ name: n, k, p, f, c }, 1);
 
-  // 2. 如果勾選加入常用
   if ($("mSaveFavorite").checked) {
     if (!S.customFavorites.some(item => item.name === n)) {
       S.customFavorites.unshift({ name: n, basis: "1份", k, p, f, c, cat });
@@ -834,7 +811,6 @@ $("mAdd").onclick = async () => {
     }
   }
 
-  // 3. 寫入 Supabase 社群共享庫 custom_foods
   if (sbClient && currentUser) {
     try {
       const { error } = await sbClient.from('custom_foods').insert([{
@@ -1283,10 +1259,34 @@ async function addLog(it, n) {
   }
 }
 
-$("addBtn").onclick = () => {
+/* 核心修正：掃碼確認加入，自動將條碼與營養資料回存 Supabase 社群共享庫 */
+$("addBtn").onclick = async () => {
   const n = +$("serv").value || 1;
+  if (!curItem) return;
+
   addLog(curItem, n);
   $("found").classList.add("hide");
+
+  if (sbClient && currentUser && curBarcode) {
+    try {
+      await sbClient.from('custom_foods').upsert([{
+        barcode: curBarcode,
+        name: curItem.name,
+        basis: curItem.basis || "每份",
+        kcal: curItem.k,
+        protein: curItem.p,
+        fat: curItem.f,
+        carbs: curItem.c,
+        category: "超商鮮食",
+        created_by: currentUser.id
+      }], { onConflict: 'barcode' });
+
+      loadCommunityFoods();
+    } catch(err) {
+      console.warn("社群條碼自動回存失敗:", err);
+    }
+  }
+
   showView("today");
 };
 
@@ -1320,7 +1320,7 @@ $("photo").onchange = async e => {
   }
 };
 
-/* 條碼掃描未收錄品項：存入 Supabase 社群共享庫 */
+/* 核心修正：條碼補登建立，強制綁定該條碼存入 Supabase 社群共享庫 */
 $("saveNew").onclick = async () => {
   const it = {
     name: $("nName").value.trim(),
@@ -1329,9 +1329,11 @@ $("saveNew").onclick = async () => {
     p: +$("nP").value || 0,
     f: +$("nF").value || 0,
     c: +$("nC").value || 0,
-    category: $("nCat").value
+    category: $("nCat").value || "超商鮮食"
   };
   if (!it.name || !(it.k >= 0)) return alert("請至少填寫商品名稱和熱量。");
+
+  addLog(it, 1);
 
   if (sbClient && currentUser && curBarcode) {
     try {
@@ -1345,12 +1347,17 @@ $("saveNew").onclick = async () => {
         carbs: it.c,
         category: it.category,
         created_by: currentUser.id
-      }]);
-      if (!error) await loadCommunityFoods();
-    } catch(e) {}
+      }], { onConflict: 'barcode' });
+
+      if (!error) {
+        await loadCommunityFoods();
+      }
+    } catch(e) {
+      console.error("寫入社群條碼失敗:", e);
+    }
   }
 
-  addLog(it, 1);
+  $("newForm").classList.add("hide");
   showView("today");
 };
 
