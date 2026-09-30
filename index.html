@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="食養紀錄">
 <link rel="apple-touch-icon" href="icon-192.png">
 
-<!-- 瀏覽器分頁 Favicon (徹底解決灰色地球圖示) -->
+<!-- 瀏覽器分頁 Favicon -->
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="shortcut icon" type="image/png" href="./icon-192.png">
@@ -100,7 +100,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .pill-carb{background:rgba(56,161,105,0.12);color:var(--carb)}
 .cat-tag{font-size:11px;background:var(--bg);color:var(--mute);padding:1px 6px;border-radius:4px}
 
-.meal-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}
+.meal-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 16px}
 .meal-tabs label{margin:0;padding:9px 0;text-align:center;border:1px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;background:var(--card);color:var(--mute)}
 .meal-tabs input{display:none}
 .meal-tabs label:has(input:checked){border-color:var(--brand);background:var(--brand);color:var(--on);font-weight:700}
@@ -224,7 +224,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 4. 新增入口 (全新排版版面) -->
+<!-- 4. 新增入口 -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -236,13 +236,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <label><input type="radio" name="addMeal" value="snack"><span>點心</span></label>
     </div>
 
-    <!-- 輔助工具捷徑 -->
     <div class="tool-actions">
       <button class="tool-btn" id="copyYesterdayMealBtn">複製昨日這餐</button>
       <button class="tool-btn" id="toggleQuickKcalBtn">快速自訂熱量</button>
     </div>
 
-    <!-- 快速熱量輸入盒（預設折疊） -->
     <div id="boxQuickKcal" class="fold-box hide" style="margin-bottom:12px">
       <div class="row">
         <div>
@@ -257,13 +255,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button id="qkAddBtn" style="margin-top:10px">確認計入這餐</button>
     </div>
 
-    <!-- 最近吃過品項卡片 -->
     <div id="recentFoodsSection" class="recent-box hide">
       <div class="mute" style="font-size:12px;margin-bottom:6px">最近常吃（點擊直接計入）：</div>
       <div class="recent-chips-box" id="recentChips"></div>
     </div>
 
-    <!-- 核心功能雙欄大卡片 -->
     <div class="action-grid">
       <div class="action-card" id="navToCamBtn">
         <div class="act-title">相機辨識</div>
@@ -371,7 +367,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div id="boxSelectFood" class="card">
     <input id="foodSearch" placeholder="搜尋食物（例如：雞胸肉、鮭魚飯糰）" style="margin-bottom:12px">
     
-    <!-- 一級主情境分類 -->
     <div class="main-cat-scroll" id="mainCatBar">
       <button class="main-cat-btn active" data-cat="all">全部食物</button>
       <button class="main-cat-btn" data-cat="超商鮮食">超商鮮食</button>
@@ -381,12 +376,10 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button class="main-cat-btn" data-cat="我的常用">我的常用</button>
     </div>
 
-    <!-- 二級子細節分類 -->
     <div class="sub-cat-scroll" id="subCatBar">
       <button class="sub-cat-btn active" data-sub="all">全部子類</button>
     </div>
 
-    <!-- 精緻食物清單 -->
     <div class="food-list" id="foodContainer"></div>
 
     <div id="selectedFoodInfo" class="hide" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
@@ -422,7 +415,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <label>品項名稱</label>
     <input id="mName" placeholder="例如：香煎雞腿排溫沙拉">
     
-    <!-- 徹底分開的獨立 ID，絕不與條碼表單衝突 -->
     <div class="row">
       <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
       <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
@@ -449,11 +441,10 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card"><h2>最近紀錄</h2><div id="hDays"></div></div>
 </section>
 
-<!-- 8. 個人設定頁 (修改目標 -> 每日目標試算 -> 外觀主題 -> 帳號管理) -->
+<!-- 8. 個人設定頁 -->
 <section id="p-me" class="hide">
   <h1>設定</h1>
 
-  <!-- 順序 1：修改個人目標 -->
   <div class="card">
     <h2>修改個人目標</h2>
     <div class="goals">
@@ -479,10 +470,8 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <button id="saveMe">更新目標</button>
   </div>
 
-  <!-- 順序 2：XX：每日目標 (試算卡片) -->
   <div class="card" id="result"></div>
 
-  <!-- 順序 3：外觀主題 -->
   <div class="card">
     <h2>外觀主題</h2>
     <div class="theme-options" id="themeGroup">
@@ -492,7 +481,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </div>
   </div>
 
-  <!-- 順序 4：帳號 (包含修改密碼與登出) -->
   <div class="card">
     <h2>帳號</h2>
     <div id="userEmailTag" style="font-weight:700;margin-bottom:12px;color:var(--ink)"></div>
@@ -523,7 +511,6 @@ const $ = id => document.getElementById(id);
 const SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWplYWRwenV6cmZ4YXdjeWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MjgzOTEsImV4cCI6MjEwNjMwNDM5MX0.4AYjLPcUQEPIV4RXfqKoYIAAuyhuqe1U-ACDBj3LOMM";
 
-// 狀態結構
 let S = {
   me: null,
   log: {},
@@ -539,8 +526,8 @@ let sbClient = null;
 let currentUser = null;
 let realtimeChannel = null;
 let isSignUpMode = false;
+let isSyncing = false; // 統一同步鎖定旗標（防止競態覆蓋）
 
-// 依使用者 ID 進行帳號本機資料隔離儲存
 function getStorageKey() {
   return currentUser && currentUser.id ? `nutri_v3_${currentUser.id}` : `nutri_v3_guest`;
 }
@@ -685,10 +672,8 @@ async function handleAuthFlow() {
   $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
   loadServerConfig();
   
-  await flushPendingDeleteQueue();
-  await flushPendingSyncQueue();
-  await syncLogsFromSupabase();
-  await loadCommunityFoods();
+  // 統一進入點：安全序列化同步
+  await runSyncPipeline();
   subscribeRealtime();
 
   if (!S.me) {
@@ -726,6 +711,108 @@ async function handleAuthFlow() {
   }
 }
 
+// 統一同步入口（串接鎖定，依序執行：刪除佇列 -> 新增佇列 -> 下載合併）
+async function runSyncPipeline() {
+  if (!sbClient || !currentUser || !navigator.onLine || isSyncing) return;
+  isSyncing = true;
+
+  try {
+    // 1. 先清空伺服器端刪除佇列
+    if (S.pendingDeleteQueue.length > 0) {
+      const remainingDeletes = [];
+      for (const delId of S.pendingDeleteQueue) {
+        try {
+          const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
+          if (error) remainingDeletes.push(delId);
+        } catch(err) {
+          remainingDeletes.push(delId);
+        }
+      }
+      S.pendingDeleteQueue = remainingDeletes;
+      save();
+    }
+
+    // 2. 處理本機待新增/修改佇列
+    if (S.pendingSyncQueue.length > 0) {
+      const remainingQueue = [];
+      for (const item of S.pendingSyncQueue) {
+        try {
+          const { error } = await sbClient.from('diet_logs').upsert([{
+            id: item.id,
+            user_id: currentUser.id,
+            date: item.date,
+            meal: item.meal,
+            name: item.name,
+            servings: item.n,
+            kcal: item.k,
+            protein: item.p,
+            fat: item.f,
+            carbs: item.c,
+            logged_at: item.t
+          }]);
+          if (error) remainingQueue.push(item);
+        } catch(err) {
+          remainingQueue.push(item);
+        }
+      }
+      S.pendingSyncQueue = remainingQueue;
+      save();
+    }
+
+    // 3. 從雲端抓取最新資料並與本機智慧合併（嚴格過濾已刪除 ID）
+    const { data, error } = await sbClient
+      .from('diet_logs')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('logged_at', { ascending: true });
+
+    if (!error && data) {
+      const deletedIds = new Set(S.pendingDeleteQueue);
+      const serverLogs = {};
+
+      data.forEach(row => {
+        if (deletedIds.has(row.id)) return; // 確實排除待刪除項目，絕不復活
+        const d = row.date;
+        if (!serverLogs[d]) serverLogs[d] = [];
+        serverLogs[d].push({
+          id: row.id,
+          meal: row.meal,
+          name: row.name,
+          k: Number(row.kcal) || 0,
+          p: Number(row.protein) || 0,
+          f: Number(row.fat) || 0,
+          c: Number(row.carbs) || 0,
+          n: Number(row.servings) || 1,
+          t: row.logged_at
+        });
+      });
+
+      // 合併保留本機尚在佇列中的未上傳項目
+      const pendingIds = new Set(S.pendingSyncQueue.map(q => q.id));
+      Object.keys(S.log).forEach(d => {
+        const unsyncedItems = (S.log[d] || []).filter(item => pendingIds.has(item.id) && !deletedIds.has(item.id));
+        if (unsyncedItems.length) {
+          if (!serverLogs[d]) serverLogs[d] = [];
+          unsyncedItems.forEach(u => {
+            if (!serverLogs[d].some(s => s.id === u.id)) {
+              serverLogs[d].push(u);
+            }
+          });
+        }
+      });
+
+      S.log = serverLogs;
+      save();
+      renderToday();
+      renderRecentFoods();
+    }
+  } catch(e) {
+    console.error("同步管線異常:", e);
+  } finally {
+    isSyncing = false;
+  }
+}
+
 function subscribeRealtime() {
   if (!sbClient || !currentUser || realtimeChannel) return;
   realtimeChannel = sbClient
@@ -736,29 +823,19 @@ function subscribeRealtime() {
       table: 'diet_logs',
       filter: `user_id=eq.${currentUser.id}`
     }, () => {
-      syncLogsFromSupabase();
+      runSyncPipeline();
     })
     .subscribe();
 }
 
 window.addEventListener("online", () => {
-  if (currentUser) {
-    flushPendingDeleteQueue();
-    flushPendingSyncQueue();
-    syncLogsFromSupabase();
-  }
+  if (currentUser) runSyncPipeline();
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && currentUser) {
-    syncLogsFromSupabase();
-    loadCommunityFoods();
-  }
+  if (document.visibilityState === "visible" && currentUser) runSyncPipeline();
 });
 window.addEventListener("focus", () => {
-  if (currentUser) {
-    syncLogsFromSupabase();
-    loadCommunityFoods();
-  }
+  if (currentUser) runSyncPipeline();
 });
 
 function showOnlySection(secId) {
@@ -854,7 +931,6 @@ $("obSaveBtn").onclick = async () => {
   showView("today");
 };
 
-// 修改密碼功能
 $("togglePwdBtn").onclick = () => {
   $("pwdFormBox").classList.toggle("hide");
   $("pwdMsg").textContent = "";
@@ -924,111 +1000,6 @@ async function loadServerConfig() {
       save();
     }
   } catch(e) {}
-}
-
-// 雲端同步日誌（採用智慧合併，不洗掉本機未同步紀錄）
-async function syncLogsFromSupabase() {
-  if (!sbClient || !currentUser) return;
-  try {
-    const { data, error } = await sbClient
-      .from('diet_logs')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .order('logged_at', { ascending: true });
-
-    if (!error && data) {
-      const serverLogs = {};
-      data.forEach(row => {
-        const d = row.date;
-        if (!serverLogs[d]) serverLogs[d] = [];
-        serverLogs[d].push({
-          id: row.id,
-          meal: row.meal,
-          name: row.name,
-          k: Number(row.kcal) || 0,
-          p: Number(row.protein) || 0,
-          f: Number(row.fat) || 0,
-          c: Number(row.carbs) || 0,
-          n: Number(row.servings) || 1,
-          t: row.logged_at
-        });
-      });
-
-      // 合併保留本機未上傳的項目
-      const pendingIds = new Set(S.pendingSyncQueue.map(q => q.id));
-      const deletedIds = new Set(S.pendingDeleteQueue);
-
-      Object.keys(S.log).forEach(d => {
-        const unsyncedItems = (S.log[d] || []).filter(item => pendingIds.has(item.id) && !deletedIds.has(item.id));
-        if (unsyncedItems.length) {
-          if (!serverLogs[d]) serverLogs[d] = [];
-          unsyncedItems.forEach(u => {
-            if (!serverLogs[d].some(s => s.id === u.id)) {
-              serverLogs[d].push(u);
-            }
-          });
-        }
-      });
-
-      S.log = serverLogs;
-      save();
-      renderToday();
-      renderRecentFoods();
-    }
-  } catch(e) {
-    console.error("同步失敗:", e);
-  }
-}
-
-// 離線新增佇列處理（成功寫入才自佇列剔除）
-async function flushPendingSyncQueue() {
-  if (!sbClient || !currentUser || !navigator.onLine || !S.pendingSyncQueue.length) return;
-  
-  const remainingQueue = [];
-  for (const item of S.pendingSyncQueue) {
-    try {
-      const { error } = await sbClient.from('diet_logs').upsert([{
-        id: item.id,
-        user_id: currentUser.id,
-        date: item.date,
-        meal: item.meal,
-        name: item.name,
-        servings: item.n,
-        kcal: item.k,
-        protein: item.p,
-        fat: item.f,
-        carbs: item.c,
-        logged_at: item.t
-      }]);
-
-      if (error) {
-        remainingQueue.push(item);
-      }
-    } catch(err) {
-      remainingQueue.push(item);
-    }
-  }
-
-  S.pendingSyncQueue = remainingQueue;
-  save();
-}
-
-// 離線刪除佇列處理
-async function flushPendingDeleteQueue() {
-  if (!sbClient || !currentUser || !navigator.onLine || !S.pendingDeleteQueue.length) return;
-
-  const remainingDeletes = [];
-  for (const delId of S.pendingDeleteQueue) {
-    try {
-      const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
-      if (error) remainingDeletes.push(delId);
-    } catch(err) {
-      remainingDeletes.push(delId);
-    }
-  }
-
-  S.pendingDeleteQueue = remainingDeletes;
-  save();
 }
 
 async function loadCommunityFoods() {
@@ -1279,7 +1250,6 @@ function validateNutrition(name, k, p, f, c) {
 
 const cleanBarcode = bc => String(bc || "").replace(/[^0-9a-zA-Z_-]/g, "").trim();
 
-// 手動自訂食物新增（徹底分離欄位，正確讀取 mP, mF, mC）
 $("mAdd").onclick = async () => {
   const k = +$("mK").value, n = $("mName").value.trim();
   const cat = $("mCat").value;
@@ -1330,7 +1300,6 @@ $("mAdd").onclick = async () => {
   showView("today");
 };
 
-// 最近吃過清單渲染
 function renderRecentFoods() {
   const recentSection = $("recentFoodsSection");
   const chipContainer = $("recentChips");
@@ -1603,7 +1572,7 @@ function renderToday() {
   $("logByMeal").innerHTML = renderMealSection(today(), true);
 }
 
-// 刪除紀錄（支援離線刪除佇列）
+// 刪除紀錄邏輯：加入 pendingDeleteQueue 並安全從未上傳佇列中剔除
 $("logByMeal").onclick = async e => {
   const i = e.target.dataset.del;
   if (i === undefined) return;
@@ -1612,23 +1581,12 @@ $("logByMeal").onclick = async e => {
   renderToday();
 
   if (removed && removed.id) {
-    if (!sbClient || !currentUser || !navigator.onLine) {
-      S.pendingDeleteQueue.push(removed.id);
-      // 若該項目還在未同步新增佇列中，一併移除
-      S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== removed.id);
-      save();
-      return;
-    }
+    S.pendingDeleteQueue.push(removed.id);
+    S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== removed.id);
+    save();
 
-    try {
-      const { error } = await sbClient.from('diet_logs').delete().eq('id', removed.id);
-      if (error) {
-        S.pendingDeleteQueue.push(removed.id);
-        save();
-      }
-    } catch(err) {
-      S.pendingDeleteQueue.push(removed.id);
-      save();
+    if (sbClient && currentUser && navigator.onLine) {
+      runSyncPipeline();
     }
   }
 };
@@ -1840,7 +1798,7 @@ async function lookup(code) {
   document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
 }
 
-// 核心飲食記錄：配發用戶端 UUID，支援安全重試
+// 核心飲食記錄：先存入本機佇列，再啟動同步管線
 async function addLog(it, n) {
   const mealKey = getSelectedMeal();
   const timeStr = new Date().toTimeString().slice(0, 5);
@@ -1859,59 +1817,55 @@ async function addLog(it, n) {
   };
 
   (S.log[today()] = S.log[today()] || []).push(logItem);
+  S.pendingSyncQueue.push({
+    id: logId,
+    date: today(),
+    meal: mealKey,
+    name: it.name,
+    n: n,
+    k: it.k,
+    p: it.p,
+    f: it.f,
+    c: it.c,
+    t: timeStr
+  });
   save();
   renderToday();
 
-  // 離線或未連線時，安全放入佇列
-  if (!sbClient || !currentUser || !navigator.onLine) {
-    S.pendingSyncQueue.push({
-      id: logId,
-      date: today(),
-      meal: mealKey,
-      name: it.name,
-      n: n,
-      k: it.k,
-      p: it.p,
-      f: it.f,
-      c: it.c,
-      t: timeStr
-    });
-    save();
-    return;
-  }
-
-  try {
-    const { error } = await sbClient.from('diet_logs').upsert([{
-      id: logId,
-      user_id: currentUser.id,
-      date: today(),
-      meal: mealKey,
-      name: it.name,
-      servings: n,
-      kcal: it.k,
-      protein: it.p,
-      fat: it.f,
-      carbs: it.c,
-      logged_at: timeStr
-    }]);
-
-    if (error) {
-      S.pendingSyncQueue.push({ id: logId, date: today(), meal: mealKey, name: it.name, n, k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr });
-      save();
-    }
-  } catch(err) {
-    S.pendingSyncQueue.push({ id: logId, date: today(), meal: mealKey, name: it.name, n, k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr });
-    save();
+  if (sbClient && currentUser && navigator.onLine) {
+    runSyncPipeline();
   }
 }
 
-// 紀錄飲食按鈕（只記錄飲食，絕不覆寫商品庫建立者）
+// 掃描加入紀錄：若來自外部公共庫且本機/社群庫無此條碼，安全收錄（不覆寫）
 $("addBtn").onclick = async () => {
   const n = +$("serv").value || 1;
   if (!curItem) return;
 
   addLog(curItem, n);
   $("found").classList.add("hide");
+
+  if (sbClient && currentUser && curBarcode) {
+    try {
+      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', curBarcode).maybeSingle();
+      if (!existing) {
+        await sbClient.from('custom_foods').insert([{
+          barcode: curBarcode,
+          name: curItem.name,
+          basis: curItem.basis || "每份",
+          kcal: curItem.k,
+          protein: curItem.p,
+          fat: curItem.f,
+          carbs: curItem.c,
+          category: "超商鮮食",
+          is_verified: false,
+          created_by: currentUser.id
+        }]);
+        loadCommunityFoods();
+      }
+    } catch(err) {}
+  }
+
   showView("today");
 };
 
@@ -1944,7 +1898,6 @@ $("photo").onchange = async e => {
   }
 };
 
-// 條碼自訂新增至社群庫（首次建立保留貢獻者）
 $("saveNew").onclick = async () => {
   const n = $("nName").value.trim();
   const k = +$("nK").value;
@@ -1962,21 +1915,23 @@ $("saveNew").onclick = async () => {
 
   if (sbClient && currentUser && curBarcode) {
     try {
-      const { error } = await sbClient.from('custom_foods').insert([{
-        barcode: curBarcode,
-        name: it.name,
-        basis: it.basis,
-        kcal: it.k,
-        protein: it.p,
-        fat: it.f,
-        carbs: it.c,
-        category: it.category,
-        sub_category: it.subCat,
-        is_verified: false,
-        created_by: currentUser.id
-      }]);
-
-      if (!error) loadCommunityFoods();
+      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', curBarcode).maybeSingle();
+      if (!existing) {
+        await sbClient.from('custom_foods').insert([{
+          barcode: curBarcode,
+          name: it.name,
+          basis: it.basis,
+          kcal: it.k,
+          protein: it.p,
+          fat: it.f,
+          carbs: it.c,
+          category: it.category,
+          sub_category: it.subCat,
+          is_verified: false,
+          created_by: currentUser.id
+        }]);
+        loadCommunityFoods();
+      }
     } catch(e) {}
   }
 
