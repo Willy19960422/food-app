@@ -172,9 +172,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card">
     <h2 id="authTitle">登入您的帳號</h2>
     <label>Email 信箱</label>
-    <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="email">
+    <input id="authEmail" type="email" placeholder="請輸入帳號" autocomplete="email">
     <label>密碼</label>
-    <input id="authPass" type="password" placeholder="密碼至少 6 碼" autocomplete="current-password">
+    <input id="authPass" type="password" placeholder="請輸入密碼" autocomplete="current-password">
     <button id="authPrimaryBtn"><span>立即登入</span></button>
     <button class="ghost" id="authToggleBtn">還沒有帳號？點此註冊</button>
     <div id="authErrMsg" class="auth-msg"></div>
@@ -534,6 +534,11 @@ let loginSessionId = null;
 let isHandlingAuth = false;
 let pendingAuthTarget = null;
 
+// 非同步請求序號追蹤（徹底防止舊查詢結果錯配）
+let lookupSequenceId = 0;
+let photoSequenceId = 0;
+let mealSequenceId = 0;
+
 function getStorageKey(uid) {
   return uid ? `nutri_v3_${uid}` : `nutri_v3_guest`;
 }
@@ -666,6 +671,21 @@ async function checkUser() {
   }
 }
 
+// 徹底清空相機掃描結果與表單畫面殘留
+function purgeScannerUI() {
+  curItem = null;
+  curBarcode = null;
+  chosenFood = null;
+  EST = [];
+  if ($("found")) $("found").classList.add("hide");
+  if ($("newForm")) $("newForm").classList.add("hide");
+  if ($("estList")) $("estList").innerHTML = "";
+  if ($("estAdd")) $("estAdd").classList.add("hide");
+  if ($("scanMsg")) $("scanMsg").textContent = "";
+  if ($("mealMsg")) $("mealMsg").textContent = "";
+  stopScan();
+}
+
 async function handleAuthFlow() {
   pendingAuthTarget = currentUser ? currentUser.id : null;
   if (isHandlingAuth) return;
@@ -678,11 +698,12 @@ async function handleAuthFlow() {
       const currentSession = generateUUID();
       loginSessionId = currentSession;
 
-      // 每次切換帳號或初始化，強制清除舊帳號的暫存畫面狀態
-      curItem = null;
-      curBarcode = null;
-      chosenFood = null;
-      EST = [];
+      // 切換帳號時遞增序號作廢所有進行中的非同步查詢
+      lookupSequenceId++;
+      photoSequenceId++;
+      mealSequenceId++;
+
+      purgeScannerUI();
 
       if (realtimeChannel && sbClient) {
         sbClient.removeChannel(realtimeChannel);
@@ -1257,7 +1278,7 @@ function enableDesktopDragScroll(el) {
     isDown = true;
     isDragging = false;
     startX = e.pageX - el.offsetLeft;
-    scrollLeft = el.scrollLeft;
+    scrollLeft = e.scrollLeft;
   });
   window.addEventListener("mouseup", () => {
     if (isDown) {
@@ -1348,14 +1369,13 @@ $("mAdd").onclick = async () => {
     }
   }
 
-  // 獨立固定的動作防護快照
   const targetUid = currentUser ? currentUser.id : null;
   const targetSession = loginSessionId;
 
   if (sbClient && targetUid) {
     try {
       if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-      await sbClient.from('custom_foods').insert([{
+      const { error } = await sbClient.from('custom_foods').insert([{
         barcode: "custom_" + Date.now(),
         name: n,
         basis: "1份",
@@ -1366,11 +1386,15 @@ $("mAdd").onclick = async () => {
         category: cat,
         sub_category: subCat,
         is_verified: false,
-        created_by: targetUid // 嚴格綁定發起時的使用者 ID
+        created_by: targetUid
       }]);
+      if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
+
       if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
       await loadCommunityFoods();
-    } catch(err) {}
+    } catch(err) {
+      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
+    }
   }
 
   ["mName", "mK", "mP", "mF", "mC", "mSubCat"].forEach(i => {
@@ -1844,15 +1868,24 @@ async function fetchOpenFoodFacts(barcode) {
   } catch(e) { return null; }
 }
 
+// 嚴格帶有序列號防護的條碼查詢函式（徹底杜絕跨條碼/跨帳號查詢結果錯配）
 async function lookup(code) {
-  curBarcode = cleanBarcode(code);
+  const seq = ++lookupSequenceId;
+  const targetUid = currentUser ? currentUser.id : null;
+  const targetSession = loginSessionId;
+  const barcodeToLook = cleanBarcode(code);
+
   $("scanLoading").classList.remove("hide");
   $("scanMsg").textContent = "";
   let it = null, source = "";
 
   if (sbClient) {
     try {
-      const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', curBarcode).maybeSingle();
+      const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', barcodeToLook).maybeSingle();
+      
+      // await 後嚴格驗證序號、Session 與帳號
+      if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+
       if (data) {
         it = { name: data.name, basis: data.basis, k: Number(data.kcal), p: Number(data.protein), f: Number(data.fat), c: Number(data.carbs) };
         source = "Supabase 社群資料庫";
@@ -1861,11 +1894,16 @@ async function lookup(code) {
   }
 
   if (!it) {
-    it = await fetchOpenFoodFacts(curBarcode);
+    it = await fetchOpenFoodFacts(barcodeToLook);
+    if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
     if (it) source = "Open Food Facts 公共庫";
   }
 
+  // 最終確認結果依然屬於當前最新掃描條碼與身分
+  if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+
   $("scanLoading").classList.add("hide");
+  curBarcode = barcodeToLook;
   curItem = it;
   $("found").classList.toggle("hide", !it);
   $("newForm").classList.toggle("hide", !!it);
@@ -1922,7 +1960,6 @@ async function addLog(it, n) {
   }
 }
 
-// 掃描條碼加入紀錄：固定快照驗證，確保 created_by 絕對屬於發起時的使用者
 $("addBtn").onclick = async () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const n = +$("serv").value || 1;
@@ -1940,11 +1977,10 @@ $("addBtn").onclick = async () => {
     try {
       const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
       
-      // 嚴格身分與 Session 驗證
       if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
 
       if (!existing) {
-        await sbClient.from('custom_foods').insert([{
+        const { error } = await sbClient.from('custom_foods').insert([{
           barcode: barcodeToSave,
           name: itemToSave.name,
           basis: itemToSave.basis || "每份",
@@ -1954,12 +1990,17 @@ $("addBtn").onclick = async () => {
           carbs: itemToSave.c,
           category: "超商鮮食",
           is_verified: false,
-          created_by: targetUid // 鎖定發起時的使用者 ID
+          created_by: targetUid
         }]);
+
+        if (error) alert("⚠️ 飲食已記錄，但商品分享至社群庫失敗：" + error.message);
+
         if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
         loadCommunityFoods();
       }
-    } catch(err) {}
+    } catch(err) {
+      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
+    }
   }
 
   showView("today");
@@ -1970,15 +2011,23 @@ $("photoBtn").onclick = () => {
   $("photo").click();
 };
 
+// 營養標示照片 AI 辨識加入序號與身分防護
 $("photo").onchange = async e => {
   const f = e.target.files[0];
   if (!f) return;
+  const seq = ++photoSequenceId;
+  const targetUid = currentUser ? currentUser.id : null;
+  const targetSession = loginSessionId;
+
   $("photoLoading").classList.remove("hide");
   $("photoBtn").disabled = true;
   $("scanMsg").textContent = "";
 
   try {
     const r = await callGeminiVision(`你是營養標籤讀取助理。請從照片讀出商品名、基準（"每份"或"每100g"）、熱量(kcal)、蛋白質(g)、脂肪(g)、碳水(g)。回傳 JSON：{"name":"","basis":"每份","k":0,"p":0,"f":0,"c":0}`, f);
+    
+    if (seq !== photoSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+
     if (r.name) $("nName").value = r.name;
     $("nB").value = r.basis === "每100g" ? "每100g" : "每份";
     $("nK").value = r.k || 0;
@@ -1986,11 +2035,15 @@ $("photo").onchange = async e => {
     $("nF").value = r.f || 0;
     $("nC").value = r.c || 0;
   } catch(err) {
-    $("scanMsg").textContent = "辨識失敗，請重試或手動輸入";
+    if (seq === photoSequenceId && loginSessionId === targetSession) {
+      $("scanMsg").textContent = "辨識失敗，請重試或手動輸入";
+    }
   } finally {
-    $("photoLoading").classList.add("hide");
-    $("photoBtn").disabled = false;
-    e.target.value = "";
+    if (seq === photoSequenceId) {
+      $("photoLoading").classList.add("hide");
+      $("photoBtn").disabled = false;
+      e.target.value = "";
+    }
   }
 };
 
@@ -2021,7 +2074,7 @@ $("saveNew").onclick = async () => {
       if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
 
       if (!existing) {
-        await sbClient.from('custom_foods').insert([{
+        const { error } = await sbClient.from('custom_foods').insert([{
           barcode: barcodeToSave,
           name: it.name,
           basis: it.basis,
@@ -2032,12 +2085,17 @@ $("saveNew").onclick = async () => {
           category: it.category,
           sub_category: it.subCat,
           is_verified: false,
-          created_by: targetUid // 鎖定發起時的使用者 ID
+          created_by: targetUid
         }]);
+
+        if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
+
         if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
         loadCommunityFoods();
       }
-    } catch(e) {}
+    } catch(e) {
+      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
+    }
   }
 
   $("newForm").classList.add("hide");
@@ -2072,15 +2130,23 @@ $("mealBtn").onclick = () => {
   $("mealPic").click();
 };
 
+// 餐點照片 AI 估算加入序號與身分防護
 $("mealPic").onchange = async e => {
   const f = e.target.files[0];
   if (!f) return;
+  const seq = ++mealSequenceId;
+  const targetUid = currentUser ? currentUser.id : null;
+  const targetSession = loginSessionId;
+
   $("mealLoading").classList.remove("hide");
   $("mealBtn").disabled = true;
   $("mealMsg").textContent = "";
 
   try {
     const r = await callGeminiVision(`請拆解餐點中的每樣食物與主副食，以台灣份量估算熱量。只回傳 JSON：{"items":[{"name":"食物名稱","portion":"份量說明","k":熱量大卡,"p":蛋白質克數,"f":脂肪克數,"c":碳水克數}]}`, f);
+    
+    if (seq !== mealSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+
     EST = (r.items || []).map(x => ({
       name: String(x.name || "食物"),
       portion: x.portion || "",
@@ -2093,11 +2159,15 @@ $("mealPic").onchange = async e => {
     showEst();
     if (!EST.length) $("mealMsg").textContent = "未能辨識出餐點內容";
   } catch(err) {
-    $("mealMsg").textContent = "分析失敗，請重試";
+    if (seq === mealSequenceId && loginSessionId === targetSession) {
+      $("mealMsg").textContent = "分析失敗，請重試";
+    }
   } finally {
-    $("mealLoading").classList.add("hide");
-    $("mealBtn").disabled = false;
-    e.target.value = "";
+    if (seq === mealSequenceId) {
+      $("mealLoading").classList.add("hide");
+      $("mealBtn").disabled = false;
+      e.target.value = "";
+    }
   }
 };
 
