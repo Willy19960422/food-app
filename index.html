@@ -177,7 +177,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card">
     <div id="authBox">
       <h2>Supabase 雲端帳號</h2>
-      <div id="authStatus" class="auth-status">檢查連線中…</div>
+      <div id="authStatus" class="auth-status">連線中…</div>
       <div id="loginForm">
         <label>Email</label><input id="authEmail" type="email" placeholder="name@example.com">
         <label>密碼</label><input id="authPass" type="password" placeholder="密碼至少 6 碼">
@@ -225,7 +225,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <label>Supabase Publishable Key</label>
     <input id="sbKey" type="password">
     <label>Google Gemini API Key</label>
-    <input id="geminiKey" type="password" placeholder="可手動覆蓋，或登入後自動由雲端載入">
+    <input id="geminiKey" type="password" placeholder="登入後自動由雲端載入，或手動覆蓋">
     <button class="ghost" id="saveKeysBtn">儲存所有金鑰</button>
   </div>
 </section>
@@ -240,7 +240,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 <script>
 const $=id=>document.getElementById(id);
 
-// 預設寫入 Supabase 連線資訊
 const DEFAULT_SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
 const DEFAULT_SB_KEY = "sb_publishable_ASYUMsGlytix-aL4wnYj6g_8qvXMRDk";
 
@@ -263,7 +262,7 @@ try{
 }catch(e){}
 
 const save=()=>{try{localStorage.setItem("nutri_v3", JSON.stringify(S))}catch(e){}};
-const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc=t=>String(t||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today=()=>new Date().toLocaleDateString("sv");
 const GN={muscle:"增肌",fat:"減脂",lose:"減重"};
 const MEALS=[
@@ -277,11 +276,16 @@ let sbClient = null;
 let currentUser = null;
 
 function initSupabase(){
-  if(S.sbUrl && S.sbKey && window.supabase){
-    sbClient = window.supabase.createClient(S.sbUrl, S.sbKey);
-    checkUser();
-  } else {
-    updateAuthUI(null, "尚未設定 Supabase 金鑰（資料僅存於本機）");
+  try{
+    if(S.sbUrl && S.sbKey && window.supabase){
+      sbClient = window.supabase.createClient(S.sbUrl, S.sbKey);
+      checkUser();
+    } else {
+      updateAuthUI(null, "尚未設定 Supabase 金鑰（目前為本機離線模式）");
+    }
+  }catch(err){
+    console.error("Supabase init error:", err);
+    updateAuthUI(null, "Supabase 連線失敗，請檢查設定");
   }
 }
 
@@ -304,21 +308,25 @@ async function loadServerConfig() {
 
 async function checkUser(){
   if(!sbClient) return;
-  const { data: { session } } = await sbClient.auth.getSession();
-  currentUser = session ? session.user : null;
-  if(currentUser){
-    updateAuthUI(currentUser, `已登入：${currentUser.email}`);
-    syncLogsFromSupabase();
-    loadServerConfig();
-  } else {
-    updateAuthUI(null, "未登入（目前紀錄僅保留在瀏覽器）");
+  try{
+    const { data: { session } } = await sbClient.auth.getSession();
+    currentUser = session ? session.user : null;
+    if(currentUser){
+      updateAuthUI(currentUser, `已登入：${currentUser.email}`);
+      syncLogsFromSupabase();
+      loadServerConfig();
+    } else {
+      updateAuthUI(null, "未登入（紀錄目前存於本機）");
+    }
+  }catch(e){
+    updateAuthUI(null, "未登入");
   }
 }
 
 function updateAuthUI(user, statusText){
-  $("authStatus").textContent = statusText;
-  $("loginForm").classList.toggle("hide", !!user);
-  $("userPanel").classList.toggle("hide", !user);
+  if($("authStatus")) $("authStatus").textContent = statusText;
+  if($("loginForm")) $("loginForm").classList.toggle("hide", !!user);
+  if($("userPanel")) $("userPanel").classList.toggle("hide", !user);
 }
 
 $("signInBtn").onclick=async()=>{
@@ -339,7 +347,7 @@ $("signUpBtn").onclick=async()=>{
   const email=$("authEmail").value.trim(), password=$("authPass").value.trim();
   const { data, error } = await sbClient.auth.signUp({ email, password });
   if(error) alert("註冊失敗："+error.message);
-  else alert("註冊成功！若有開啟驗證請檢查 Email，若無請直接點「登入同步」。");
+  else alert("註冊成功！請直接點選「登入同步」。");
 };
 
 $("signOutBtn").onclick=async()=>{
@@ -359,27 +367,29 @@ $("saveKeysBtn").onclick=()=>{
 
 async function syncLogsFromSupabase(){
   if(!sbClient || !currentUser) return;
-  const { data, error } = await sbClient.from('diet_logs').select('*');
-  if(!error && data){
-    S.log = {};
-    data.forEach(row => {
-      const d = row.date;
-      if(!S.log[d]) S.log[d] = [];
-      S.log[d].push({
-        id: row.id,
-        meal: row.meal,
-        name: row.name,
-        k: Number(row.kcal),
-        p: Number(row.protein),
-        f: Number(row.fat),
-        c: Number(row.carbs),
-        n: Number(row.servings),
-        t: row.logged_at
+  try{
+    const { data, error } = await sbClient.from('diet_logs').select('*');
+    if(!error && data){
+      S.log = {};
+      data.forEach(row => {
+        const d = row.date;
+        if(!S.log[d]) S.log[d] = [];
+        S.log[d].push({
+          id: row.id,
+          meal: row.meal,
+          name: row.name,
+          k: Number(row.kcal)||0,
+          p: Number(row.protein)||0,
+          f: Number(row.fat)||0,
+          c: Number(row.carbs)||0,
+          n: Number(row.servings)||1,
+          t: row.logged_at
+        });
       });
-    });
-    save();
-    renderToday();
-  }
+      save();
+      renderToday();
+    }
+  }catch(e){}
 }
 
 function getCurrentMealKey(){
@@ -490,7 +500,14 @@ function renderMe(){
 }
 
 function sumList(L){
-  return L.reduce((a,e)=>{a.k+=e.k*e.n;a.p+=e.p*e.n;a.f+=e.f*e.n;a.c+=e.c*e.n;return a},{k:0,p:0,f:0,c:0});
+  return (L||[]).reduce((a,e)=>{
+    const n = Number(e.n)||1;
+    a.k += (Number(e.k)||0) * n;
+    a.p += (Number(e.p)||0) * n;
+    a.f += (Number(e.f)||0) * n;
+    a.c += (Number(e.c)||0) * n;
+    return a;
+  }, {k:0,p:0,f:0,c:0});
 }
 
 function bar(name,v,goal,col,u){
@@ -500,8 +517,6 @@ function bar(name,v,goal,col,u){
 
 function renderMealSection(dateKey, isEditable=true){
   const dayLogs = S.log[dateKey] || [];
-  if(!dayLogs.length) return '<div class="mute" style="padding:10px 0">尚無紀錄。按上方「＋ 新增食物」開始記錄。</div>';
-
   return MEALS.map(meal => {
     const itemsWithIndex = dayLogs
       .map((item, idx) => ({ ...item, originalIdx: idx }))
@@ -536,10 +551,15 @@ function renderMealSection(dateKey, isEditable=true){
 }
 
 function renderToday(){
-  const T=sumList(S.log[today()]||[]), g=S.me?calc(S.me):null;
-  const left=g?g.kcal-Math.round(T.k):null;
-  $("sum").innerHTML=(g?`<div class="big">${left>=0?left:-left} <span class="mute">大卡${left>=0?"還可以吃":"已超過"}</span></div>`:'<div class="mute">先到「設定」填個人資料，就能看到每日目標。</div>')
-   +bar("熱量",T.k,g&&g.kcal,"var(--kcal)","大卡")+bar("蛋白質",T.p,g&&g.p,"var(--pro)","g")+bar("脂肪",T.f,g&&g.f,"var(--fat)","g")+bar("碳水",T.c,g&&g.c,"var(--carb)","g");
+  const T = sumList(S.log[today()]||[]);
+  const g = S.me ? calc(S.me) : null;
+  const left = g ? g.kcal - Math.round(T.k) : null;
+  
+  $("sum").innerHTML = (g ? `<div class="big">${left>=0?left:-left} <span class="mute">大卡${left>=0?"還可以吃":"已超過"}</span></div>` : '<div class="mute">先到「設定」填個人資料，就能看到每日目標。</div>')
+   + bar("熱量",T.k,g&&g.kcal,"var(--kcal)","大卡")
+   + bar("蛋白質",T.p,g&&g.p,"var(--pro)","g")
+   + bar("脂肪",T.f,g&&g.f,"var(--fat)","g")
+   + bar("碳水",T.c,g&&g.c,"var(--carb)","g");
 
   $("logByMeal").innerHTML = renderMealSection(today(), true);
 }
@@ -570,12 +590,16 @@ function loadMe(){
   if(!S.me)return;
   const m=S.me;
   $("sex").value=m.sex;$("age").value=m.age;$("ht").value=m.ht;$("wt").value=m.wt;$("act").value=m.act;
-  document.querySelector(`[name=goal][value=${m.goal}]`).checked=true;
+  const r = document.querySelector(`[name=goal][value=${m.goal}]`);
+  if(r) r.checked = true;
 }
 
 const VIEWS=["today","add","scan","meal","hist","me"];
 function showView(v,mode){
-  VIEWS.forEach(p=>$("p-"+p).classList.toggle("hide",p!==v));
+  VIEWS.forEach(p=>{
+    const el = $("p-"+p);
+    if(el) el.classList.toggle("hide", p!==v);
+  });
   const nv=({add:"today",scan:"today",meal:"today"})[v]||v;
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.p===nv));
   if(v!=="scan")stopScan();
@@ -625,15 +649,16 @@ $("lookBtn").onclick=()=>{const c=$("manual").value.trim();if(c)lookup(c)};
 async function lookup(code){
   curBarcode=code;
   $("scanMsg").textContent="查詢中："+code;
-  
   let it = null, source = "";
 
   if(sbClient){
-    const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', code).maybeSingle();
-    if(data){
-      it = { name: data.name, basis: data.basis, k: Number(data.kcal), p: Number(data.protein), f: Number(data.fat), c: Number(data.carbs) };
-      source = "Supabase 社群資料庫";
-    }
+    try{
+      const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', code).maybeSingle();
+      if(data){
+        it = { name: data.name, basis: data.basis, k: Number(data.kcal), p: Number(data.protein), f: Number(data.fat), c: Number(data.carbs) };
+        source = "Supabase 社群資料庫";
+      }
+    }catch(e){}
   }
 
   if(!it){
@@ -676,23 +701,25 @@ async function addLog(it, n){
   save();
 
   if(sbClient && currentUser){
-    const { data, error } = await sbClient.from('diet_logs').insert([{
-      user_id: currentUser.id,
-      date: today(),
-      meal: mealKey,
-      name: it.name,
-      servings: n,
-      kcal: it.k,
-      protein: it.p,
-      fat: it.f,
-      carbs: it.c,
-      logged_at: timeStr
-    }]).select();
+    try{
+      const { data, error } = await sbClient.from('diet_logs').insert([{
+        user_id: currentUser.id,
+        date: today(),
+        meal: mealKey,
+        name: it.name,
+        servings: n,
+        kcal: it.k,
+        protein: it.p,
+        fat: it.f,
+        carbs: it.c,
+        logged_at: timeStr
+      }]).select();
 
-    if(!error && data && data[0]){
-      logItem.id = data[0].id;
-      save();
-    }
+      if(!error && data && data[0]){
+        logItem.id = data[0].id;
+        save();
+      }
+    }catch(e){}
   }
 }
 
@@ -745,16 +772,18 @@ $("saveNew").onclick=async()=>{
   if(!it.name||!(it.k>=0)){$("scanMsg").textContent="請至少填寫商品名稱和熱量。";return}
   
   if(sbClient && currentUser && curBarcode){
-    await sbClient.from('custom_foods').upsert([{
-      barcode: curBarcode,
-      name: it.name,
-      basis: it.basis,
-      kcal: it.k,
-      protein: it.p,
-      fat: it.f,
-      carbs: it.c,
-      created_by: currentUser.id
-    }]);
+    try{
+      await sbClient.from('custom_foods').upsert([{
+        barcode: curBarcode,
+        name: it.name,
+        basis: it.basis,
+        kcal: it.k,
+        protein: it.p,
+        fat: it.f,
+        carbs: it.c,
+        created_by: currentUser.id
+      }]);
+    }catch(e){}
   }
 
   addLog(it, 1);
@@ -851,6 +880,7 @@ $("mAdd").onclick=()=>{
   showView("today");
 };
 
+// 依序啟動
 loadMe();
 renderMe();
 renderToday();
