@@ -79,6 +79,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .food-row:last-child{border-bottom:none}
 .food-row:hover{background:var(--bg)}
 .food-row.selected{background:rgba(15,92,79,0.08);border-radius:6px;padding:10px 6px}
+
+/* 份量快速膠囊鍵 */
+.serving-chips{display:flex;gap:8px;margin-top:6px}
+.serving-chip{flex:1;text-align:center;padding:6px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink)}
+.serving-chip.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
 </style>
 </head>
 <body>
@@ -143,7 +148,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 4. 新增入口 -->
+<!-- 4. 新增入口 (含複製昨日該餐功能) -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -154,6 +159,10 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <label><input type="radio" name="addMeal" value="dinner"><span>晚餐</span></label>
       <label><input type="radio" name="addMeal" value="snack"><span>點心</span></label>
     </div>
+
+    <!-- 省時快捷：帶入昨日餐點 -->
+    <button class="ghost" id="copyYesterdayMealBtn" style="margin-top:0;margin-bottom:12px">複製昨日這餐所有品項</button>
+
     <button id="navToCamBtn" style="margin-top:0">相機辨識</button>
     <div class="mute">掃描條碼 或 拍攝整盤餐點智慧估算</div>
     <button id="navToListBtn">食物庫與手動輸入</button>
@@ -186,7 +195,14 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div class="badge" id="fSrc">資料來源</div>
       <h2 id="fName" style="margin-top:4px"></h2>
       <div class="mute" id="fInfo"></div>
-      <label>份數</label><input id="serv" type="number" step="0.5" min="0.5" value="1">
+      <label>份數</label>
+      <input id="serv" type="number" step="0.5" min="0.5" value="1">
+      <div class="serving-chips" id="servChips">
+        <div class="serving-chip" data-v="0.5">0.5 份</div>
+        <div class="serving-chip active" data-v="1">1 份</div>
+        <div class="serving-chip" data-v="1.5">1.5 份</div>
+        <div class="serving-chip" data-v="2">2 份</div>
+      </div>
       <div class="tag" id="fTag"></div>
       <button id="addBtn">加入紀錄（自動收錄社群庫）</button>
     </div>
@@ -223,7 +239,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div id="camMealBox" class="hide">
     <div class="card">
       <h2>拍餐點智慧估算</h2>
-      <div class="mute">拍攝餐點，自動分析盤中食材並預估熱量。</div>
+      <div class="mute">拍攝餐點，自動分析盤中食材並預估熱量（僅存入個人日誌，不污染公共庫）。</div>
       <button id="mealBtn">拍攝或上傳餐點照片</button>
       <input id="mealPic" type="file" accept="image/*" capture="environment" class="hide">
       <div id="mealLoading" class="loading-box hide"><div class="spinner"></div><span>正在分析餐點食材與熱量…</span></div>
@@ -234,7 +250,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 6. 整合食物庫（全面由 Supabase 社群資料庫驅動） -->
+<!-- 6. 整合食物庫 -->
 <section id="p-list" class="hide">
   <h1>食物清單與自訂</h1>
   <button class="ghost" data-goadd style="margin:0 0 14px">返回選擇方式</button>
@@ -265,13 +281,19 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div class="mute" id="selFoodDetail" style="margin-bottom:8px"></div>
       <label>份數</label>
       <input id="cfN" type="number" step="0.5" min="0.5" value="1">
+      <div class="serving-chips" id="cfChips">
+        <div class="serving-chip" data-v="0.5">0.5 份</div>
+        <div class="serving-chip active" data-v="1">1 份</div>
+        <div class="serving-chip" data-v="1.5">1.5 份</div>
+        <div class="serving-chip" data-v="2">2 份</div>
+      </div>
       <button id="cfAdd">確認加入這餐</button>
     </div>
   </div>
 
   <div id="boxManualFood" class="card hide">
     <h2>自訂食物建立</h2>
-    <div class="mute" style="margin-bottom:10px">儲存後將同步至雲端社群食物庫，往後在分類中隨時能直接選取。</div>
+    <div class="mute" style="margin-bottom:10px">儲存後同步建立至雲端社群食物庫（經審核後開放全員共享）。</div>
     
     <label>所屬分類</label>
     <select id="mCat">
@@ -289,7 +311,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     
     <div class="row">
       <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
-      <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
+      <div><label>蛋白質 (g)</label><input id="nP" type="number"></div>
     </div>
     <div class="row">
       <div><label>脂肪 (g)</label><input id="mF" type="number"></div>
@@ -366,7 +388,8 @@ let S = {
   me: null,
   log: {},
   customFavorites: [],
-  communityFoods: [], // 雲端社群食物庫快取
+  communityFoods: [],
+  pendingSyncQueue: [], // 離線暫存隊列
   geminiKey: ""
 };
 
@@ -380,10 +403,16 @@ try {
 
 if (!S.customFavorites) S.customFavorites = [];
 if (!S.communityFoods) S.communityFoods = [];
+if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
 
 const save = () => { try { localStorage.setItem("nutri_v3", JSON.stringify(S)); } catch(e){} };
 const esc = t => String(t || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today = () => new Date().toLocaleDateString("sv");
+const yesterday = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString("sv");
+};
 const GN = { muscle: "增肌", fat: "減脂", lose: "減重" };
 const MEALS = [
   { key: "breakfast", name: "早餐" },
@@ -439,7 +468,8 @@ async function handleAuthFlow() {
   $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
   loadServerConfig();
   await syncLogsFromSupabase();
-  await loadCommunityFoods(); // 啟動時直接從雲端拉取社群食物
+  await flushPendingSyncQueue(); // 上線檢查並補送離線隊列
+  await loadCommunityFoods();
   subscribeRealtime();
 
   if (!S.me) {
@@ -486,6 +516,13 @@ function subscribeRealtime() {
     .subscribe();
 }
 
+/* 網路事件監聽：斷網恢復自動補推離線紀錄 */
+window.addEventListener("online", () => {
+  if (currentUser) {
+    flushPendingSyncQueue();
+    syncLogsFromSupabase();
+  }
+});
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && currentUser) {
     syncLogsFromSupabase();
@@ -630,7 +667,41 @@ async function syncLogsFromSupabase() {
   }
 }
 
-/* 核心：直接從 Supabase custom_foods 資料庫撈取所有食物（社群+官方庫） */
+/* 核心：清空並自動重推離線隊列（Sync Queue） */
+async function flushPendingSyncQueue() {
+  if (!sbClient || !currentUser || !navigator.onLine || !S.pendingSyncQueue.length) return;
+  const queue = [...S.pendingSyncQueue];
+  S.pendingSyncQueue = [];
+  save();
+
+  for (const item of queue) {
+    try {
+      const { data, error } = await sbClient.from('diet_logs').insert([{
+        user_id: currentUser.id,
+        date: item.date,
+        meal: item.meal,
+        name: item.name,
+        servings: item.n,
+        kcal: item.k,
+        protein: item.p,
+        fat: item.f,
+        carbs: item.c,
+        logged_at: item.t
+      }]).select();
+
+      if (!error && data && data[0]) {
+        // 更新本地對應項目 ID
+        const targetDay = S.log[item.date] || [];
+        const match = targetDay.find(x => x.name === item.name && x.t === item.t && !x.id);
+        if (match) match.id = data[0].id;
+      }
+    } catch(err) {
+      S.pendingSyncQueue.push(item); // 失敗放回隊列
+    }
+  }
+  save();
+}
+
 async function loadCommunityFoods() {
   if (!sbClient) return;
   try {
@@ -655,7 +726,6 @@ async function loadCommunityFoods() {
   }
 }
 
-/* 整合食物清單：由資料庫社群食物與本地個人常用組合 */
 function getCombinedFoodList() {
   const result = [];
   const addedNames = new Set();
@@ -718,8 +788,27 @@ function selectFoodItem(item) {
   $("selectedFoodInfo").classList.remove("hide");
   $("selFoodName").textContent = item.name;
   $("selFoodDetail").textContent = `每 ${item.basis}：${item.k} 大卡・蛋白質 ${item.p}g・脂肪 ${item.f}g・碳水 ${item.c}g`;
+  $("cfN").value = 1;
+  document.querySelectorAll("#cfChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
   renderFoodList();
 }
+
+/* 份量快速膠囊鍵切換 */
+function bindChipGroup(groupId, inputId) {
+  $(groupId).onclick = e => {
+    const chip = e.target.closest(".serving-chip");
+    if (!chip) return;
+    $(groupId).querySelectorAll(".serving-chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    $(inputId).value = chip.dataset.v;
+  };
+  $(inputId).oninput = () => {
+    const val = $(inputId).value;
+    $(groupId).querySelectorAll(".serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === val));
+  };
+}
+bindChipGroup("servChips", "serv");
+bindChipGroup("cfChips", "cfN");
 
 $("catBar").onclick = e => {
   const btn = e.target.closest(".cat-btn");
@@ -748,15 +837,27 @@ $("cfAdd").onclick = () => {
   showView("today");
 };
 
-/* 手動自訂食物：同步存入 Supabase 社群共享庫 */
+/* 物理數值防呆校驗 */
+function validateNutrition(name, k, p, f, c) {
+  if (!name || name.trim().length < 2) return "品項名稱請至少填寫 2 個字元。";
+  if (k < 0 || k > 3500) return "單項食物熱量請填寫在 0 ~ 3500 kcal 之間。";
+  if (p < 0 || p > 300 || f < 0 || f > 300 || c < 0 || c > 300) return "營養素數值請填寫在合理範圍 (0 ~ 300g) 內。";
+  return null;
+}
+
+/* 條碼標準化 (過濾空格與特殊字元) */
+const cleanBarcode = bc => String(bc || "").replace(/[^0-9a-zA-Z_-]/g, "").trim();
+
+/* 手動自訂食物：防呆 + 審核隔離狀態 */
 $("mAdd").onclick = async () => {
   const k = +$("mK").value, n = $("mName").value.trim();
   const cat = $("mCat").value;
-  if (!n || isNaN(k)) return alert("請填寫品項名稱與熱量");
-
   const p = +$("mP").value || 0;
   const f = +$("mF").value || 0;
   const c = +$("mC").value || 0;
+
+  const errMsg = validateNutrition(n, k, p, f, c);
+  if (errMsg) return alert("⚠️ " + errMsg);
 
   addLog({ name: n, k, p, f, c }, 1);
 
@@ -778,14 +879,13 @@ $("mAdd").onclick = async () => {
         fat: f,
         carbs: c,
         category: cat,
+        is_verified: false, // 審核隔離標記：預設未驗證
         created_by: currentUser.id
       }]);
       if (!error) {
         await loadCommunityFoods();
       }
-    } catch(err) {
-      console.error("社群食物庫寫入異常:", err);
-    }
+    } catch(err) {}
   }
 
   ["mName", "mK", "mP", "mF", "mC"].forEach(i => {
@@ -794,6 +894,31 @@ $("mAdd").onclick = async () => {
   });
 
   renderFoodList();
+  showView("today");
+};
+
+/* 複製昨日該餐所有品項 */
+$("copyYesterdayMealBtn").onclick = async () => {
+  const currentMeal = getSelectedMeal();
+  const yDayLogs = S.log[yesterday()] || [];
+  const targetItems = yDayLogs.filter(item => (item.meal || "snack") === currentMeal);
+
+  if (!targetItems.length) {
+    return alert(`昨天在【${({breakfast:"早餐",lunch:"午餐",dinner:"晚餐",snack:"點心"}[currentMeal])}】沒有任何飲食紀錄可複製。`);
+  }
+
+  if (!confirm(`確定要將昨日的 ${targetItems.length} 項食物複製到今天的這餐嗎？`)) return;
+
+  for (const item of targetItems) {
+    await addLog({
+      name: item.name,
+      k: item.k,
+      p: item.p,
+      f: item.f,
+      c: item.c
+    }, item.n);
+  }
+
   showView("today");
 };
 
@@ -1079,7 +1204,7 @@ $("startBtn").onclick = async () => {
   try {
     await qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 140 } }, code => {
       stopScan();
-      lookup(code);
+      lookup(cleanBarcode(code));
     });
     $("startBtn").textContent = "關閉相機";
     $("scanMsg").textContent = "";
@@ -1097,7 +1222,7 @@ $("shot").onchange = async e => {
   try {
     qr = qr || new Html5Qrcode("reader");
     const code = await qr.scanFile(f, false);
-    lookup(code);
+    lookup(cleanBarcode(code));
   } catch(err) {
     $("scanMsg").textContent = "讀不到條碼，請重拍或手動輸入。";
   }
@@ -1105,7 +1230,7 @@ $("shot").onchange = async e => {
 };
 
 $("lookBtn").onclick = () => {
-  const c = $("manual").value.trim();
+  const c = cleanBarcode($("manual").value);
   if (c) lookup(c);
 };
 
@@ -1130,13 +1255,13 @@ async function fetchOpenFoodFacts(barcode) {
 }
 
 async function lookup(code) {
-  curBarcode = code;
-  $("scanMsg").textContent = "查詢中：" + code;
+  curBarcode = cleanBarcode(code);
+  $("scanMsg").textContent = "查詢中：" + curBarcode;
   let it = null, source = "";
 
   if (sbClient) {
     try {
-      const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', code).maybeSingle();
+      const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', curBarcode).maybeSingle();
       if (data) {
         it = { name: data.name, basis: data.basis, k: Number(data.kcal), p: Number(data.protein), f: Number(data.fat), c: Number(data.carbs) };
         source = "Supabase 社群資料庫";
@@ -1145,7 +1270,7 @@ async function lookup(code) {
   }
 
   if (!it) {
-    it = await fetchOpenFoodFacts(code);
+    it = await fetchOpenFoodFacts(curBarcode);
     if (it) source = "Open Food Facts 公共庫";
   }
 
@@ -1163,9 +1288,12 @@ async function lookup(code) {
   $("fSrc").textContent = source;
   $("fName").textContent = it.name;
   $("fInfo").textContent = `${it.basis || "每份"} ${it.k} 大卡・蛋白質 ${it.p} g・脂肪 ${it.f} g・碳水 ${it.c} g`;
-  $("fTag").textContent = `條碼：${code}`;
+  $("fTag").textContent = `條碼：${curBarcode}`;
+  $("serv").value = 1;
+  document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
 }
 
+/* 核心：加入紀錄 + 離線自動排入隊列 (Sync Queue) */
 async function addLog(it, n) {
   const mealKey = getSelectedMeal();
   const timeStr = new Date().toTimeString().slice(0, 5);
@@ -1184,8 +1312,20 @@ async function addLog(it, n) {
   save();
   renderToday();
 
-  if (!sbClient || !currentUser) {
-    alert("⚠️ 目前處於未登入狀態，這筆紀錄僅留在本機，換裝置將無法看到！");
+  // 若處於離線或無連線狀態，放入離線暫存隊列
+  if (!sbClient || !currentUser || !navigator.onLine) {
+    S.pendingSyncQueue.push({
+      date: today(),
+      meal: mealKey,
+      name: it.name,
+      n: n,
+      k: it.k,
+      p: it.p,
+      f: it.f,
+      c: it.c,
+      t: timeStr
+    });
+    save();
     return;
   }
 
@@ -1204,18 +1344,19 @@ async function addLog(it, n) {
     }]).select();
 
     if (error) {
-      alert("❌ 雲端同步失敗：" + error.message);
-      console.error("Supabase Error:", error);
+      S.pendingSyncQueue.push({ date: today(), meal: mealKey, name: it.name, n, k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr });
+      save();
     } else if (data && data[0]) {
       logItem.id = data[0].id;
       save();
     }
   } catch(err) {
-    alert("❌ 雲端連線異常：" + err.message);
+    S.pendingSyncQueue.push({ date: today(), meal: mealKey, name: it.name, n, k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr });
+    save();
   }
 }
 
-/* 掃描條碼加入時，自動同步回寫 Supabase custom_foods 社群庫 */
+/* 條碼確認加入：自動將商品回寫 Supabase 社群共享庫 */
 $("addBtn").onclick = async () => {
   const n = +$("serv").value || 1;
   if (!curItem) return;
@@ -1238,9 +1379,7 @@ $("addBtn").onclick = async () => {
       }], { onConflict: 'barcode' });
 
       loadCommunityFoods();
-    } catch(err) {
-      console.warn("社群條碼自動回存失敗:", err);
-    }
+    } catch(err) {}
   }
 
   showView("today");
@@ -1276,19 +1415,18 @@ $("photo").onchange = async e => {
   }
 };
 
-/* 條碼補登建立，強制綁定該條碼存入 Supabase 社群共享庫 */
 $("saveNew").onclick = async () => {
-  const it = {
-    name: $("nName").value.trim(),
-    basis: $("nB").value,
-    k: +$("nK").value,
-    p: +$("nP").value || 0,
-    f: +$("nF").value || 0,
-    c: +$("nC").value || 0,
-    category: $("nCat").value || "超商鮮食"
-  };
-  if (!it.name || !(it.k >= 0)) return alert("請至少填寫商品名稱和熱量。");
+  const n = $("nName").value.trim();
+  const k = +$("nK").value;
+  const p = +$("nP").value || 0;
+  const f = +$("nF").value || 0;
+  const c = +$("nC").value || 0;
+  const cat = $("nCat").value || "超商鮮食";
 
+  const errMsg = validateNutrition(n, k, p, f, c);
+  if (errMsg) return alert("⚠️ " + errMsg);
+
+  const it = { name: n, basis: $("nB").value, k, p, f, c, category: cat };
   addLog(it, 1);
 
   if (sbClient && currentUser && curBarcode) {
@@ -1302,15 +1440,12 @@ $("saveNew").onclick = async () => {
         fat: it.f,
         carbs: it.c,
         category: it.category,
+        is_verified: false,
         created_by: currentUser.id
       }], { onConflict: 'barcode' });
 
-      if (!error) {
-        await loadCommunityFoods();
-      }
-    } catch(e) {
-      console.error("寫入社群條碼失敗:", e);
-    }
+      if (!error) loadCommunityFoods();
+    } catch(e) {}
   }
 
   $("newForm").classList.add("hide");
@@ -1374,6 +1509,7 @@ $("mealPic").onchange = async e => {
   }
 };
 
+/* 拍餐點 AI 估算：只進個人 diet_logs，不污染公共庫 */
 $("estAdd").onclick = () => {
   const on = EST.filter(x => x.on && x.k > 0);
   if (!on.length) return alert("沒有選取任何項目。");
