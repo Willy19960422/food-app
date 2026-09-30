@@ -158,8 +158,8 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
     </div>
     <div class="row">
-      <div><label>脂肪 (g)</label><input id="nF" type="number"></div>
-      <div><label>碳水 (g)</label><input id="nC" type="number"></div>
+      <div><label>脂肪 (g)</label><input id="mF" type="number"></div>
+      <div><label>碳水 (g)</label><input id="mC" type="number"></div>
     </div>
     <button id="mAdd">加入紀錄</button>
   </div>
@@ -227,6 +227,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <label>Google Gemini API Key</label>
     <input id="geminiKey" type="password" placeholder="登入後自動載入，或手動輸入">
     <button class="ghost" id="saveKeysBtn">儲存所有金鑰</button>
+    <button class="ghost" id="resetCacheBtn" style="color:var(--warn);border-color:var(--warn);margin-top:16px">清除本地快取並重新整理</button>
   </div>
 </section>
 </main>
@@ -238,13 +239,15 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 </nav>
 
 <script>
+// 全域錯誤捕獲，防止白畫面無提示
+window.onerror = function(msg, url, line) {
+  console.error("Critical Error:", msg, "at line:", line);
+};
+
 const $ = id => document.getElementById(id);
 
-// 預設連線金鑰
 const DEFAULT_SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
 const DEFAULT_SB_KEY = "sb_publishable_ASYUMsGlytix-aL4wnYj6g_8qvXMRDk";
-
-// 預設目標（避免空值報錯）
 const DEFAULT_ME = { goal: "fat", sex: "m", age: 30, ht: 170, wt: 65, act: 1.55 };
 
 let S = {
@@ -255,23 +258,25 @@ let S = {
   geminiKey: ""
 };
 
-// 安全讀取快取
+// 安全載入快取
 try {
   const r = localStorage.getItem("nutri_v3");
   if (r) {
     const cached = JSON.parse(r);
-    S = Object.assign(S, cached);
+    if (cached && typeof cached === "object") {
+      S = Object.assign(S, cached);
+    }
   }
 } catch(e) {
-  console.warn("快取解析失敗，重設為預設值");
+  console.warn("快取解析失敗");
 }
 
-if (!S.me) S.me = DEFAULT_ME;
+if (!S.me || typeof S.me !== "object") S.me = DEFAULT_ME;
 if (!S.sbUrl) S.sbUrl = DEFAULT_SB_URL;
 if (!S.sbKey) S.sbKey = DEFAULT_SB_KEY;
 
 const save = () => { try { localStorage.setItem("nutri_v3", JSON.stringify(S)); } catch(e){} };
-const esc = t => String(t||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = t => String(t || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today = () => new Date().toLocaleDateString("sv");
 const GN = { muscle: "增肌", fat: "減脂", lose: "減重" };
 const MEALS = [
@@ -284,7 +289,7 @@ const MEALS = [
 let sbClient = null;
 let currentUser = null;
 
-/* 優先綁定導航與按鈕點擊，確保任何情況介面都能動 */
+/* 優先綁定核心導航與點擊事件 */
 const VIEWS = ["today", "add", "scan", "meal", "hist", "me"];
 function showView(v, mode) {
   VIEWS.forEach(p => {
@@ -302,7 +307,10 @@ function showView(v, mode) {
     $("manual").value = "";
   }
   if (v === "meal") {
-    ["cardAI", "cardCF", "cardM"].forEach(id => $(id).classList.toggle("hide", id !== mode));
+    ["cardAI", "cardCF", "cardM"].forEach(id => {
+      const el = $(id);
+      if (el) el.classList.toggle("hide", id !== mode);
+    });
     $("mealMsg").textContent = "";
   }
   if (v === "today") renderToday();
@@ -313,15 +321,22 @@ function showView(v, mode) {
   window.scrollTo(0, 0);
 }
 
-document.querySelectorAll("nav button").forEach(b => b.onclick = () => showView(b.dataset.p));
+document.querySelectorAll("nav button").forEach(b => {
+  b.onclick = () => showView(b.dataset.p);
+});
+
 $("newBtn").onclick = () => {
   setSelectedMeal(getCurrentMealKey());
   showView("add");
 };
-document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => {
-  const m = b.dataset.m;
-  m === "scan" ? showView("scan") : showView("meal", m);
+
+document.querySelectorAll("[data-m]").forEach(b => {
+  b.onclick = () => {
+    const m = b.dataset.m;
+    m === "scan" ? showView("scan") : showView("meal", m);
+  };
 });
+
 document.querySelectorAll("[data-goadd]").forEach(b => b.onclick = () => showView("add"));
 document.querySelectorAll("[data-gotoday]").forEach(b => b.onclick = () => showView("today"));
 
@@ -343,16 +358,15 @@ function setSelectedMeal(key) {
   if (el) el.checked = true;
 }
 
-/* 計算 BMR / TDEE */
 function calc(m) {
   if (!m) m = DEFAULT_ME;
-  const bmr = 10 * m.wt + 6.25 * m.ht - 5 * m.age + (m.sex === "m" ? 5 : -161);
+  const bmr = 10 * (m.wt || 65) + 6.25 * (m.ht || 170) - 5 * (m.age || 30) + (m.sex === "m" ? 5 : -161);
   const tdee = bmr * (m.act || 1.55);
   const adj = { muscle: 1.12, fat: 0.85, lose: 0.8 }[m.goal] || 0.85;
   const floor = m.sex === "m" ? 1500 : 1200;
   let kcal = Math.max(Math.round(tdee * adj), floor);
   const pk = { muscle: 2.0, fat: 2.0, lose: 1.6 }[m.goal] || 2.0;
-  const p = Math.round(m.wt * pk);
+  const p = Math.round((m.wt || 65) * pk);
   const f = Math.round(kcal * 0.25 / 9);
   const c = Math.max(Math.round((kcal - p * 4 - f * 9) / 4), 0);
   return { bmr: Math.round(bmr), tdee: Math.round(tdee), kcal, p, f, c, floored: Math.round(tdee * adj) < floor };
@@ -432,7 +446,7 @@ $("logByMeal").onclick = async e => {
   save();
   renderToday();
 
-  if (sbClient && currentUser && removed.id) {
+  if (sbClient && currentUser && removed && removed.id) {
     try { await sbClient.from('diet_logs').delete().eq('id', removed.id); } catch(err){}
   }
 };
@@ -479,18 +493,25 @@ $("saveMe").onclick = () => {
   alert("個人目標已更新！");
 };
 
-/* Supabase 初始化與登入 */
+$("resetCacheBtn").onclick = () => {
+  if (confirm("這將清除本地暫存的連線狀態並重新整理，確定嗎？")) {
+    localStorage.removeItem("nutri_v3");
+    location.reload();
+  }
+};
+
+/* 安全的 Supabase 初始化 */
 function initSupabase() {
   try {
-    if (S.sbUrl && S.sbKey && window.supabase) {
+    if (window.supabase && typeof window.supabase.createClient === "function") {
       sbClient = window.supabase.createClient(S.sbUrl, S.sbKey);
       checkUser();
     } else {
-      updateAuthUI(null, "尚未設定 Supabase（本機離線模式）");
+      updateAuthUI(null, "Supabase 套件載入中或離線模式");
     }
   } catch(err) {
     console.error("Supabase 連線失敗:", err);
-    updateAuthUI(null, "連線失敗，請檢查設定");
+    updateAuthUI(null, "連線尚未建立（本地紀錄正常運作）");
   }
 }
 
@@ -592,7 +613,6 @@ async function syncLogsFromSupabase() {
   } catch(e) {}
 }
 
-/* 檔案轉 Base64 */
 const fileToBase64 = f => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(r.result.split(",")[1]);
@@ -630,7 +650,6 @@ async function callGeminiVision(prompt, file) {
   return JSON.parse(rawText);
 }
 
-/* 條碼掃描與查詢 */
 let qr = null, curBarcode = null, curItem = null;
 function stopScan() {
   if (qr && qr.isScanning) { qr.stop().catch(() => {}); }
@@ -706,7 +725,7 @@ async function lookup(code) {
         it = { name: data.name, basis: data.basis, k: Number(data.kcal), p: Number(data.protein), f: Number(data.fat), c: Number(data.carbs) };
         source = "Supabase 社群資料庫";
       }
-    } catch(e) {}
+    } catch(e){}
   }
 
   if (!it) {
@@ -833,7 +852,6 @@ $("saveNew").onclick = async () => {
   showView("today");
 };
 
-/* 拍餐點 AI 估算 */
 let EST = [];
 function showEst() {
   $("estList").innerHTML = EST.map((e, i) => `
@@ -894,7 +912,6 @@ $("estAdd").onclick = () => {
   showView("today");
 };
 
-/* 歷史紀錄 */
 function renderHist() {
   const max = today();
   $("hDate").max = max;
@@ -912,7 +929,6 @@ $("hDays").onclick = e => {
   if (r) { $("hDate").value = r.dataset.d; renderHist(); }
 };
 
-/* 常見食物清單資料庫 */
 const CF=[["白飯","1碗(約200g)",280,5,0.5,62],["糙米飯","1碗",260,6,2,55],["滷蛋／水煮蛋／茶葉蛋","1顆",75,6.5,5,0.5],["雞胸肉(熟)","100g",165,31,3.6,0],["無糖豆漿","1杯(360ml)",110,10,5,6],["吐司","1片",100,3.5,1,19],["蛋餅","1份",300,10,15,30],["飯糰","1個",400,10,10,68],["地瓜","中1條",180,2,0.3,42],["香蕉","1根",105,1.3,0.4,27],["蘋果","1顆",100,0.5,0.3,26],["牛奶","1杯(240ml)",150,8,8,12],["拿鐵","1杯(360ml)",150,8,8,12],["珍珠奶茶(全糖)","500ml",450,3,10,85],["排骨便當","1個",800,30,35,95],["滷肉飯","1碗",480,14,22,55],["牛肉麵","1碗",650,30,20,80],["陽春麵","1碗",350,10,8,60],["水餃","1顆",45,2.5,2,5],["小籠包","1顆",55,3,3,4],["鹽酥雞","100g",280,18,18,10],["燙青菜","1份",50,2,3,5],["乳清蛋白粉","1匙",120,24,2,3],["7-11 雙蔬鮪魚飯糰", "1個(109g)", 221, 5.0, 6.2, 38.0],["7-11 御選肉鬆飯糰", "1個(103g)", 260, 5.9, 8, 41.1],["7-11 炙燒明太子鮭魚飯糰", "1個(102g)", 191, 7.0, 3.4, 33.1],["7-11 鮪魚蛋雙拼三明治", "1份(108g)", 292, 9.7, 18.4, 21.8],["7-11 焗烤起司鮪魚三明治", "1份(123g)", 330, 11, 12, 29],["7-11 北海道秋鮭鮪魚雙手捲", "1份(185g)", 364, 9.6, 10.4, 58.1],["麥當勞 大麥克", "1個", 604, 28, 32, 51],["麥當勞 麥香雞", "1個", 393, 14, 17, 45],["麥當勞 雙層麥香雞", "1個", 529, 22, 25, 54],["麥當勞 麥克雞塊4塊", "4塊", 178, 11, 11, 9],["麥當勞 麥克雞塊6塊", "6塊", 269, 16, 17, 13],["星巴克 美式咖啡", "大杯473ml", 22, 1, 0, 4],["星巴克 那堤", "大杯473ml", 220, 12, 10, 18],["7-11 冰烤地瓜", "1份", 192, 3.4, 0.7, 44.4],["7-11 統一陽光高纖豆漿（無加糖）", "1份(包裝)", 183, 15.3, 8.6, 15.8],["全家 鹽蔥燒肉飯糰", "1個(108g)", 179, 5.8, 3.2, 31.6]];
 const CG=[["主食",["白飯","糙米飯","吐司","蛋餅","飯糰","地瓜"]],["蛋・肉・豆",["滷蛋／水煮蛋／茶葉蛋","雞胸肉(熟)","鹽酥雞","乳清蛋白粉"]],["水果・蔬菜",["香蕉","蘋果","燙青菜"]],["飲品",["無糖豆漿","牛奶","拿鐵","珍珠奶茶(全糖)"]],["便當・麵・小吃",["排骨便當","滷肉飯","牛肉麵","陽春麵","水餃","小籠包"]],["7-11 鮮食",["7-11 雙蔬鮪魚飯糰", "7-11 御選肉鬆飯糰", "7-11 炙燒明太子鮭魚飯糰", "7-11 鮪魚蛋雙拼三明治", "7-11 焗烤起司鮪魚三明治", "7-11 北海道秋鮭鮪魚雙手捲","7-11 冰烤地瓜","7-11 統一陽光高纖豆漿（無加糖）"]],["連鎖速食與咖啡",["麥當勞 大麥克", "麥當勞 麥香雞", "麥當勞 雙層麥香雞", "麥當勞 麥克雞塊4塊", "麥當勞 麥克雞塊6塊","星巴克 美式咖啡","星巴克 那堤","全家 鹽蔥燒肉飯糰"]]];
 
@@ -928,19 +944,35 @@ $("cfAdd").onclick = () => {
   showView("today");
 };
 
+// 修正：嚴格對齊 mP, mF, mC 的元素 ID
 $("mAdd").onclick = () => {
   const k = +$("mK").value, n = $("mName").value.trim();
   if (!n || isNaN(k)) return alert("請填寫品項名稱與熱量");
-  addLog({ name: n, k, p: +$("mP").value || 0, f: +$("nF").value \vert{}\vert{} 0, c: +$("nC").value || 0 }, 1);
-  ["mName", "mK", "mP", "nF", "nC"].forEach(i => $(i).value = "");
+  addLog({
+    name: n,
+    k: k,
+    p: +$("mP").value || 0,
+    f: +$("mF").value || 0,
+    c: +$("mC").value || 0
+  }, 1);
+  ["mName", "mK", "mP", "mF", "mC"].forEach(i => {
+    const el = $(i);
+    if (el) el.value = "";
+  });
   showView("today");
 };
 
-// 立即啟動頁面渲染
-loadMe();
-renderMe();
-renderToday();
-initSupabase();
+// 網頁載入時依序執行
+window.addEventListener("DOMContentLoaded", () => {
+  try {
+    loadMe();
+    renderMe();
+    renderToday();
+    initSupabase();
+  } catch(e) {
+    console.error("Initialization error:", e);
+  }
+});
 </script>
 </body>
 </html>
