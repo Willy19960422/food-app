@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="食養紀錄">
 <link rel="apple-touch-icon" href="icon-192.png">
 
-<!-- 瀏覽器分頁 Favicon (解決灰色地球圖示) -->
+<!-- 瀏覽器分頁 Favicon (徹底解決灰色地球圖示) -->
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="shortcut icon" type="image/png" href="./icon-192.png">
@@ -224,7 +224,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 4. 新增入口 (乾淨整齊的全新排版) -->
+<!-- 4. 新增入口 (全新排版版面) -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -236,7 +236,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <label><input type="radio" name="addMeal" value="snack"><span>點心</span></label>
     </div>
 
-    <!-- 輔助工具捷徑 (純文字無 Emoji) -->
+    <!-- 輔助工具捷徑 -->
     <div class="tool-actions">
       <button class="tool-btn" id="copyYesterdayMealBtn">複製昨日這餐</button>
       <button class="tool-btn" id="toggleQuickKcalBtn">快速自訂熱量</button>
@@ -314,7 +314,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
         <div class="serving-chip" data-v="2">2 份</div>
       </div>
       <div class="tag" id="fTag"></div>
-      <button id="addBtn">加入紀錄（自動收錄社群庫）</button>
+      <button id="addBtn">加入紀錄</button>
     </div>
     <div class="card hide" id="newForm">
       <h2>社群資料庫尚無此商品</h2>
@@ -422,13 +422,14 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <label>品項名稱</label>
     <input id="mName" placeholder="例如：香煎雞腿排溫沙拉">
     
+    <!-- 徹底分開的獨立 ID，絕不與條碼表單衝突 -->
     <div class="row">
       <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
-      <div><label>蛋白質 (g)</label><input id="nP" type="number"></div>
+      <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
     </div>
     <div class="row">
-      <div><label>脂肪 (g)</label><input id="nF" type="number"></div>
-      <div><label>碳水 (g)</label><input id="nC" type="number"></div>
+      <div><label>脂肪 (g)</label><input id="mF" type="number"></div>
+      <div><label>碳水 (g)</label><input id="mC" type="number"></div>
     </div>
 
     <label class="check-inline">
@@ -522,30 +523,73 @@ const $ = id => document.getElementById(id);
 const SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWplYWRwenV6cmZ4YXdjeWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MjgzOTEsImV4cCI6MjEwNjMwNDM5MX0.4AYjLPcUQEPIV4RXfqKoYIAAuyhuqe1U-ACDBj3LOMM";
 
+// 狀態結構
 let S = {
   me: null,
   log: {},
   customFavorites: [],
   communityFoods: [],
   pendingSyncQueue: [],
+  pendingDeleteQueue: [],
   geminiKey: "",
   theme: "system"
 };
 
-try {
-  const r = localStorage.getItem("nutri_v3");
-  if (r) {
-    const cached = JSON.parse(r);
-    if (cached && typeof cached === "object") S = Object.assign(S, cached);
+let sbClient = null;
+let currentUser = null;
+let realtimeChannel = null;
+let isSignUpMode = false;
+
+// 依使用者 ID 進行帳號本機資料隔離儲存
+function getStorageKey() {
+  return currentUser && currentUser.id ? `nutri_v3_${currentUser.id}` : `nutri_v3_guest`;
+}
+
+function loadUserData() {
+  const defaultState = {
+    me: null,
+    log: {},
+    customFavorites: [],
+    communityFoods: [],
+    pendingSyncQueue: [],
+    pendingDeleteQueue: [],
+    geminiKey: "",
+    theme: S.theme || "system"
+  };
+  try {
+    const raw = localStorage.getItem(getStorageKey());
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached && typeof cached === "object") {
+        S = Object.assign(defaultState, cached);
+      }
+    } else {
+      S = defaultState;
+    }
+  } catch(e) {
+    S = defaultState;
   }
-} catch(e) {}
 
-if (!S.customFavorites) S.customFavorites = [];
-if (!S.communityFoods) S.communityFoods = [];
-if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
-if (!S.theme) S.theme = "system";
+  if (!S.customFavorites) S.customFavorites = [];
+  if (!S.communityFoods) S.communityFoods = [];
+  if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
+  if (!S.pendingDeleteQueue) S.pendingDeleteQueue = [];
+}
 
-const save = () => { try { localStorage.setItem("nutri_v3", JSON.stringify(S)); } catch(e){} };
+const save = () => {
+  try {
+    localStorage.setItem(getStorageKey(), JSON.stringify(S));
+  } catch(e){}
+};
+
+const generateUUID = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+};
+
 const esc = t => String(t || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today = () => new Date().toLocaleDateString("sv");
 const yesterday = () => {
@@ -561,22 +605,14 @@ const MEALS = [
   { key: "snack", name: "點心" }
 ];
 
-let sbClient = null;
-let currentUser = null;
-let realtimeChannel = null;
-let isSignUpMode = false;
-
-// 頁面狀態與分類對照表
 let currentActiveView = "today";
 let currentMainCat = "all";
 let currentSubCat = "all";
 let chosenFood = null;
 
-// 防抖機制變數
 let isScanCoolingDown = false;
 let searchDebounceTimer = null;
 
-// 二級細節分類對照表
 const SUB_CAT_MAP = {
   "all": ["全部子類"],
   "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "萊爾富鮮食", "OK超商鮮食"],
@@ -586,7 +622,6 @@ const SUB_CAT_MAP = {
   "我的常用": ["全部"]
 };
 
-// 主題模式管理
 function applyTheme(mode) {
   S.theme = mode;
   save();
@@ -603,7 +638,6 @@ function applyTheme(mode) {
   if (radio) radio.checked = true;
 }
 
-// 註冊 Service Worker (PWA 支援)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -647,10 +681,13 @@ async function handleAuthFlow() {
     return;
   }
 
+  loadUserData();
   $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
   loadServerConfig();
-  await syncLogsFromSupabase();
+  
+  await flushPendingDeleteQueue();
   await flushPendingSyncQueue();
+  await syncLogsFromSupabase();
   await loadCommunityFoods();
   subscribeRealtime();
 
@@ -706,6 +743,7 @@ function subscribeRealtime() {
 
 window.addEventListener("online", () => {
   if (currentUser) {
+    flushPendingDeleteQueue();
     flushPendingSyncQueue();
     syncLogsFromSupabase();
   }
@@ -864,9 +902,16 @@ $("savePasswordBtn").onclick = async () => {
 $("signOutBtn").onclick = async () => {
   if (sbClient) await sbClient.auth.signOut();
   currentUser = null;
-  S.me = null;
-  S.log = {};
-  save();
+  S = {
+    me: null,
+    log: {},
+    customFavorites: [],
+    communityFoods: [],
+    pendingSyncQueue: [],
+    pendingDeleteQueue: [],
+    geminiKey: "",
+    theme: S.theme || "system"
+  };
   handleAuthFlow();
 };
 
@@ -881,6 +926,7 @@ async function loadServerConfig() {
   } catch(e) {}
 }
 
+// 雲端同步日誌（採用智慧合併，不洗掉本機未同步紀錄）
 async function syncLogsFromSupabase() {
   if (!sbClient || !currentUser) return;
   try {
@@ -891,11 +937,11 @@ async function syncLogsFromSupabase() {
       .order('logged_at', { ascending: true });
 
     if (!error && data) {
-      S.log = {};
+      const serverLogs = {};
       data.forEach(row => {
         const d = row.date;
-        if (!S.log[d]) S.log[d] = [];
-        S.log[d].push({
+        if (!serverLogs[d]) serverLogs[d] = [];
+        serverLogs[d].push({
           id: row.id,
           meal: row.meal,
           name: row.name,
@@ -907,6 +953,24 @@ async function syncLogsFromSupabase() {
           t: row.logged_at
         });
       });
+
+      // 合併保留本機未上傳的項目
+      const pendingIds = new Set(S.pendingSyncQueue.map(q => q.id));
+      const deletedIds = new Set(S.pendingDeleteQueue);
+
+      Object.keys(S.log).forEach(d => {
+        const unsyncedItems = (S.log[d] || []).filter(item => pendingIds.has(item.id) && !deletedIds.has(item.id));
+        if (unsyncedItems.length) {
+          if (!serverLogs[d]) serverLogs[d] = [];
+          unsyncedItems.forEach(u => {
+            if (!serverLogs[d].some(s => s.id === u.id)) {
+              serverLogs[d].push(u);
+            }
+          });
+        }
+      });
+
+      S.log = serverLogs;
       save();
       renderToday();
       renderRecentFoods();
@@ -916,15 +980,15 @@ async function syncLogsFromSupabase() {
   }
 }
 
+// 離線新增佇列處理（成功寫入才自佇列剔除）
 async function flushPendingSyncQueue() {
   if (!sbClient || !currentUser || !navigator.onLine || !S.pendingSyncQueue.length) return;
-  const queue = [...S.pendingSyncQueue];
-  S.pendingSyncQueue = [];
-  save();
-
-  for (const item of queue) {
+  
+  const remainingQueue = [];
+  for (const item of S.pendingSyncQueue) {
     try {
-      const { data, error } = await sbClient.from('diet_logs').insert([{
+      const { error } = await sbClient.from('diet_logs').upsert([{
+        id: item.id,
         user_id: currentUser.id,
         date: item.date,
         meal: item.meal,
@@ -935,17 +999,35 @@ async function flushPendingSyncQueue() {
         fat: item.f,
         carbs: item.c,
         logged_at: item.t
-      }]).select();
+      }]);
 
-      if (!error && data && data[0]) {
-        const targetDay = S.log[item.date] || [];
-        const match = targetDay.find(x => x.name === item.name && x.t === item.t && !x.id);
-        if (match) match.id = data[0].id;
+      if (error) {
+        remainingQueue.push(item);
       }
     } catch(err) {
-      S.pendingSyncQueue.push(item);
+      remainingQueue.push(item);
     }
   }
+
+  S.pendingSyncQueue = remainingQueue;
+  save();
+}
+
+// 離線刪除佇列處理
+async function flushPendingDeleteQueue() {
+  if (!sbClient || !currentUser || !navigator.onLine || !S.pendingDeleteQueue.length) return;
+
+  const remainingDeletes = [];
+  for (const delId of S.pendingDeleteQueue) {
+    try {
+      const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
+      if (error) remainingDeletes.push(delId);
+    } catch(err) {
+      remainingDeletes.push(delId);
+    }
+  }
+
+  S.pendingDeleteQueue = remainingDeletes;
   save();
 }
 
@@ -1167,7 +1249,6 @@ $("subCatBar").onclick = e => {
   renderFoodList();
 };
 
-// 搜尋輸入防抖（Debounce 200ms）
 $("foodSearch").oninput = () => {
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(renderFoodList, 200);
@@ -1198,13 +1279,14 @@ function validateNutrition(name, k, p, f, c) {
 
 const cleanBarcode = bc => String(bc || "").replace(/[^0-9a-zA-Z_-]/g, "").trim();
 
+// 手動自訂食物新增（徹底分離欄位，正確讀取 mP, mF, mC）
 $("mAdd").onclick = async () => {
   const k = +$("mK").value, n = $("mName").value.trim();
   const cat = $("mCat").value;
   const subCat = $("mSubCat").value.trim().replace(/\s+/g, "") || "";
   const p = +$("mP").value || 0;
   const f = +$("mF").value || 0;
-  const c = +$("nC").value || 0;
+  const c = +$("mC").value || 0;
 
   const errMsg = validateNutrition(n, k, p, f, c);
   if (errMsg) return alert("⚠️ " + errMsg);
@@ -1248,7 +1330,7 @@ $("mAdd").onclick = async () => {
   showView("today");
 };
 
-// 產生「最近吃過」清單（防呆截斷超長字串）
+// 最近吃過清單渲染
 function renderRecentFoods() {
   const recentSection = $("recentFoodsSection");
   const chipContainer = $("recentChips");
@@ -1303,7 +1385,6 @@ function renderRecentFoods() {
   });
 }
 
-// 快速自訂熱量功能操作
 $("toggleQuickKcalBtn").onclick = () => {
   $("boxQuickKcal").classList.toggle("hide");
   if (!$("boxQuickKcal").classList.contains("hide")) {
@@ -1522,6 +1603,7 @@ function renderToday() {
   $("logByMeal").innerHTML = renderMealSection(today(), true);
 }
 
+// 刪除紀錄（支援離線刪除佇列）
 $("logByMeal").onclick = async e => {
   const i = e.target.dataset.del;
   if (i === undefined) return;
@@ -1529,8 +1611,25 @@ $("logByMeal").onclick = async e => {
   save();
   renderToday();
 
-  if (sbClient && currentUser && removed && removed.id) {
-    try { await sbClient.from('diet_logs').delete().eq('id', removed.id); } catch(err){}
+  if (removed && removed.id) {
+    if (!sbClient || !currentUser || !navigator.onLine) {
+      S.pendingDeleteQueue.push(removed.id);
+      // 若該項目還在未同步新增佇列中，一併移除
+      S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== removed.id);
+      save();
+      return;
+    }
+
+    try {
+      const { error } = await sbClient.from('diet_logs').delete().eq('id', removed.id);
+      if (error) {
+        S.pendingDeleteQueue.push(removed.id);
+        save();
+      }
+    } catch(err) {
+      S.pendingDeleteQueue.push(removed.id);
+      save();
+    }
   }
 };
 
@@ -1589,7 +1688,6 @@ $("saveMe").onclick = async () => {
   alert("個人目標已更新！");
 };
 
-// 外觀主題監聽切換
 $("themeGroup").onchange = e => {
   if (e.target && e.target.name === "appTheme") {
     applyTheme(e.target.value);
@@ -1742,10 +1840,14 @@ async function lookup(code) {
   document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
 }
 
+// 核心飲食記錄：配發用戶端 UUID，支援安全重試
 async function addLog(it, n) {
   const mealKey = getSelectedMeal();
   const timeStr = new Date().toTimeString().slice(0, 5);
+  const logId = generateUUID();
+
   const logItem = {
+    id: logId,
     name: it.name,
     k: it.k,
     p: it.p,
@@ -1760,8 +1862,10 @@ async function addLog(it, n) {
   save();
   renderToday();
 
+  // 離線或未連線時，安全放入佇列
   if (!sbClient || !currentUser || !navigator.onLine) {
     S.pendingSyncQueue.push({
+      id: logId,
       date: today(),
       meal: mealKey,
       name: it.name,
@@ -1777,7 +1881,8 @@ async function addLog(it, n) {
   }
 
   try {
-    const { data, error } = await sbClient.from('diet_logs').insert([{
+    const { error } = await sbClient.from('diet_logs').upsert([{
+      id: logId,
       user_id: currentUser.id,
       date: today(),
       meal: mealKey,
@@ -1788,46 +1893,25 @@ async function addLog(it, n) {
       fat: it.f,
       carbs: it.c,
       logged_at: timeStr
-    }]).select();
+    }]);
 
     if (error) {
-      S.pendingSyncQueue.push({ date: today(), meal: mealKey, name: it.name, n, k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr });
-      save();
-    } else if (data && data[0]) {
-      logItem.id = data[0].id;
+      S.pendingSyncQueue.push({ id: logId, date: today(), meal: mealKey, name: it.name, n, k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr });
       save();
     }
   } catch(err) {
-    S.pendingSyncQueue.push({ date: today(), meal: mealKey, name: it.name, n, k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr });
+    S.pendingSyncQueue.push({ id: logId, date: today(), meal: mealKey, name: it.name, n, k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr });
     save();
   }
 }
 
+// 紀錄飲食按鈕（只記錄飲食，絕不覆寫商品庫建立者）
 $("addBtn").onclick = async () => {
   const n = +$("serv").value || 1;
   if (!curItem) return;
 
   addLog(curItem, n);
   $("found").classList.add("hide");
-
-  if (sbClient && currentUser && curBarcode) {
-    try {
-      await sbClient.from('custom_foods').upsert([{
-        barcode: curBarcode,
-        name: curItem.name,
-        basis: curItem.basis || "每份",
-        kcal: curItem.k,
-        protein: curItem.p,
-        fat: curItem.f,
-        carbs: curItem.c,
-        category: "超商鮮食",
-        created_by: currentUser.id
-      }], { onConflict: 'barcode' });
-
-      loadCommunityFoods();
-    } catch(err) {}
-  }
-
   showView("today");
 };
 
@@ -1860,6 +1944,7 @@ $("photo").onchange = async e => {
   }
 };
 
+// 條碼自訂新增至社群庫（首次建立保留貢獻者）
 $("saveNew").onclick = async () => {
   const n = $("nName").value.trim();
   const k = +$("nK").value;
@@ -1877,7 +1962,7 @@ $("saveNew").onclick = async () => {
 
   if (sbClient && currentUser && curBarcode) {
     try {
-      const { error } = await sbClient.from('custom_foods').upsert([{
+      const { error } = await sbClient.from('custom_foods').insert([{
         barcode: curBarcode,
         name: it.name,
         basis: it.basis,
@@ -1889,7 +1974,7 @@ $("saveNew").onclick = async () => {
         sub_category: it.subCat,
         is_verified: false,
         created_by: currentUser.id
-      }], { onConflict: 'barcode' });
+      }]);
 
       if (!error) loadCommunityFoods();
     } catch(e) {}
