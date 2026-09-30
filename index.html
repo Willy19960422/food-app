@@ -219,6 +219,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card" id="result"></div>
   
   <div class="card">
+    class="card hide"
     <h2>API 設定</h2>
     <label>Supabase URL</label>
     <input id="sbUrl">
@@ -247,7 +248,7 @@ window.onerror = function(msg, url, line) {
 const $ = id => document.getElementById(id);
 
 const DEFAULT_SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
-const DEFAULT_SB_KEY = "sb_publishable_ASYUMsGlytix-aL4wnYj6g_8qvXMRDk";
+const DEFAULT_SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWplYWRwenV6cmZ4YXdjeWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MjgzOTEsImV4cCI6MjEwNjMwNDM5MX0.4AYjLPcUQEPIV4RXfqKoYIAAuyhuqe1U-ACDBj3LOMM";
 const DEFAULT_ME = { goal: "fat", sex: "m", age: 30, ht: 170, wt: 65, act: 1.55 };
 
 let S = {
