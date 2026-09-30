@@ -458,12 +458,13 @@ let currentUser = null;
 let realtimeChannel = null;
 let isSignUpMode = false;
 
-// 狀態與二級標籤對照表
-let currentActiveView = "today"; // 記錄當前頁面，防止被非同步回呼踢回今日
+// 頁面狀態與分類對照表
+let currentActiveView = "today";
 let currentMainCat = "all";
 let currentSubCat = "all";
 let chosenFood = null;
 
+// 二級細節分類對照表（與按鈕文字 100% 絕對一致）
 const SUB_CAT_MAP = {
   "all": ["全部子類"],
   "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "飯糰手捲", "三明治吐司", "便當燴飯", "即食雞胸肉"],
@@ -544,7 +545,6 @@ async function handleAuthFlow() {
     renderFoodList();
     renderToday();
 
-    // 智慧停留：避免過幾秒後被強制跳轉回今日
     if (currentActiveView === "today" || !currentActiveView) {
       showView("today");
     } else {
@@ -773,7 +773,9 @@ async function loadCommunityFoods() {
     const { data, error } = await sbClient.from('custom_foods').select('*');
     if (!error && data) {
       S.communityFoods = data.map(row => {
-        let cat = row.category || "外食餐飲";
+        let cat = (row.category || "外食餐飲").trim();
+        let subCat = (row.sub_category || "").replace(/\s+/g, "");
+
         if (cat === "便當小吃" || cat === "連鎖餐飲") cat = "外食餐飲";
         if (cat === "主食" || cat === "蛋豆肉" || cat === "蔬果") cat = "基礎食材";
         if (cat === "飲品") cat = "飲品點心";
@@ -786,7 +788,7 @@ async function loadCommunityFoods() {
           f: Number(row.fat) || 0,
           c: Number(row.carbs) || 0,
           cat: cat,
-          subCat: row.sub_category || "",
+          subCat: subCat,
           barcode: row.barcode,
           createdBy: row.created_by
         };
@@ -823,15 +825,19 @@ function renderSubCategoryBar() {
   if (!bar) return;
   const list = SUB_CAT_MAP[currentMainCat] || ["全部"];
   
-  bar.innerHTML = list.map((sub, idx) => `
-    <button class="sub-cat-btn ${idx === 0 ? 'active' : ''}" data-sub="${sub === '全部' || sub === '全部子類' ? 'all' : sub}">
-      ${esc(sub)}
-    </button>
-  `).join("");
+  bar.innerHTML = list.map((sub, idx) => {
+    const cleanSub = sub.replace(/\s+/g, "");
+    const val = (cleanSub === "全部" || cleanSub === "全部子類") ? "all" : cleanSub;
+    return `
+      <button class="sub-cat-btn ${idx === 0 ? 'active' : ''}" data-sub="${val}">
+        ${esc(sub)}
+      </button>
+    `;
+  }).join("");
   currentSubCat = "all";
 }
 
-/* 雙向智慧比對：確保「全家鮮食」、「飯糰手捲」精準撈出所有資料 */
+/* 核心篩選函式：過濾空白字元，精準多條件比對 */
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
@@ -840,24 +846,25 @@ function renderFoodList() {
   const allFoods = getCombinedFoodList();
 
   const filtered = allFoods.filter(item => {
-    // 一級分類比對
+    // 1. 一級情境分類比對
     const matchMain = (currentMainCat === "all") 
       ? true 
       : (currentMainCat === "我的常用" ? item.isFav : (item.cat === currentMainCat || (currentMainCat === "超商鮮食" && (item.name.includes("7-11") || item.name.includes("全家")))));
 
-    // 二級子分類比對（品牌與型態模糊相容）
+    // 2. 二級細節分類比對（全自動去空白比對）
     let matchSub = true;
     if (currentSubCat !== "all") {
-      const target = currentSubCat.replace("鮮食", "");
-      const subTag = (item.subCat || "").replace(/\s+/g, "");
+      const target = currentSubCat.replace(/\s+/g, "");
+      const targetCore = target.replace("鮮食", ""); // "7-11", "全家"
+      const itemSub = (item.subCat || "").replace(/\s+/g, "");
       const itemName = (item.name || "").replace(/\s+/g, "");
 
-      matchSub = subTag.includes(currentSubCat) || 
-                 subTag.includes(target) || 
-                 itemName.includes(target);
+      matchSub = itemSub.includes(target) || 
+                 itemSub.includes(targetCore) || 
+                 itemName.includes(targetCore);
     }
 
-    // 關鍵字搜尋
+    // 3. 關鍵字搜尋比對
     const matchSearch = !keyword ? true : (item.name.toLowerCase().includes(keyword) || (item.subCat && item.subCat.toLowerCase().includes(keyword)));
 
     return matchMain && matchSub && matchSearch;
@@ -973,7 +980,7 @@ $("subCatBar").onclick = e => {
   if (!btn) return;
   document.querySelectorAll(".sub-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  currentSubCat = btn.dataset.sub;
+  currentSubCat = btn.dataset.sub.replace(/\s+/g, "");
   renderFoodList();
 };
 
@@ -1007,7 +1014,7 @@ const cleanBarcode = bc => String(bc || "").replace(/[^0-9a-zA-Z_-]/g, "").trim(
 $("mAdd").onclick = async () => {
   const k = +$("mK").value, n = $("mName").value.trim();
   const cat = $("mCat").value;
-  const subCat = $("mSubCat").value.trim() || "";
+  const subCat = $("mSubCat").value.trim().replace(/\s+/g, "") || "";
   const p = +$("mP").value || 0;
   const f = +$("mF").value || 0;
   const c = +$("mC").value || 0;
@@ -1082,7 +1089,7 @@ const VIEWS = ["today", "add", "cam", "list", "hist", "me"];
 function showView(v) {
   if (!currentUser || !S.me) return handleAuthFlow();
 
-  currentActiveView = v; // 核心：鎖定並記住當前頁面
+  currentActiveView = v;
 
   VIEWS.forEach(p => {
     const el = $("p-" + p);
@@ -1579,7 +1586,7 @@ $("saveNew").onclick = async () => {
   const f = +$("nF").value || 0;
   const c = +$("nC").value || 0;
   const cat = $("nCat").value || "超商鮮食";
-  const subCat = $("nSubCat").value.trim() || "";
+  const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
 
   const errMsg = validateNutrition(n, k, p, f, c);
   if (errMsg) return alert("⚠️ " + errMsg);
@@ -1607,7 +1614,12 @@ $("saveNew").onclick = async () => {
     } catch(e) {}
   }
 
-  $("newForm").classList.add("hide");
+  ["mName", "mK", "mP", "mF", "mC", "mSubCat"].forEach(i => {
+    const el = $(i);
+    if (el) el.value = "";
+  });
+
+  renderFoodList();
   showView("today");
 };
 
