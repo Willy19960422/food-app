@@ -69,9 +69,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .spinner{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.cat-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+/* 分類橫向滑動列（電腦滑鼠支援拖曳與游標提示） */
+.cat-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;scrollbar-width:none}
 .cat-scroll::-webkit-scrollbar{display:none}
-.cat-btn{width:auto;white-space:nowrap;padding:6px 12px;font-size:13px;border-radius:20px;border:1px solid var(--line);background:var(--bg);color:var(--mute);margin:0}
+.cat-scroll.dragging{cursor:grabbing}
+.cat-btn{width:auto;white-space:nowrap;padding:6px 12px;font-size:13px;border-radius:20px;border:1px solid var(--line);background:var(--bg);color:var(--mute);margin:0;pointer-events:auto}
 .cat-btn.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
 
 .food-list{max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:0 12px;margin:10px 0}
@@ -80,7 +82,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .food-row:hover{background:var(--bg)}
 .food-row.selected{background:rgba(15,92,79,0.08);border-radius:6px;padding:10px 6px}
 
-/* 份量快速膠囊鍵 */
 .serving-chips{display:flex;gap:8px;margin-top:6px}
 .serving-chip{flex:1;text-align:center;padding:6px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink)}
 .serving-chip.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
@@ -148,7 +149,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 4. 新增入口 (含複製昨日該餐功能) -->
+<!-- 4. 新增入口 -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -160,7 +161,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <label><input type="radio" name="addMeal" value="snack"><span>點心</span></label>
     </div>
 
-    <!-- 省時快捷：帶入昨日餐點 -->
     <button class="ghost" id="copyYesterdayMealBtn" style="margin-top:0;margin-bottom:12px">複製昨日這餐所有品項</button>
 
     <button id="navToCamBtn" style="margin-top:0">相機辨識</button>
@@ -262,6 +262,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div id="boxSelectFood" class="card">
     <input id="foodSearch" placeholder="搜尋食物名稱（例如：雞胸肉、飯糰）" style="margin-bottom:10px">
     
+    <!-- 分類橫向滑動列（支援滑鼠滾輪與按住拖曳） -->
     <div class="cat-scroll" id="catBar">
       <button class="cat-btn active" data-cat="all">全部</button>
       <button class="cat-btn" data-cat="我的常用">我的常用</button>
@@ -389,7 +390,7 @@ let S = {
   log: {},
   customFavorites: [],
   communityFoods: [],
-  pendingSyncQueue: [], // 離線暫存隊列
+  pendingSyncQueue: [],
   geminiKey: ""
 };
 
@@ -468,7 +469,7 @@ async function handleAuthFlow() {
   $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
   loadServerConfig();
   await syncLogsFromSupabase();
-  await flushPendingSyncQueue(); // 上線檢查並補送離線隊列
+  await flushPendingSyncQueue();
   await loadCommunityFoods();
   subscribeRealtime();
 
@@ -516,7 +517,6 @@ function subscribeRealtime() {
     .subscribe();
 }
 
-/* 網路事件監聽：斷網恢復自動補推離線紀錄 */
 window.addEventListener("online", () => {
   if (currentUser) {
     flushPendingSyncQueue();
@@ -667,7 +667,6 @@ async function syncLogsFromSupabase() {
   }
 }
 
-/* 核心：清空並自動重推離線隊列（Sync Queue） */
 async function flushPendingSyncQueue() {
   if (!sbClient || !currentUser || !navigator.onLine || !S.pendingSyncQueue.length) return;
   const queue = [...S.pendingSyncQueue];
@@ -690,13 +689,12 @@ async function flushPendingSyncQueue() {
       }]).select();
 
       if (!error && data && data[0]) {
-        // 更新本地對應項目 ID
         const targetDay = S.log[item.date] || [];
         const match = targetDay.find(x => x.name === item.name && x.t === item.t && !x.id);
         if (match) match.id = data[0].id;
       }
     } catch(err) {
-      S.pendingSyncQueue.push(item); // 失敗放回隊列
+      S.pendingSyncQueue.push(item);
     }
   }
   save();
@@ -793,7 +791,6 @@ function selectFoodItem(item) {
   renderFoodList();
 }
 
-/* 份量快速膠囊鍵切換 */
 function bindChipGroup(groupId, inputId) {
   $(groupId).onclick = e => {
     const chip = e.target.closest(".serving-chip");
@@ -809,6 +806,59 @@ function bindChipGroup(groupId, inputId) {
 }
 bindChipGroup("servChips", "serv");
 bindChipGroup("cfChips", "cfN");
+
+/* 電腦端滑鼠滾輪與按住拖曳支援 */
+function setupCatBarDesktopScroll() {
+  const catBar = $("catBar");
+  if (!catBar) return;
+
+  // 1. 滑鼠滾輪轉為橫向滑動
+  catBar.addEventListener("wheel", e => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      catBar.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+
+  // 2. 滑鼠點住拖曳 (Drag-to-scroll)
+  let isDown = false;
+  let startX = 0;
+  let scrollLeft = 0;
+  let isDragging = false;
+
+  catBar.addEventListener("mousedown", e => {
+    isDown = true;
+    isDragging = false;
+    catBar.classList.add("dragging");
+    startX = e.pageX - catBar.offsetLeft;
+    scrollLeft = catBar.scrollLeft;
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isDown) {
+      isDown = false;
+      catBar.classList.remove("dragging");
+      setTimeout(() => { isDragging = false; }, 50);
+    }
+  });
+
+  catBar.addEventListener("mousemove", e => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - catBar.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    if (Math.abs(walk) > 4) isDragging = true;
+    catBar.scrollLeft = scrollLeft - walk;
+  });
+
+  // 避免拖曳放開時誤觸按鈕點擊
+  catBar.addEventListener("click", e => {
+    if (isDragging) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }, true);
+}
 
 $("catBar").onclick = e => {
   const btn = e.target.closest(".cat-btn");
@@ -837,7 +887,6 @@ $("cfAdd").onclick = () => {
   showView("today");
 };
 
-/* 物理數值防呆校驗 */
 function validateNutrition(name, k, p, f, c) {
   if (!name || name.trim().length < 2) return "品項名稱請至少填寫 2 個字元。";
   if (k < 0 || k > 3500) return "單項食物熱量請填寫在 0 ~ 3500 kcal 之間。";
@@ -845,10 +894,8 @@ function validateNutrition(name, k, p, f, c) {
   return null;
 }
 
-/* 條碼標準化 (過濾空格與特殊字元) */
 const cleanBarcode = bc => String(bc || "").replace(/[^0-9a-zA-Z_-]/g, "").trim();
 
-/* 手動自訂食物：防呆 + 審核隔離狀態 */
 $("mAdd").onclick = async () => {
   const k = +$("mK").value, n = $("mName").value.trim();
   const cat = $("mCat").value;
@@ -879,7 +926,7 @@ $("mAdd").onclick = async () => {
         fat: f,
         carbs: c,
         category: cat,
-        is_verified: false, // 審核隔離標記：預設未驗證
+        is_verified: false,
         created_by: currentUser.id
       }]);
       if (!error) {
@@ -897,7 +944,6 @@ $("mAdd").onclick = async () => {
   showView("today");
 };
 
-/* 複製昨日該餐所有品項 */
 $("copyYesterdayMealBtn").onclick = async () => {
   const currentMeal = getSelectedMeal();
   const yDayLogs = S.log[yesterday()] || [];
@@ -1293,7 +1339,6 @@ async function lookup(code) {
   document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
 }
 
-/* 核心：加入紀錄 + 離線自動排入隊列 (Sync Queue) */
 async function addLog(it, n) {
   const mealKey = getSelectedMeal();
   const timeStr = new Date().toTimeString().slice(0, 5);
@@ -1312,7 +1357,6 @@ async function addLog(it, n) {
   save();
   renderToday();
 
-  // 若處於離線或無連線狀態，放入離線暫存隊列
   if (!sbClient || !currentUser || !navigator.onLine) {
     S.pendingSyncQueue.push({
       date: today(),
@@ -1356,7 +1400,6 @@ async function addLog(it, n) {
   }
 }
 
-/* 條碼確認加入：自動將商品回寫 Supabase 社群共享庫 */
 $("addBtn").onclick = async () => {
   const n = +$("serv").value || 1;
   if (!curItem) return;
@@ -1509,7 +1552,6 @@ $("mealPic").onchange = async e => {
   }
 };
 
-/* 拍餐點 AI 估算：只進個人 diet_logs，不污染公共庫 */
 $("estAdd").onclick = () => {
   const on = EST.filter(x => x.on && x.k > 0);
   if (!on.length) return alert("沒有選取任何項目。");
@@ -1538,6 +1580,7 @@ $("hDays").onclick = e => {
 
 window.addEventListener("DOMContentLoaded", () => {
   initSupabase();
+  setupCatBarDesktopScroll(); // 啟用電腦端滾動與拖曳
 });
 </script>
 </body>
