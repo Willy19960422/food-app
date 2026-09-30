@@ -2,8 +2,17 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>食養紀錄 · 雲端同步版</title>
+
+<!-- PWA 與行動裝置設定 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F5C4F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="食養紀錄">
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3075/3075977.png">
+
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -464,7 +473,11 @@ let currentMainCat = "all";
 let currentSubCat = "all";
 let chosenFood = null;
 
-// 二級細節分類對照表
+// 防抖機制變數
+let isScanCoolingDown = false;
+let searchDebounceTimer = null;
+
+// 二級細節分類對照表（四大超商與標準情境）
 const SUB_CAT_MAP = {
   "all": ["全部子類"],
   "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "萊爾富鮮食", "OK超商鮮食"],
@@ -473,6 +486,13 @@ const SUB_CAT_MAP = {
   "飲品點心": ["全部", "高蛋白乳品", "無糖茶飲", "手搖飲品"],
   "我的常用": ["全部"]
 };
+
+// 註冊 Service Worker (PWA 支援)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
 
 function initSupabase() {
   try {
@@ -837,7 +857,7 @@ function renderSubCategoryBar() {
   currentSubCat = "all";
 }
 
-/* 核心篩選函式：過濾空白字元，精準分類比對 */
+/* 核心篩選函式：精準分類與關鍵字篩選 */
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
@@ -864,7 +884,6 @@ function renderFoodList() {
                    itemSub.includes(brandKey) || 
                    itemName.includes(brandKey);
       } else {
-        // 其他大類採精確子標籤比對，避免因字眼模糊干擾
         matchSub = itemSub === target || itemSub.includes(target);
       }
     }
@@ -976,7 +995,7 @@ $("mainCatBar").onclick = e => {
   document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentMainCat = btn.dataset.cat;
-  currentSubCat = "all"; // 切換主分類時，子分類重設為全部，避免篩選殘留為空
+  currentSubCat = "all";
   renderSubCategoryBar();
   renderFoodList();
 };
@@ -990,7 +1009,11 @@ $("subCatBar").onclick = e => {
   renderFoodList();
 };
 
-$("foodSearch").oninput = renderFoodList;
+// 搜尋輸入防抖（Debounce 200ms）
+$("foodSearch").oninput = () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(renderFoodList, 200);
+};
 
 $("cfAdd").onclick = () => {
   if (!chosenFood) return alert("請先選取食物");
@@ -1374,6 +1397,11 @@ $("startBtn").onclick = async () => {
   qr = qr || new Html5Qrcode("reader");
   try {
     await qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 140 } }, code => {
+      // 條碼防抖：1.5 秒冷卻時間避免重複連續查詢
+      if (isScanCoolingDown) return;
+      isScanCoolingDown = true;
+      setTimeout(() => { isScanCoolingDown = false; }, 1500);
+
       stopScan();
       lookup(cleanBarcode(code));
     });
@@ -1595,7 +1623,7 @@ $("saveNew").onclick = async () => {
   const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
 
   const errMsg = validateNutrition(n, k, p, f, c);
-  if (errMsg) return alert("⚠️️ " + errMsg);
+  if (errMsg) return alert("⚠️ " + errMsg);
 
   const it = { name: n, basis: $("nB").value, k, p, f, c, category: cat, subCat };
   addLog(it, 1);
