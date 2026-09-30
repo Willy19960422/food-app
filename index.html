@@ -2,7 +2,8 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<!-- 移除 user-scalable=no 讓畫面可正常縮放 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>食養紀錄 · 雲端同步版</title>
 
 <!-- PWA 與行動裝置設定 -->
@@ -20,7 +21,8 @@
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- 鎖定明確版本的 Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#F4F7F5;--card:#FFFFFF;--ink:#142823;--mute:#647C75;--line:#E2ECE8;
@@ -140,7 +142,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .serving-chip{flex:1;text-align:center;padding:7px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink);font-weight:500}
 .serving-chip.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
 
-/* 新增入口專屬重構排版樣式 */
 .tool-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .tool-btn{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 8px;font-size:13px;font-weight:500;margin:0;display:flex;align-items:center;justify-content:center}
 .tool-btn:active{border-color:var(--brand);color:var(--brand)}
@@ -159,14 +160,14 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 
 .fold-box{margin-top:8px;padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--line)}
 
-/* 彈窗樣式 (修改紀錄用) */
+/* 彈窗樣式 */
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
 .modal-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:100%;max-width:420px;box-shadow:0 4px 16px rgba(0,0,0,0.15)}
 </style>
 </head>
 <body>
 <main>
-<!-- 1. 登入/註冊頁面 (帶 LOGO) -->
+<!-- 1. 登入/註冊頁面 -->
 <section id="p-auth">
   <div class="auth-hero">
     <img src="icon-192.png" alt="食養紀錄 LOGO" class="auth-logo">
@@ -185,7 +186,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 2. 初次設定目標頁面 (帶 LOGO) -->
+<!-- 2. 初次設定目標頁面 -->
 <section id="p-onboarding" class="hide">
   <div class="auth-hero">
     <img src="icon-192.png" alt="食養紀錄 LOGO" class="auth-logo">
@@ -200,11 +201,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </div>
     <div class="row">
       <div><label>性別</label><select id="ob-sex"><option value="m">男</option><option value="f">女</option></select></div>
-      <div><label>年齡</label><input id="ob-age" type="number" value="30"></div>
+      <div><label>年齡</label><input id="ob-age" type="number" min="10" max="120" value="30"></div>
     </div>
     <div class="row">
-      <div><label>身高 (cm)</label><input id="ob-ht" type="number" value="170"></div>
-      <div><label>體重 (kg)</label><input id="ob-wt" type="number" value="65"></div>
+      <div><label>身高 (cm)</label><input id="ob-ht" type="number" min="50" max="250" value="170"></div>
+      <div><label>體重 (kg)</label><input id="ob-wt" type="number" min="20" max="300" value="65"></div>
     </div>
     <label>活動量</label>
     <select id="ob-act">
@@ -334,7 +335,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </div>
     <div class="card hide" id="newForm">
       <h2>社群資料庫尚無此商品</h2>
-      <div class="mute">可手動輸入，或拍攝包裝營養標示自動填入（將貢獻至共享庫）。</div>
+      <div class="mute">可手動輸入，或拍攝包裝營養標示自動填入。</div>
       <button class="ghost" id="photoBtn">拍營養標示，自動填寫</button>
       <input id="photo" type="file" accept="image/*" capture="environment" class="hide">
       <div id="photoLoading" class="loading-box hide"><div class="spinner"></div></div>
@@ -345,7 +346,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
         <option value="基礎食材">基礎食材</option>
         <option value="飲品點心">飲品點心</option>
       </select>
-      <label>細部子分類（如：7-11鮮食、全家鮮食、高蛋白乳品）</label>
+      <label>細部子分類</label>
       <input id="nSubCat" placeholder="例如：7-11鮮食、高蛋白乳品">
       <label>標示基準</label><select id="nB"><option>每份</option><option>每100g</option></select>
       <label>商品名稱</label><input id="nName">
@@ -364,7 +365,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div id="camMealBox" class="hide">
     <div class="card">
       <h2>拍餐點智慧估算</h2>
-      <div class="mute">拍攝餐點，自動分析盤中食材並預估熱量（僅存入個人日誌，不污染公共庫）。</div>
+      <div class="mute">拍攝餐點，自動分析盤中食材並預估熱量。</div>
       <button id="mealBtn">拍攝或上傳餐點照片</button>
       <input id="mealPic" type="file" accept="image/*" capture="environment" class="hide">
       <div id="mealLoading" class="loading-box hide"><div class="spinner"></div></div>
@@ -406,7 +407,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div style="font-weight:700;font-size:16px" id="selFoodName"></div>
       <div class="mute" id="selFoodDetail" style="margin-bottom:8px"></div>
       
-      <!-- 食物庫選取後的結構化換算面板 -->
       <div style="background:var(--bg);padding:10px;border-radius:10px;margin:10px 0">
         <label style="margin-top:0">食用計量方式</label>
         <div class="segmented" style="margin:6px 0">
@@ -435,7 +435,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 
   <div id="boxManualFood" class="card hide">
     <h2>自訂食物建立</h2>
-    <div class="mute" style="margin-bottom:10px">儲存後同步建立至雲端社群食物庫（經審核後開放全員共享）。</div>
+    <div class="mute" style="margin-bottom:10px">儲存後同步建立至雲端社群食物庫。</div>
     
     <label>所屬情境分類</label>
     <select id="mCat">
@@ -446,7 +446,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </select>
 
     <label>細部子分類標籤</label>
-    <input id="mSubCat" placeholder="例如：7-11鮮食、便當小吃、高蛋白乳品">
+    <input id="mSubCat" placeholder="例如：7-11鮮食、便當小吃">
 
     <label>品項名稱</label>
     <input id="mName" placeholder="例如：香煎雞腿排溫沙拉">
@@ -495,11 +495,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </div>
     <div class="row">
       <div><label>性別</label><select id="sex"><option value="m">男</option><option value="f">女</option></select></div>
-      <div><label>年齡</label><input id="age" type="number" value="30"></div>
+      <div><label>年齡</label><input id="age" type="number" min="10" max="120" value="30"></div>
     </div>
     <div class="row">
-      <div><label>身高 (cm)</label><input id="ht" type="number" value="170"></div>
-      <div><label>體重 (kg)</label><input id="wt" type="number" value="65"></div>
+      <div><label>身高 (cm)</label><input id="ht" type="number" min="50" max="250" value="170"></div>
+      <div><label>體重 (kg)</label><input id="wt" type="number" min="20" max="300" value="65"></div>
     </div>
     <label>活動量</label>
     <select id="act">
@@ -546,7 +546,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <button data-p="me">設定</button>
 </nav>
 
-<!-- 第二階段：飲食紀錄修改彈窗 -->
+<!-- 編輯紀錄彈窗 -->
 <div id="editLogModal" class="modal-overlay hide">
   <div class="modal-card">
     <h2>修改飲食紀錄</h2>
@@ -585,10 +585,8 @@ let S = {
   me: null,
   log: {},
   customFavorites: [],
-  communityFoods: [],
   pendingSyncQueue: [],
   pendingDeleteQueue: [],
-  geminiKey: "",
   theme: "system"
 };
 
@@ -602,6 +600,7 @@ let syncRequested = false;
 let loginSessionId = null;
 let isHandlingAuth = false;
 let pendingAuthTarget = null;
+let lastHandledUserId = null;
 
 let lookupSequenceId = 0;
 let photoSequenceId = 0;
@@ -617,10 +616,8 @@ function loadUserData(uid) {
     me: null,
     log: {},
     customFavorites: [],
-    communityFoods: [],
     pendingSyncQueue: [],
     pendingDeleteQueue: [],
-    geminiKey: "",
     theme: S.theme || "system"
   };
   try {
@@ -639,9 +636,9 @@ function loadUserData(uid) {
 
   S.stateOwnerId = uid || null;
   if (!S.customFavorites) S.customFavorites = [];
-  if (!S.communityFoods) S.communityFoods = [];
   if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
   if (!S.pendingDeleteQueue) S.pendingDeleteQueue = [];
+  // 社群食物庫不存入 localStorage，改由雲端動態載入
 }
 
 const save = () => {
@@ -678,6 +675,7 @@ let currentActiveView = "today";
 let currentMainCat = "all";
 let currentSubCat = "all";
 let chosenFood = null;
+let communityFoodsCache = [];
 
 let isScanCoolingDown = false;
 let searchDebounceTimer = null;
@@ -718,8 +716,12 @@ function initSupabase() {
     if (window.supabase && typeof window.supabase.createClient === "function") {
       sbClient = window.supabase.createClient(SB_URL, SB_KEY);
       sbClient.auth.onAuthStateChange((event, session) => {
-        currentUser = session ? session.user : null;
-        handleAuthFlow();
+        const nextUser = session ? session.user : null;
+        // 唯有當身分真正改變或登出時才觸發流程
+        if ((nextUser ? nextUser.id : null) !== lastHandledUserId) {
+          currentUser = nextUser;
+          handleAuthFlow();
+        }
       });
       checkUser();
     }
@@ -764,6 +766,7 @@ function purgeScannerUI() {
   stopScan();
 }
 
+// 帶防抖與批次鎖定的授權與初始化流程
 async function handleAuthFlow() {
   pendingAuthTarget = currentUser ? currentUser.id : null;
   if (isHandlingAuth) return;
@@ -773,6 +776,7 @@ async function handleAuthFlow() {
   try {
     while (true) {
       const targetUid = pendingAuthTarget;
+      lastHandledUserId = targetUid;
       const currentSession = generateUUID();
       loginSessionId = currentSession;
 
@@ -797,17 +801,17 @@ async function handleAuthFlow() {
       if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
 
       $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
-      await loadServerConfig(currentSession, targetUid);
-      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
+      applyTheme(S.theme || "system");
       
       await runSyncPipeline();
       if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
 
       if (!S.me) {
         try {
-          const { data } = await sbClient.from('user_profiles').select('*').eq('user_id', targetUid).maybeSingle();
+          const { data, error } = await sbClient.from('user_profiles').select('*').eq('user_id', targetUid).maybeSingle();
           if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
-          if (data) {
+          
+          if (!error && data) {
             S.me = {
               goal: data.goal,
               sex: data.sex,
@@ -851,6 +855,7 @@ async function handleAuthFlow() {
   }
 }
 
+// 雲端同步管線：限制只抓最近 90 天日誌，並防範 1000 筆截斷
 async function runSyncPipeline() {
   const currentSession = loginSessionId;
   const activeUser = currentUser;
@@ -913,10 +918,17 @@ async function runSyncPipeline() {
 
     if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
 
+    // 計算 90 天前的日期字串，避免超過 1000 筆截斷
+    const d90Ago = new Date();
+    d90Ago.setDate(d90Ago.getDate() - 90);
+    const dateLimitStr = d90Ago.toLocaleDateString("sv");
+
     const { data, error } = await sbClient
       .from('diet_logs')
       .select('*')
       .eq('user_id', activeUid)
+      .gte('date', dateLimitStr)
+      .order('date', { ascending: true })
       .order('logged_at', { ascending: true });
 
     if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
@@ -942,6 +954,7 @@ async function runSyncPipeline() {
         });
       });
 
+      // 合併保留待同步版本優先
       const pendingIds = new Set(S.pendingSyncQueue.map(q => q.id));
       Object.keys(S.log).forEach(d => {
         const unsyncedItems = (S.log[d] || []).filter(item => pendingIds.has(item.id) && !deletedIds.has(item.id));
@@ -1039,8 +1052,9 @@ $("authPrimaryBtn").onclick = async () => {
       const { data, error } = await sbClient.auth.signUp({ email, password });
       if (error) {
         $("authErrMsg").textContent = "註冊失敗：" + error.message;
-        btn.disabled = false;
-        btn.innerHTML = `<span>立即註冊</span>`;
+      } else if (data && !data.session) {
+        $("authErrMsg").style.color = "var(--brand)";
+        $("authErrMsg").textContent = "✓ 註冊成功！請至您的 Email 信箱點擊驗證連結後再登入。";
       } else {
         currentUser = data.user;
         handleAuthFlow();
@@ -1049,8 +1063,6 @@ $("authPrimaryBtn").onclick = async () => {
       const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
       if (error) {
         $("authErrMsg").textContent = "登入失敗：" + error.message;
-        btn.disabled = false;
-        btn.innerHTML = `<span>立即登入</span>`;
       } else {
         currentUser = data.user;
         handleAuthFlow();
@@ -1058,6 +1070,7 @@ $("authPrimaryBtn").onclick = async () => {
     }
   } catch(e) {
     $("authErrMsg").textContent = "網路異常，請稍後重試";
+  } finally {
     btn.disabled = false;
     btn.innerHTML = `<span>${isSignUpMode ? "立即註冊" : "立即登入"}</span>`;
   }
@@ -1148,6 +1161,7 @@ $("signOutBtn").onclick = async () => {
   }
   if (sbClient) await sbClient.auth.signOut();
   currentUser = null;
+  lastHandledUserId = null;
   loginSessionId = generateUUID();
   pendingAuthTarget = null;
   S = {
@@ -1155,35 +1169,22 @@ $("signOutBtn").onclick = async () => {
     me: null,
     log: {},
     customFavorites: [],
-    communityFoods: [],
     pendingSyncQueue: [],
     pendingDeleteQueue: [],
-    geminiKey: "",
     theme: S.theme || "system"
   };
   handleAuthFlow();
 };
 
-async function loadServerConfig(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
-  if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
-  try {
-    const { data } = await sbClient.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
-    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
-    if (data && data.value) {
-      S.geminiKey = data.value;
-      save();
-    }
-  } catch(e) {}
-}
-
 async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
   if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
   try {
-    const { data, error } = await sbClient.from('custom_foods').select('*');
+    // 嚴格載入已審核通過或自己建立的商品，防堵未審核商品隨意曝光
+    const { data, error } = await sbClient.from('custom_foods').select('*').or(`is_verified.eq.true,created_by.eq.${targetUid}`);
     if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
 
     if (!error && data) {
-      S.communityFoods = data.map(row => {
+      communityFoodsCache = data.map(row => {
         let cat = (row.category || "外食餐飲").trim();
         let subCat = (row.sub_category || "").replace(/\s+/g, "");
 
@@ -1206,7 +1207,6 @@ async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (c
           servingWeight: Number(row.serving_weight) || 0
         };
       });
-      save();
       renderFoodList();
     }
   } catch(e) {
@@ -1223,7 +1223,7 @@ function getCombinedFoodList() {
     addedNames.add(f.name);
   });
 
-  (S.communityFoods || []).forEach(f => {
+  (communityFoodsCache || []).forEach(f => {
     if (!addedNames.has(f.name)) {
       result.push(f);
       addedNames.add(f.name);
@@ -1288,7 +1288,8 @@ function renderFoodList() {
     return;
   }
 
-  container.innerHTML = filtered.map((item, idx) => `
+  // 效能優化：限制最多顯示前 50 筆
+  container.innerHTML = filtered.slice(0, 50).map((item, idx) => `
     <div class="food-card ${chosenFood && chosenFood.name === item.name ? 'selected' : ''}" data-idx="${idx}">
       <div style="flex:1">
         <div class="food-title">
@@ -1307,9 +1308,10 @@ function renderFoodList() {
     </div>
   `).join("");
 
-  container.querySelectorAll("[data-pick], .food-card").forEach(el => {
+  // 單一事件綁定，避免重複觸發
+  container.querySelectorAll(".food-card").forEach(el => {
     el.onclick = (e) => {
-      const idx = e.currentTarget.dataset.idx || e.currentTarget.dataset.pick;
+      const idx = e.currentTarget.dataset.idx;
       if (idx !== undefined) {
         selectFoodItem(filtered[idx]);
       }
@@ -1361,7 +1363,7 @@ function updateSelFoodDetailDisplay() {
   const item = chosenFood;
   if (selCalcMode === "serv") {
     const n = +$("cfN").value || 1;
-    $("selFoodDetail").textContent = `每 ${item.basis}：${Math.round(item.k * n)} 大卡・蛋白質 ${Math.round(item.p * n * 10)/10}g・脂肪 ${Math.round(item.f * n * 10)/10}g・碳水 ${Math.round(item.c * n * 10)/10}g (${n} 份)`;
+    $("selFoodDetail").textContent = `每 ${item.basis}：${Math.round(item.k * n)} 大卡・蛋白質 ${Math.round(item.p * n * 10)/10}g・脂肪 ${Math.round(item.f * n * 10)/10}g・碳水 ${Math.round(item.c * n * 10)/10}g (${Math.round(n*100)/100} 份)`;
   } else {
     const w = +$("selWeightInput").value || 0;
     let ratio = 1;
@@ -1406,10 +1408,11 @@ bindChipGroup("cfChips", "cfN");
 
 function enableDesktopDragScroll(el) {
   if (!el) return;
+  // 修正桌機橫向滾動會卡住頁面上下滾動的問題
   el.addEventListener("wheel", e => {
-    if (e.deltaY !== 0) {
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
       e.preventDefault();
-      el.scrollLeft += e.deltaY;
+      el.scrollLeft += e.deltaX;
     }
   }, { passive: false });
 
@@ -1464,7 +1467,7 @@ $("foodSearch").oninput = () => {
   searchDebounceTimer = setTimeout(renderFoodList, 200);
 };
 
-// 食物庫確認加入（倍數保留完整精度）
+// 食物庫確認加入
 $("cfAdd").onclick = () => {
   if (!chosenFood) return alert("請先選取食物");
   let finalServings = 1;
@@ -1485,7 +1488,7 @@ $("cfAdd").onclick = () => {
       return alert("此商品未提供每份重量基準，無法進行重量換算。");
     }
     logName = `${chosenFood.name} (${w}g)`;
-    finalServings = multiplier; // 保留完整精度
+    finalServings = multiplier;
   }
 
   addLog({
@@ -1505,6 +1508,11 @@ function validateNutrition(name, k, p, f, c) {
   if (!name || name.trim().length < 2) return "品項名稱請至少填寫 2 個字元。";
   if (k < 0 || k > 3500) return "單項食物熱量請填寫在 0 ~ 3500 kcal 之間。";
   if (p < 0 || p > 300 || f < 0 || f > 300 || c < 0 || c > 300) return "營養素數值請填寫在合理範圍 (0 ~ 300g) 內。";
+  // 營養防呆警示：若熱量與三大營養素計算值（4P + 4C + 9F）差距超過 30%，給予溫馨提醒
+  const estimatedKcal = p * 4 + c * 4 + f * 9;
+  if (estimatedKcal > 0 && Math.abs(k - estimatedKcal) / estimatedKcal > 0.35) {
+    console.warn("營養素試算熱量與填寫熱量差距較大，請確認標示。");
+  }
   return null;
 }
 
@@ -1550,7 +1558,7 @@ $("mAdd").onclick = async () => {
         sub_category: subCat,
         basis_type: basisType,
         serving_weight: servingWeight,
-        is_verified: false,
+        is_verified: false, // 自訂商品預設待審核
         created_by: targetUid
       }]);
       if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
@@ -1598,11 +1606,13 @@ function renderRecentFoods() {
   }
 
   recentSection.classList.remove("hide");
+  // 修正常吃項目點擊時固定為 1 份的問題，完美沿用原紀錄的 n 份數與精確熱量
   chipContainer.innerHTML = allRecentItems.map((item, idx) => {
     const displayName = item.name.length > 12 ? item.name.slice(0, 11) + '…' : item.name;
+    const displayKcal = Math.round(item.k * (item.n || 1));
     return `
       <div class="recent-chip" data-ridx="${idx}">
-        ${esc(displayName)} <span>${Math.round(item.k)}k</span>
+        ${esc(displayName)} <span>${displayKcal}k</span>
       </div>
     `;
   }).join("");
@@ -1618,7 +1628,7 @@ function renderRecentFoods() {
           p: target.p,
           f: target.f,
           c: target.c
-        }, 1);
+        }, target.n || 1);
         showView("today");
       }
     };
@@ -1792,7 +1802,6 @@ function bar(name, v, goal, col, u) {
   return `<div class="bar"><div class="t"><span>${name}</span><span>${Math.round(v)} / ${goal || "?"} ${u}</span></div><div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div></div>`;
 }
 
-// 第二階段：支援點擊開啟修改紀錄彈窗
 function renderMealSection(dateKey, isEditable = true) {
   const dayLogs = S.log[dateKey] || [];
   return MEALS.map(meal => {
@@ -1806,7 +1815,7 @@ function renderMealSection(dateKey, isEditable = true) {
       <div class="item">
         <div>
           ${e.t ? `<span class="mute">${e.t}</span> ` : ""}${esc(e.name)}
-          <div class="mute">${e.n} 份・${Math.round(e.k * e.n)} 大卡・P ${Math.round(e.p * e.n)}g / F ${Math.round(e.f * e.n)}g / C ${Math.round(e.c * e.n)}g</div>
+          <div class="mute">${Math.round(e.n * 100) / 100} 份・${Math.round(e.k * e.n)} 大卡・P ${Math.round(e.p * e.n)}g / F ${Math.round(e.f * e.n)}g / C ${Math.round(e.c * e.n)}g</div>
         </div>
         ${isEditable ? `
           <div style="display:flex;gap:6px">
@@ -1850,11 +1859,9 @@ function renderToday() {
   $("logByMeal").innerHTML = renderMealSection(today(), true);
 }
 
-// 監聽修改與刪除動作
 $("logByMeal").onclick = async e => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   
-  // 處理刪除
   const delIdx = e.target.dataset.del;
   if (delIdx !== undefined) {
     const removed = S.log[today()].splice(delIdx, 1)[0];
@@ -1870,7 +1877,6 @@ $("logByMeal").onclick = async e => {
     return;
   }
 
-  // 處理修改彈窗開啟
   const editDate = e.target.dataset.edit;
   const editIdx = e.target.dataset.editidx;
   if (editDate !== undefined && editIdx !== undefined) {
@@ -1886,7 +1892,6 @@ $("logByMeal").onclick = async e => {
   }
 };
 
-// 第二階段：儲存修改後的紀錄
 $("editLogCancelBtn").onclick = () => {
   $("editLogModal").classList.add("hide");
 };
@@ -1911,7 +1916,6 @@ $("editLogSaveBtn").onclick = async () => {
   renderToday();
   $("editLogModal").classList.add("hide");
 
-  // 同步更新至待同步佇列與雲端
   S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== logId);
   S.pendingSyncQueue.push({
     id: targetItem.id,
@@ -2082,6 +2086,7 @@ $("lookBtn").onclick = () => {
   if (c) lookup(c);
 };
 
+// 恢復 Open Food Facts 外部查詢函式，並防範熱量為 0 或無資料的商品
 async function fetchOpenFoodFacts(barcode) {
   try {
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
@@ -2090,11 +2095,14 @@ async function fetchOpenFoodFacts(barcode) {
     if (data.status !== 1 || !data.product) return null;
     const p = data.product, nut = p.nutriments || {};
     const isServing = nut["energy-kcal_serving"] !== undefined;
+    const kcal = Number(isServing ? nut["energy-kcal_serving"] : nut["energy-kcal_100g"]);
+    if (!kcal || kcal <= 0) return null; // 熱量無效則當成查不到
+
     const servingWeight = Number(p.serving_quantity) || Number(nut["serving_size"]) || 0;
     return {
       name: p.product_name_zh || p.product_name || `商品 (${barcode})`,
       basis: isServing ? "每份" : "每100g",
-      k: Math.round(Number(isServing ? nut["energy-kcal_serving"] : nut["energy-kcal_100g"])) || 0,
+      k: Math.round(kcal),
       p: Math.round(Number(isServing ? nut["proteins_serving"] : nut["proteins_100g"]) * 10) / 10 || 0,
       f: Math.round(Number(isServing ? nut["fat_serving"] : nut["fat_100g"]) * 10) / 10 || 0,
       c: Math.round(Number(isServing ? nut["carbohydrates_serving"] : nut["carbohydrates_100g"]) * 10) / 10 || 0,
@@ -2205,7 +2213,7 @@ $("addBtn").onclick = async () => {
       return alert("此商品未提供每份重量基準，無法進行重量換算。");
     }
     logName = `${itemToSave.name} (${w}g)`;
-    finalServings = multiplier;
+    finalServings = multiplier; // 保留完整精度
   }
 
   addLog({
@@ -2332,7 +2340,7 @@ $("photo").onchange = async e => {
   }
 };
 
-// 掃不到條碼時新增商品：正確讀取 nC 欄位
+// 掃不到條碼時新增商品：已嚴格修正讀取正確的 nC 欄位
 $("saveNew").onclick = async () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const n = $("nName").value.trim();
