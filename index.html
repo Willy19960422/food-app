@@ -256,8 +256,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <h1>我的設定與目標</h1>
   <div class="card">
     <h2>雲端帳號</h2>
-    <div id="userEmailTag" style="font-weight:700;margin-bottom:8px"></div>
-    <button class="ghost" id="syncNowBtn" style="margin-bottom:10px">立即手動同步雲端資料</button>
+    <div id="userEmailTag" style="font-weight:700;margin-bottom:12px"></div>
     <button class="ghost" id="signOutBtn" style="color:var(--warn);border-color:var(--warn)">登出帳號</button>
   </div>
 
@@ -364,7 +363,7 @@ async function checkUser() {
 /* 核心流程切換 */
 async function handleAuthFlow() {
   if (!currentUser) {
-    if (realtimeChannel) {
+    if (realtimeChannel && sbClient) {
       sbClient.removeChannel(realtimeChannel);
       realtimeChannel = null;
     }
@@ -408,11 +407,11 @@ async function handleAuthFlow() {
   }
 }
 
-/* 即時同步監聽：手機一改，電腦立即跳出 */
+/* 全自動即時同步（WebSocket 推播） */
 function subscribeRealtime() {
   if (!sbClient || !currentUser || realtimeChannel) return;
   realtimeChannel = sbClient
-    .channel('diet_logs_changes')
+    .channel('diet_logs_changes_' + currentUser.id)
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
@@ -423,6 +422,18 @@ function subscribeRealtime() {
     })
     .subscribe();
 }
+
+/* 當切換分頁、手機螢幕點亮或重新回到視窗時，自動在背景同步 */
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && currentUser) {
+    syncLogsFromSupabase();
+  }
+});
+window.addEventListener("focus", () => {
+  if (currentUser) {
+    syncLogsFromSupabase();
+  }
+});
 
 function showOnlySection(secId) {
   const allSecs = ["p-auth", "p-onboarding", "p-today", "p-add", "p-cam", "p-list", "p-hist", "p-me"];
@@ -512,11 +523,6 @@ $("signOutBtn").onclick = async () => {
   handleAuthFlow();
 };
 
-$("syncNowBtn").onclick = async () => {
-  await syncLogsFromSupabase();
-  alert("雲端同步完成！");
-};
-
 async function loadServerConfig() {
   if (!sbClient || !currentUser) return;
   try {
@@ -528,6 +534,7 @@ async function loadServerConfig() {
   } catch(e) {}
 }
 
+/* 全自動從雲端同步完整資料 */
 async function syncLogsFromSupabase() {
   if (!sbClient || !currentUser) return;
   try {
@@ -816,7 +823,6 @@ $("saveMe").onclick = async () => {
   alert("個人目標已更新！");
 };
 
-/* 檔案轉 Base64 */
 const fileToBase64 = f => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(r.result.split(",")[1]);
@@ -854,7 +860,6 @@ async function callGeminiVision(prompt, file) {
   return JSON.parse(rawText);
 }
 
-/* 條碼掃描與查詢 */
 let qr = null, curBarcode = null, curItem = null;
 function stopScan() {
   if (qr && qr.isScanning) { qr.stop().catch(() => {}); }
@@ -955,7 +960,7 @@ async function lookup(code) {
   $("fTag").textContent = `條碼：${code}`;
 }
 
-/* 核心修正：明確將紀錄推向 Supabase 並加上狀態回報 */
+/* 核心儲存：保證雲端寫入，絕不靜默吃掉錯誤 */
 async function addLog(it, n) {
   const mealKey = getSelectedMeal();
   const timeStr = new Date().toTimeString().slice(0, 5);
@@ -970,14 +975,12 @@ async function addLog(it, n) {
     t: timeStr
   };
 
-  // 本地快取即時更新
   (S.log[today()] = S.log[today()] || []).push(logItem);
   save();
   renderToday();
 
-  // 雲端連線同步
   if (!sbClient || !currentUser) {
-    alert("目前處於未登入狀態，紀錄已暫存於本機。");
+    alert("⚠️ 目前處於未登入狀態，這筆紀錄僅留在本機，換裝置將無法看到！");
     return;
   }
 
@@ -996,14 +999,14 @@ async function addLog(it, n) {
     }]).select();
 
     if (error) {
-      alert("雲端同步失敗：" + error.message);
+      alert("❌ 雲端同步失敗：" + error.message);
       console.error("Supabase Error:", error);
     } else if (data && data[0]) {
       logItem.id = data[0].id;
       save();
     }
   } catch(err) {
-    alert("雲端同步異常：" + err.message);
+    alert("❌ 雲端連線異常：" + err.message);
   }
 }
 
@@ -1015,7 +1018,7 @@ $("addBtn").onclick = () => {
 };
 
 $("photoBtn").onclick = () => {
-  if (!S.geminiKey) return alert("尚未載入 AI 金鑰，請先確認後端配置。");
+  if (!S.geminiKey) return alert("尚未載入 AI 金鑰，請確認後端配置。");
   $("photo").click();
 };
 
