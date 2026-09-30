@@ -490,7 +490,7 @@ const SUB_CAT_MAP = {
 // 註冊 Service Worker (PWA 支援)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW註冊失敗:', err));
   });
 }
 
