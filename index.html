@@ -375,9 +375,9 @@ async function handleAuthFlow() {
 
   $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
   loadServerConfig();
-  await syncLogsFromSupabase(); // 登入後強制從雲端拉取
+  await syncLogsFromSupabase();
   loadCustomFavorites();
-  subscribeRealtime(); // 啟動即時同步通道
+  subscribeRealtime();
 
   if (!S.me) {
     try {
@@ -528,7 +528,6 @@ async function loadServerConfig() {
   } catch(e) {}
 }
 
-/* 核心修正：明確以 user_id 同步，並覆蓋重組 */
 async function syncLogsFromSupabase() {
   if (!sbClient || !currentUser) return;
   try {
@@ -563,7 +562,6 @@ async function syncLogsFromSupabase() {
   }
 }
 
-/* 讀取自訂常用食物 */
 async function loadCustomFavorites() {
   if (!sbClient || !currentUser) return;
   try {
@@ -587,7 +585,6 @@ async function loadCustomFavorites() {
   } catch(e) {}
 }
 
-/* 視圖切換與導航 */
 const VIEWS = ["today", "add", "cam", "list", "hist", "me"];
 function showView(v) {
   if (!currentUser || !S.me) return handleAuthFlow();
@@ -958,6 +955,7 @@ async function lookup(code) {
   $("fTag").textContent = `條碼：${code}`;
 }
 
+/* 核心修正：明確將紀錄推向 Supabase 並加上狀態回報 */
 async function addLog(it, n) {
   const mealKey = getSelectedMeal();
   const timeStr = new Date().toTimeString().slice(0, 5);
@@ -972,30 +970,40 @@ async function addLog(it, n) {
     t: timeStr
   };
 
+  // 本地快取即時更新
   (S.log[today()] = S.log[today()] || []).push(logItem);
   save();
   renderToday();
 
-  if (sbClient && currentUser) {
-    try {
-      const { data, error } = await sbClient.from('diet_logs').insert([{
-        user_id: currentUser.id,
-        date: today(),
-        meal: mealKey,
-        name: it.name,
-        servings: n,
-        kcal: it.k,
-        protein: it.p,
-        fat: it.f,
-        carbs: it.c,
-        logged_at: timeStr
-      }]).select();
+  // 雲端連線同步
+  if (!sbClient || !currentUser) {
+    alert("目前處於未登入狀態，紀錄已暫存於本機。");
+    return;
+  }
 
-      if (!error && data && data[0]) {
-        logItem.id = data[0].id;
-        save();
-      }
-    } catch(e) {}
+  try {
+    const { data, error } = await sbClient.from('diet_logs').insert([{
+      user_id: currentUser.id,
+      date: today(),
+      meal: mealKey,
+      name: it.name,
+      servings: n,
+      kcal: it.k,
+      protein: it.p,
+      fat: it.f,
+      carbs: it.c,
+      logged_at: timeStr
+    }]).select();
+
+    if (error) {
+      alert("雲端同步失敗：" + error.message);
+      console.error("Supabase Error:", error);
+    } else if (data && data[0]) {
+      logItem.id = data[0].id;
+      save();
+    }
+  } catch(err) {
+    alert("雲端同步異常：" + err.message);
   }
 }
 
