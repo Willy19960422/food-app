@@ -127,7 +127,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 4. 新增入口：精簡為二合一管道 -->
+<!-- 4. 新增入口 -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -155,7 +155,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <button id="camModeMeal">拍餐點估算</button>
   </div>
 
-  <!-- 條碼掃描區塊 -->
   <div id="camBarcodeBox">
     <div class="card">
       <div id="reader"></div>
@@ -194,7 +193,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </div>
   </div>
 
-  <!-- 拍餐點估算區塊 -->
   <div id="camMealBox" class="hide">
     <div class="card">
       <h2>拍餐點，AI 估算</h2>
@@ -217,7 +215,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <button id="listModeManual">手動輸入</button>
   </div>
 
-  <!-- 下拉挑選 (內建常用 + 我的自訂常用) -->
   <div id="boxSelectFood" class="card">
     <h2>挑選食物</h2>
     <label>選擇品項</label>
@@ -227,7 +224,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <button id="cfAdd">加入紀錄</button>
   </div>
 
-  <!-- 手動自訂輸入 -->
   <div id="boxManualFood" class="card hide">
     <h2>自己輸入</h2>
     <label>品項名稱</label><input id="mName" placeholder="例如：自煮雞肉溫沙拉">
@@ -261,6 +257,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card">
     <h2>雲端帳號</h2>
     <div id="userEmailTag" style="font-weight:700;margin-bottom:8px"></div>
+    <button class="ghost" id="syncNowBtn" style="margin-bottom:10px">立即手動同步雲端資料</button>
     <button class="ghost" id="signOutBtn" style="color:var(--warn);border-color:var(--warn)">登出帳號</button>
   </div>
 
@@ -307,7 +304,7 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let S = {
   me: null,
   log: {},
-  customFavorites: [], // 自訂常用食物
+  customFavorites: [],
   geminiKey: ""
 };
 
@@ -334,6 +331,7 @@ const MEALS = [
 
 let sbClient = null;
 let currentUser = null;
+let realtimeChannel = null;
 let isSignUpMode = false;
 
 /* 初始化 Supabase */
@@ -366,6 +364,10 @@ async function checkUser() {
 /* 核心流程切換 */
 async function handleAuthFlow() {
   if (!currentUser) {
+    if (realtimeChannel) {
+      sbClient.removeChannel(realtimeChannel);
+      realtimeChannel = null;
+    }
     showOnlySection("p-auth");
     $("bottomNav").classList.add("hide");
     return;
@@ -373,8 +375,9 @@ async function handleAuthFlow() {
 
   $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
   loadServerConfig();
-  syncLogsFromSupabase();
+  await syncLogsFromSupabase(); // 登入後強制從雲端拉取
   loadCustomFavorites();
+  subscribeRealtime(); // 啟動即時同步通道
 
   if (!S.me) {
     try {
@@ -400,8 +403,25 @@ async function handleAuthFlow() {
     $("bottomNav").classList.remove("hide");
     loadMe();
     renderFoodDropdown();
+    renderToday();
     showView("today");
   }
+}
+
+/* 即時同步監聽：手機一改，電腦立即跳出 */
+function subscribeRealtime() {
+  if (!sbClient || !currentUser || realtimeChannel) return;
+  realtimeChannel = sbClient
+    .channel('diet_logs_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'diet_logs',
+      filter: `user_id=eq.${currentUser.id}`
+    }, () => {
+      syncLogsFromSupabase();
+    })
+    .subscribe();
 }
 
 function showOnlySection(secId) {
@@ -487,8 +507,14 @@ $("signOutBtn").onclick = async () => {
   if (sbClient) await sbClient.auth.signOut();
   currentUser = null;
   S.me = null;
+  S.log = {};
   save();
   handleAuthFlow();
+};
+
+$("syncNowBtn").onclick = async () => {
+  await syncLogsFromSupabase();
+  alert("雲端同步完成！");
 };
 
 async function loadServerConfig() {
@@ -502,10 +528,16 @@ async function loadServerConfig() {
   } catch(e) {}
 }
 
+/* 核心修正：明確以 user_id 同步，並覆蓋重組 */
 async function syncLogsFromSupabase() {
   if (!sbClient || !currentUser) return;
   try {
-    const { data, error } = await sbClient.from('diet_logs').select('*');
+    const { data, error } = await sbClient
+      .from('diet_logs')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('logged_at', { ascending: true });
+
     if (!error && data) {
       S.log = {};
       data.forEach(row => {
@@ -526,7 +558,9 @@ async function syncLogsFromSupabase() {
       save();
       renderToday();
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error("同步失敗:", e);
+  }
 }
 
 /* 讀取自訂常用食物 */
@@ -587,7 +621,6 @@ $("newBtn").onclick = () => {
   showView("add");
 };
 
-/* 新增管道導航切換 */
 $("navToCamBtn").onclick = () => {
   showView("cam");
   switchCamMode("barcode");
@@ -599,7 +632,6 @@ $("navToListBtn").onclick = () => {
 document.querySelectorAll("[data-goadd]").forEach(b => b.onclick = () => showView("add"));
 document.querySelectorAll("[data-gotoday]").forEach(b => b.onclick = () => showView("today"));
 
-/* 相機子分頁切換 */
 function switchCamMode(mode) {
   const isBarcode = mode === "barcode";
   $("camModeBarcode").classList.toggle("active", isBarcode);
@@ -611,7 +643,6 @@ function switchCamMode(mode) {
 $("camModeBarcode").onclick = () => switchCamMode("barcode");
 $("camModeMeal").onclick = () => switchCamMode("meal");
 
-/* 清單子分頁切換 */
 function switchListMode(mode) {
   const isSelect = mode === "select";
   $("listModeSelect").classList.toggle("active", isSelect);
@@ -1193,7 +1224,6 @@ $("mAdd").onclick = async () => {
 
   addLog({ name: n, k, p, f, c }, 1);
 
-  // 若勾選存入常用食物庫
   if ($("mSaveFavorite").checked) {
     if (!S.customFavorites.some(item => item.name === n)) {
       const newFav = { name: n, basis: "1份", k, p, f, c };
