@@ -248,8 +248,8 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
         <option value="基礎食材">基礎食材</option>
         <option value="飲品點心">飲品點心</option>
       </select>
-      <label>細部子分類（如：飯糰手捲、高蛋白乳品）</label>
-      <input id="nSubCat" placeholder="例如：飯糰手捲、即食雞胸肉">
+      <label>細部子分類（如：7-11鮮食、全家鮮食、高蛋白乳品）</label>
+      <input id="nSubCat" placeholder="例如：7-11鮮食、高蛋白乳品">
       <label>標示基準</label><select id="nB"><option>每份</option><option>每100g</option></select>
       <label>商品名稱</label><input id="nName">
       <div class="row">
@@ -336,14 +336,14 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     </select>
 
     <label>細部子分類標籤</label>
-    <input id="mSubCat" placeholder="例如：便當燴飯、手搖飲品、高蛋白乳品">
+    <input id="mSubCat" placeholder="例如：7-11鮮食、便當小吃、高蛋白乳品">
 
     <label>品項名稱</label>
     <input id="mName" placeholder="例如：香煎雞腿排溫沙拉">
     
     <div class="row">
       <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
-      <div><label>蛋白質 (g)</label><input id="nP" type="number"></div>
+      <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
     </div>
     <div class="row">
       <div><label>脂肪 (g)</label><input id="mF" type="number"></div>
@@ -837,7 +837,7 @@ function renderSubCategoryBar() {
   currentSubCat = "all";
 }
 
-/* 核心篩選函式：過濾空白字元，精準多條件比對 */
+/* 核心篩選函式：過濾空白字元，精準分類比對 */
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
@@ -849,19 +849,24 @@ function renderFoodList() {
     // 1. 一級情境分類比對
     const matchMain = (currentMainCat === "all") 
       ? true 
-      : (currentMainCat === "我的常用" ? item.isFav : (item.cat === currentMainCat || (currentMainCat === "超商鮮食" && (item.name.includes("7-11") || item.name.includes("全家")))));
+      : (currentMainCat === "我的常用" ? item.isFav : (item.cat === currentMainCat || (currentMainCat === "超商鮮食" && (item.name.includes("7-11") || item.name.includes("全家") || item.name.includes("萊爾富") || item.name.includes("OK")))));
 
-    // 2. 二級細節分類比對（全自動去空白比對）
+    // 2. 二級細節分類比對
     let matchSub = true;
     if (currentSubCat !== "all") {
       const target = currentSubCat.replace(/\s+/g, "");
-      const targetCore = target.replace("鮮食", ""); // "7-11", "全家"
       const itemSub = (item.subCat || "").replace(/\s+/g, "");
       const itemName = (item.name || "").replace(/\s+/g, "");
 
-      matchSub = itemSub.includes(target) || 
-                 itemSub.includes(targetCore) || 
-                 itemName.includes(targetCore);
+      if (currentMainCat === "超商鮮食") {
+        const brandKey = target.replace("鮮食", ""); // "7-11", "全家", "萊爾富", "OK"
+        matchSub = itemSub.includes(target) || 
+                   itemSub.includes(brandKey) || 
+                   itemName.includes(brandKey);
+      } else {
+        // 其他大類採精確子標籤比對，避免因字眼模糊干擾
+        matchSub = itemSub === target || itemSub.includes(target);
+      }
     }
 
     // 3. 關鍵字搜尋比對
@@ -971,6 +976,7 @@ $("mainCatBar").onclick = e => {
   document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentMainCat = btn.dataset.cat;
+  currentSubCat = "all"; // 切換主分類時，子分類重設為全部，避免篩選殘留為空
   renderSubCategoryBar();
   renderFoodList();
 };
@@ -1589,7 +1595,7 @@ $("saveNew").onclick = async () => {
   const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
 
   const errMsg = validateNutrition(n, k, p, f, c);
-  if (errMsg) return alert("⚠️ " + errMsg);
+  if (errMsg) return alert("⚠️️ " + errMsg);
 
   const it = { name: n, basis: $("nB").value, k, p, f, c, category: cat, subCat };
   addLog(it, 1);
@@ -1614,12 +1620,7 @@ $("saveNew").onclick = async () => {
     } catch(e) {}
   }
 
-  ["mName", "mK", "mP", "mF", "mC", "mSubCat"].forEach(i => {
-    const el = $(i);
-    if (el) el.value = "";
-  });
-
-  renderFoodList();
+  $("newForm").classList.add("hide");
   showView("today");
 };
 
