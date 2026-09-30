@@ -221,11 +221,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card">
     <h2>API 設定</h2>
     <label>Supabase URL</label>
-    <input id="sbUrl" placeholder="https://your-project.supabase.co">
-    <label>Supabase Anon Key</label>
-    <input id="sbKey" type="password" placeholder="eyJh... 或 sb_publishable_...">
+    <input id="sbUrl">
+    <label>Supabase Publishable Key</label>
+    <input id="sbKey" type="password">
     <label>Google Gemini API Key</label>
-    <input id="geminiKey" type="password" placeholder="AIzaSy...">
+    <input id="geminiKey" type="password" placeholder="可手動覆蓋，或登入後自動由雲端載入">
     <button class="ghost" id="saveKeysBtn">儲存所有金鑰</button>
   </div>
 </section>
@@ -239,17 +239,27 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 
 <script>
 const $=id=>document.getElementById(id);
+
+// 預設寫入 Supabase 連線資訊
+const DEFAULT_SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
+const DEFAULT_SB_KEY = "sb_publishable_ASYUMsGlytix-aL4wnYj6g_8qvXMRDk";
+
 let S = {
   me: null,
   log: {},
-  sbUrl: "",
-  sbKey: "",
+  sbUrl: DEFAULT_SB_URL,
+  sbKey: DEFAULT_SB_KEY,
   geminiKey: ""
 };
 
 try{
   const r = localStorage.getItem("nutri_v3");
-  if(r) S = Object.assign(S, JSON.parse(r));
+  if(r) {
+    const cached = JSON.parse(r);
+    S = Object.assign(S, cached);
+    if(!S.sbUrl) S.sbUrl = DEFAULT_SB_URL;
+    if(!S.sbKey) S.sbKey = DEFAULT_SB_KEY;
+  }
 }catch(e){}
 
 const save=()=>{try{localStorage.setItem("nutri_v3", JSON.stringify(S))}catch(e){}};
@@ -275,6 +285,23 @@ function initSupabase(){
   }
 }
 
+async function loadServerConfig() {
+  if (!sbClient || !currentUser) return;
+  try {
+    const { data, error } = await sbClient
+      .from('app_config')
+      .select('value')
+      .eq('key', 'gemini_api_key')
+      .maybeSingle();
+
+    if (!error && data && data.value) {
+      S.geminiKey = data.value;
+      save();
+      if($("geminiKey")) $("geminiKey").value = S.geminiKey;
+    }
+  } catch(e) {}
+}
+
 async function checkUser(){
   if(!sbClient) return;
   const { data: { session } } = await sbClient.auth.getSession();
@@ -282,6 +309,7 @@ async function checkUser(){
   if(currentUser){
     updateAuthUI(currentUser, `已登入：${currentUser.email}`);
     syncLogsFromSupabase();
+    loadServerConfig();
   } else {
     updateAuthUI(null, "未登入（目前紀錄僅保留在瀏覽器）");
   }
@@ -294,7 +322,7 @@ function updateAuthUI(user, statusText){
 }
 
 $("signInBtn").onclick=async()=>{
-  if(!sbClient){alert("請先在下方填入 Supabase URL 與 Anon Key 並儲存。");return;}
+  if(!sbClient){alert("尚未連線到 Supabase。");return;}
   const email=$("authEmail").value.trim(), password=$("authPass").value.trim();
   const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
   if(error) alert("登入失敗："+error.message);
@@ -302,15 +330,16 @@ $("signInBtn").onclick=async()=>{
     currentUser = data.user;
     updateAuthUI(currentUser, `已登入：${currentUser.email}`);
     syncLogsFromSupabase();
+    loadServerConfig();
   }
 };
 
 $("signUpBtn").onclick=async()=>{
-  if(!sbClient){alert("請先在下方填入 Supabase URL 與 Anon Key 並儲存。");return;}
+  if(!sbClient){alert("尚未連線到 Supabase。");return;}
   const email=$("authEmail").value.trim(), password=$("authPass").value.trim();
   const { data, error } = await sbClient.auth.signUp({ email, password });
   if(error) alert("註冊失敗："+error.message);
-  else alert("註冊成功！");
+  else alert("註冊成功！若有開啟驗證請檢查 Email，若無請直接點「登入同步」。");
 };
 
 $("signOutBtn").onclick=async()=>{
@@ -320,8 +349,8 @@ $("signOutBtn").onclick=async()=>{
 };
 
 $("saveKeysBtn").onclick=()=>{
-  S.sbUrl = $("sbUrl").value.trim();
-  S.sbKey = $("sbKey").value.trim();
+  S.sbUrl = $("sbUrl").value.trim() || DEFAULT_SB_URL;
+  S.sbKey = $("sbKey").value.trim() || DEFAULT_SB_KEY;
   S.geminiKey = $("geminiKey").value.trim();
   save();
   initSupabase();
@@ -380,7 +409,7 @@ const fileToBase64=f=>new Promise((res,rej)=>{
 });
 
 async function callGeminiVision(prompt, file){
-  if(!S.geminiKey) throw new Error("請先至「設定」填寫 Gemini API Key。");
+  if(!S.geminiKey) throw new Error("尚未載入 Gemini API Key，請先登入帳號或於設定手動輸入。");
   const base64Data = await fileToBase64(file);
   const mimeType = file.type || "image/jpeg";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.geminiKey}`;
@@ -455,9 +484,9 @@ function renderMe(){
     <p>蛋白質 ${t.p} g 脂肪 ${t.f} g 碳水 ${t.c} g</p>
     ${t.floored?'<div class="msg">已套用安全下限，不建議再低於此熱量。</div>':''}`;
   }
-  if(S.sbUrl) $("sbUrl").value = S.sbUrl;
-  if(S.sbKey) $("sbKey").value = S.sbKey;
-  if(S.geminiKey) $("geminiKey").value = S.geminiKey;
+  if($("sbUrl")) $("sbUrl").value = S.sbUrl;
+  if($("sbKey")) $("sbKey").value = S.sbKey;
+  if($("geminiKey")) $("geminiKey").value = S.geminiKey;
 }
 
 function sumList(L){
@@ -675,7 +704,7 @@ $("addBtn").onclick=()=>{
 };
 
 $("photoBtn").onclick=()=>{
-  if(!S.geminiKey){alert("請先到「設定」輸入 Google Gemini API Key。");return;}
+  if(!S.geminiKey){alert("請先登入帳號以載入 AI 金鑰，或於設定手動輸入。");return;}
   $("photo").click();
 };
 
@@ -747,7 +776,7 @@ $("estList").onchange=e=>{
 };
 
 $("mealBtn").onclick=()=>{
-  if(!S.geminiKey){alert("請先到「設定」輸入 Google Gemini API Key。");return;}
+  if(!S.geminiKey){alert("請先登入帳號以載入 AI 金鑰，或於設定手動輸入。");return;}
   $("mealPic").click();
 };
 
