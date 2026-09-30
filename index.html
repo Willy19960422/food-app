@@ -526,7 +526,10 @@ let sbClient = null;
 let currentUser = null;
 let realtimeChannel = null;
 let isSignUpMode = false;
-let isSyncing = false; // 統一同步鎖定旗標（防止競態覆蓋）
+
+// 狀態管理標記（防競態與補傳觸發）
+let isSyncing = false;
+let syncRequested = false;
 
 function getStorageKey() {
   return currentUser && currentUser.id ? `nutri_v3_${currentUser.id}` : `nutri_v3_guest`;
@@ -672,7 +675,7 @@ async function handleAuthFlow() {
   $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
   loadServerConfig();
   
-  // 統一進入點：安全序列化同步
+  // 啟動統一同步入口
   await runSyncPipeline();
   subscribeRealtime();
 
@@ -711,67 +714,81 @@ async function handleAuthFlow() {
   }
 }
 
-// 統一同步入口（串接鎖定，依序執行：刪除佇列 -> 新增佇列 -> 下載合併）
+// 嚴格防禦的同步管線（帶 Session Guard 與動態續跑機制）
 async function runSyncPipeline() {
-  if (!sbClient || !currentUser || !navigator.onLine || isSyncing) return;
+  if (!sbClient || !currentUser || !navigator.onLine) return;
+  
+  if (isSyncing) {
+    syncRequested = true;
+    return;
+  }
+
   isSyncing = true;
+  syncRequested = false;
+
+  const activeUser = currentUser;
+  const activeUid = activeUser ? activeUser.id : null;
 
   try {
-    // 1. 先清空伺服器端刪除佇列
-    if (S.pendingDeleteQueue.length > 0) {
-      const remainingDeletes = [];
-      for (const delId of S.pendingDeleteQueue) {
-        try {
-          const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
-          if (error) remainingDeletes.push(delId);
-        } catch(err) {
-          remainingDeletes.push(delId);
-        }
+    // 1. 處理待刪除佇列
+    while (S.pendingDeleteQueue.length > 0) {
+      if (!currentUser || currentUser.id !== activeUid) break; // Session Guard
+      const delId = S.pendingDeleteQueue[0];
+      try {
+        const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
+        if (error) break; // 網路或伺服器異常則暫停
+        S.pendingDeleteQueue.shift();
+        save();
+      } catch(err) {
+        break;
       }
-      S.pendingDeleteQueue = remainingDeletes;
-      save();
     }
 
-    // 2. 處理本機待新增/修改佇列
-    if (S.pendingSyncQueue.length > 0) {
-      const remainingQueue = [];
-      for (const item of S.pendingSyncQueue) {
-        try {
-          const { error } = await sbClient.from('diet_logs').upsert([{
-            id: item.id,
-            user_id: currentUser.id,
-            date: item.date,
-            meal: item.meal,
-            name: item.name,
-            servings: item.n,
-            kcal: item.k,
-            protein: item.p,
-            fat: item.f,
-            carbs: item.c,
-            logged_at: item.t
-          }]);
-          if (error) remainingQueue.push(item);
-        } catch(err) {
-          remainingQueue.push(item);
-        }
+    if (!currentUser || currentUser.id !== activeUid) return;
+
+    // 2. 處理待新增佇列
+    while (S.pendingSyncQueue.length > 0) {
+      if (!currentUser || currentUser.id !== activeUid) break; // Session Guard
+      const item = S.pendingSyncQueue[0];
+      try {
+        const { error } = await sbClient.from('diet_logs').upsert([{
+          id: item.id,
+          user_id: activeUid,
+          date: item.date,
+          meal: item.meal,
+          name: item.name,
+          servings: item.n,
+          kcal: item.k,
+          protein: item.p,
+          fat: item.f,
+          carbs: item.c,
+          logged_at: item.t
+        }]);
+        if (error) break;
+        S.pendingSyncQueue.shift();
+        save();
+      } catch(err) {
+        break;
       }
-      S.pendingSyncQueue = remainingQueue;
-      save();
     }
 
-    // 3. 從雲端抓取最新資料並與本機智慧合併（嚴格過濾已刪除 ID）
+    if (!currentUser || currentUser.id !== activeUid) return;
+
+    // 3. 從雲端抓取最新日誌並智慧合併
     const { data, error } = await sbClient
       .from('diet_logs')
       .select('*')
-      .eq('user_id', currentUser.id)
+      .eq('user_id', activeUid)
       .order('logged_at', { ascending: true });
+
+    if (!currentUser || currentUser.id !== activeUid) return;
 
     if (!error && data) {
       const deletedIds = new Set(S.pendingDeleteQueue);
       const serverLogs = {};
 
       data.forEach(row => {
-        if (deletedIds.has(row.id)) return; // 確實排除待刪除項目，絕不復活
+        if (deletedIds.has(row.id)) return;
         const d = row.date;
         if (!serverLogs[d]) serverLogs[d] = [];
         serverLogs[d].push({
@@ -787,7 +804,6 @@ async function runSyncPipeline() {
         });
       });
 
-      // 合併保留本機尚在佇列中的未上傳項目
       const pendingIds = new Set(S.pendingSyncQueue.map(q => q.id));
       Object.keys(S.log).forEach(d => {
         const unsyncedItems = (S.log[d] || []).filter(item => pendingIds.has(item.id) && !deletedIds.has(item.id));
@@ -806,10 +822,18 @@ async function runSyncPipeline() {
       renderToday();
       renderRecentFoods();
     }
+
+    // 4. 初始化補回載入食品資料庫
+    await loadCommunityFoods();
+
   } catch(e) {
     console.error("同步管線異常:", e);
   } finally {
     isSyncing = false;
+    // 如果在同步過程中又有新操作進來，自動觸發下一輪補跑
+    if (syncRequested && currentUser && currentUser.id === activeUid) {
+      runSyncPipeline();
+    }
   }
 }
 
@@ -1179,7 +1203,7 @@ function enableDesktopDragScroll(el) {
     isDown = true;
     isDragging = false;
     startX = e.pageX - el.offsetLeft;
-    scrollLeft = e.scrollLeft;
+    scrollLeft = el.scrollLeft;
   });
   window.addEventListener("mouseup", () => {
     if (isDown) {
@@ -1572,7 +1596,6 @@ function renderToday() {
   $("logByMeal").innerHTML = renderMealSection(today(), true);
 }
 
-// 刪除紀錄邏輯：加入 pendingDeleteQueue 並安全從未上傳佇列中剔除
 $("logByMeal").onclick = async e => {
   const i = e.target.dataset.del;
   if (i === undefined) return;
@@ -1798,7 +1821,6 @@ async function lookup(code) {
   document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
 }
 
-// 核心飲食記錄：先存入本機佇列，再啟動同步管線
 async function addLog(it, n) {
   const mealKey = getSelectedMeal();
   const timeStr = new Date().toTimeString().slice(0, 5);
@@ -1837,7 +1859,6 @@ async function addLog(it, n) {
   }
 }
 
-// 掃描加入紀錄：若來自外部公共庫且本機/社群庫無此條碼，安全收錄（不覆寫）
 $("addBtn").onclick = async () => {
   const n = +$("serv").value || 1;
   if (!curItem) return;
