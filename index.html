@@ -2,7 +2,6 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<!-- 移除 user-scalable=no 讓畫面可正常縮放 -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>食養紀錄 · 雲端同步版</title>
 
@@ -423,6 +422,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
             <div class="serving-chip" data-v="2">2 份</div>
           </div>
         </div>
+        <!-- 使用 .hide 類別控制，不再直接操作 style.display 以免破壞排版 -->
         <div id="selBoxModeWeight" class="hide">
           <label id="selWeightLabel">實際食用重量 (公克 / 毫升)</label>
           <input id="selWeightInput" type="number" step="1" min="1" placeholder="例如 150">
@@ -638,7 +638,7 @@ function loadUserData(uid) {
   if (!S.customFavorites) S.customFavorites = [];
   if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
   if (!S.pendingDeleteQueue) S.pendingDeleteQueue = [];
-  // 社群食物庫不存入 localStorage，改由雲端動態載入
+  // 社群食物庫不存入 localStorage，防止 5MB 容量限制與金鑰外流
 }
 
 const save = () => {
@@ -717,7 +717,6 @@ function initSupabase() {
       sbClient = window.supabase.createClient(SB_URL, SB_KEY);
       sbClient.auth.onAuthStateChange((event, session) => {
         const nextUser = session ? session.user : null;
-        // 唯有當身分真正改變或登出時才觸發流程
         if ((nextUser ? nextUser.id : null) !== lastHandledUserId) {
           currentUser = nextUser;
           handleAuthFlow();
@@ -766,7 +765,6 @@ function purgeScannerUI() {
   stopScan();
 }
 
-// 帶防抖與批次鎖定的授權與初始化流程
 async function handleAuthFlow() {
   pendingAuthTarget = currentUser ? currentUser.id : null;
   if (isHandlingAuth) return;
@@ -776,7 +774,6 @@ async function handleAuthFlow() {
   try {
     while (true) {
       const targetUid = pendingAuthTarget;
-      lastHandledUserId = targetUid;
       const currentSession = generateUUID();
       loginSessionId = currentSession;
 
@@ -811,7 +808,15 @@ async function handleAuthFlow() {
           const { data, error } = await sbClient.from('user_profiles').select('*').eq('user_id', targetUid).maybeSingle();
           if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
           
-          if (!error && data) {
+          // 嚴格個人資料讀取防護：若發生錯誤且非純粹查無資料，終止並報錯，絕不盲目覆蓋
+          if (error) {
+            $("authErrMsg").style.color = "var(--warn)";
+            $("authErrMsg").textContent = "讀取個人資料失敗，請檢查網路後重新整理";
+            showOnlySection("p-auth");
+            break;
+          }
+
+          if (data) {
             S.me = {
               goal: data.goal,
               sex: data.sex,
@@ -855,7 +860,7 @@ async function handleAuthFlow() {
   }
 }
 
-// 雲端同步管線：限制只抓最近 90 天日誌，並防範 1000 筆截斷
+// 雲端同步管線：修正合併覆蓋邏輯（有就取代、沒有才新增）
 async function runSyncPipeline() {
   const currentSession = loginSessionId;
   const activeUser = currentUser;
@@ -918,7 +923,6 @@ async function runSyncPipeline() {
 
     if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
 
-    // 計算 90 天前的日期字串，避免超過 1000 筆截斷
     const d90Ago = new Date();
     d90Ago.setDate(d90Ago.getDate() - 90);
     const dateLimitStr = d90Ago.toLocaleDateString("sv");
@@ -954,18 +958,18 @@ async function runSyncPipeline() {
         });
       });
 
-      // 合併保留待同步版本優先
       const pendingIds = new Set(S.pendingSyncQueue.map(q => q.id));
       Object.keys(S.log).forEach(d => {
-        const unsyncedItems = (S.log[d] || []).filter(item => pendingIds.has(item.id) && !deletedIds.has(item.id));
-        if (unsyncedItems.length) {
+        (S.log[d] || []).forEach(item => {
+          if (!pendingIds.has(item.id) || deletedIds.has(item.id)) return;
           if (!serverLogs[d]) serverLogs[d] = [];
-          unsyncedItems.forEach(u => {
-            if (!serverLogs[d].some(s => s.id === u.id)) {
-              serverLogs[d].push(u);
-            }
-          });
-        }
+          const idx = serverLogs[d].findIndex(s => s.id === item.id);
+          if (idx >= 0) {
+            serverLogs[d][idx] = item; // 有就取代
+          } else {
+            serverLogs[d].push(item); // 沒有才新增
+          }
+        });
       });
 
       S.log = serverLogs;
@@ -1038,6 +1042,7 @@ $("authPrimaryBtn").onclick = async () => {
   if (!sbClient) return;
   const email = $("authEmail").value.trim(), password = $("authPass").value.trim();
   if (!email || !password) {
+    $("authErrMsg").style.color = "var(--warn)";
     $("authErrMsg").textContent = "請輸入 Email 與密碼";
     return;
   }
@@ -1051,6 +1056,7 @@ $("authPrimaryBtn").onclick = async () => {
     if (isSignUpMode) {
       const { data, error } = await sbClient.auth.signUp({ email, password });
       if (error) {
+        $("authErrMsg").style.color = "var(--warn)";
         $("authErrMsg").textContent = "註冊失敗：" + error.message;
       } else if (data && !data.session) {
         $("authErrMsg").style.color = "var(--brand)";
@@ -1062,6 +1068,7 @@ $("authPrimaryBtn").onclick = async () => {
     } else {
       const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
       if (error) {
+        $("authErrMsg").style.color = "var(--warn)";
         $("authErrMsg").textContent = "登入失敗：" + error.message;
       } else {
         currentUser = data.user;
@@ -1069,6 +1076,7 @@ $("authPrimaryBtn").onclick = async () => {
       }
     }
   } catch(e) {
+    $("authErrMsg").style.color = "var(--warn)";
     $("authErrMsg").textContent = "網路異常，請稍後重試";
   } finally {
     btn.disabled = false;
@@ -1176,10 +1184,21 @@ $("signOutBtn").onclick = async () => {
   handleAuthFlow();
 };
 
+async function loadServerConfig(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
+  if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
+  try {
+    const { data } = await sbClient.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
+    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
+    if (data && data.value) {
+      S.geminiKey = data.value;
+    }
+  } catch(e) {}
+}
+
 async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
   if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
   try {
-    // 嚴格載入已審核通過或自己建立的商品，防堵未審核商品隨意曝光
+    // 嚴格只抓已驗證或自己建立的商品，解決一次下載整張表的問題
     const { data, error } = await sbClient.from('custom_foods').select('*').or(`is_verified.eq.true,created_by.eq.${targetUid}`);
     if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
 
@@ -1308,7 +1327,6 @@ function renderFoodList() {
     </div>
   `).join("");
 
-  // 單一事件綁定，避免重複觸發
   container.querySelectorAll(".food-card").forEach(el => {
     el.onclick = (e) => {
       const idx = e.currentTarget.dataset.idx;
@@ -1330,10 +1348,10 @@ function selectFoodItem(item) {
   const hasWeight = item.servingWeight && item.servingWeight > 0;
   
   if (is100g || hasWeight) {
-    $("selModeWeight").style.display = "block";
+    $("selModeWeight").classList.remove("hide");
     $("selWeightLabel").textContent = is100g ? "實際食用重量 (g/ml，每 100g 基準)" : `實際食用重量 (g/ml，每份基準 ${item.servingWeight}g)`;
   } else {
-    $("selModeWeight").style.display = "none";
+    $("selModeWeight").classList.add("hide");
   }
 
   updateSelFoodDetailDisplay();
@@ -1508,10 +1526,13 @@ function validateNutrition(name, k, p, f, c) {
   if (!name || name.trim().length < 2) return "品項名稱請至少填寫 2 個字元。";
   if (k < 0 || k > 3500) return "單項食物熱量請填寫在 0 ~ 3500 kcal 之間。";
   if (p < 0 || p > 300 || f < 0 || f > 300 || c < 0 || c > 300) return "營養素數值請填寫在合理範圍 (0 ~ 300g) 內。";
-  // 營養防呆警示：若熱量與三大營養素計算值（4P + 4C + 9F）差距超過 30%，給予溫馨提醒
+  
+  // 營養防呆提示
   const estimatedKcal = p * 4 + c * 4 + f * 9;
   if (estimatedKcal > 0 && Math.abs(k - estimatedKcal) / estimatedKcal > 0.35) {
-    console.warn("營養素試算熱量與填寫熱量差距較大，請確認標示。");
+    if (!confirm(`⚠️ 系統試算熱量約為 ${Math.round(estimatedKcal)} 大卡，與您填寫的 ${k} 大卡差距較大。確定要繼續儲存嗎？`)) {
+      return "已取消儲存，請重新確認營養標示。";
+    }
   }
   return null;
 }
@@ -1558,10 +1579,10 @@ $("mAdd").onclick = async () => {
         sub_category: subCat,
         basis_type: basisType,
         serving_weight: servingWeight,
-        is_verified: false, // 自訂商品預設待審核
+        is_verified: false,
         created_by: targetUid
       }]);
-      if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
+      if (error) alert("⚠️️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
 
       if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
       await loadCommunityFoods();
@@ -1606,7 +1627,6 @@ function renderRecentFoods() {
   }
 
   recentSection.classList.remove("hide");
-  // 修正常吃項目點擊時固定為 1 份的問題，完美沿用原紀錄的 n 份數與精確熱量
   chipContainer.innerHTML = allRecentItems.map((item, idx) => {
     const displayName = item.name.length > 12 ? item.name.slice(0, 11) + '…' : item.name;
     const displayKcal = Math.round(item.k * (item.n || 1));
@@ -2006,34 +2026,30 @@ const fileToBase64 = f => new Promise((res, rej) => {
   r.readAsDataURL(f);
 });
 
+// 安全的 Supabase Edge Function AI 辨識代理呼叫
 async function callGeminiVision(prompt, file) {
-  if (!S.geminiKey) throw new Error("尚未載入辨識金鑰，請確認雲端已配置。");
   const base64Data = await fileToBase64(file);
   const mimeType = file.type || "image/jpeg";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.geminiKey}`;
 
-  const res = await fetch(url, {
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session) throw new Error("請先登入後再使用 AI 辨識。");
+
+  const functionUrl = `${SB_URL}/functions/v1/gemini-vision`;
+
+  const res = await fetch(functionUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType, data: base64Data } }
-        ]
-      }],
-      generationConfig: { response_mime_type: "application/json", temperature: 0.2 }
-    })
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({ prompt, mimeType, dataBase64: base64Data })
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `分析失敗 (${res.status})`);
+    throw new Error(err.error || `AI 辨識服務異常 (${res.status})`);
   }
-  const data = await res.json();
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) throw new Error("無法取得分析結果");
-  return JSON.parse(rawText);
+  return await res.json();
 }
 
 let qr = null, curBarcode = null, curItem = null;
@@ -2086,7 +2102,6 @@ $("lookBtn").onclick = () => {
   if (c) lookup(c);
 };
 
-// 恢復 Open Food Facts 外部查詢函式，並防範熱量為 0 或無資料的商品
 async function fetchOpenFoodFacts(barcode) {
   try {
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
@@ -2096,7 +2111,7 @@ async function fetchOpenFoodFacts(barcode) {
     const p = data.product, nut = p.nutriments || {};
     const isServing = nut["energy-kcal_serving"] !== undefined;
     const kcal = Number(isServing ? nut["energy-kcal_serving"] : nut["energy-kcal_100g"]);
-    if (!kcal || kcal <= 0) return null; // 熱量無效則當成查不到
+    if (!kcal || kcal <= 0) return null;
 
     const servingWeight = Number(p.serving_quantity) || Number(nut["serving_size"]) || 0;
     return {
@@ -2173,10 +2188,10 @@ async function lookup(code) {
   const hasWeight = it.servingWeight && it.servingWeight > 0;
   
   if (is100g || hasWeight) {
-    $("calcModeWeight").style.display = "block";
+    $("calcModeWeight").classList.remove("hide");
     $("weightInputLabel").textContent = is100g ? "實際食用重量 (g/ml，每 100g 基準)" : `實際食用重量 (g/ml，每份基準 ${it.servingWeight}g)`;
   } else {
-    $("calcModeWeight").style.display = "none";
+    $("calcModeWeight").classList.add("hide");
   }
 
   $("serv").value = 1;
@@ -2213,7 +2228,7 @@ $("addBtn").onclick = async () => {
       return alert("此商品未提供每份重量基準，無法進行重量換算。");
     }
     logName = `${itemToSave.name} (${w}g)`;
-    finalServings = multiplier; // 保留完整精度
+    finalServings = multiplier;
   }
 
   addLog({
@@ -2248,7 +2263,7 @@ $("addBtn").onclick = async () => {
           created_by: targetUid
         }]);
 
-        if (error) alert("⚠️ 飲食已記錄，但商品分享至社群庫失敗：" + error.message);
+        if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
 
         if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
         loadCommunityFoods();
@@ -2301,7 +2316,6 @@ async function addLog(it, n) {
 }
 
 $("photoBtn").onclick = () => {
-  if (!S.geminiKey) return alert("尚未載入辨識金鑰，請確認雲端已配置。");
   $("photo").click();
 };
 
@@ -2317,7 +2331,7 @@ $("photo").onchange = async e => {
   $("scanMsg").textContent = "";
 
   try {
-    const r = await callGeminiVision(`你是營養標籤讀取助理。請從照片讀出商品名、基準（"每份"或"每100g"）、熱量(kcal)、蛋白質(g)、脂肪(g)、碳水(g)。回傳 JSON：{"name":"","basis":"每份","k":0,"p":0,"f":0,"c":0}`, f);
+    const r = await callGeminiVision("你是營養標籤讀取助理。請從照片讀出商品名、基準（\"每份\"或\"每100g\"）、熱量(kcal)、蛋白質(g)、脂肪(g)、碳水(g)。回傳 JSON：{\"name\":\"\",\"basis\":\"每份\",\"k\":0,\"p\":0,\"f\":0,\"c\":0}", f);
     
     if (seq !== photoSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
 
@@ -2329,7 +2343,7 @@ $("photo").onchange = async e => {
     $("nC").value = r.c || 0;
   } catch(err) {
     if (seq === photoSequenceId && loginSessionId === targetSession) {
-      $("scanMsg").textContent = "辨識失敗，請重試或手動輸入";
+      $("scanMsg").textContent = "AI 辨識失敗：" + err.message;
     }
   } finally {
     if (seq === photoSequenceId) {
@@ -2340,19 +2354,18 @@ $("photo").onchange = async e => {
   }
 };
 
-// 掃不到條碼時新增商品：已嚴格修正讀取正確的 nC 欄位
 $("saveNew").onclick = async () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const n = $("nName").value.trim();
   const k = +$("nK").value;
   const p = +$("nP").value || 0;
   const f = +$("nF").value || 0;
-  const c = +$("nC").value || 0; // 讀取正確的 nC
+  const c = +$("nC").value || 0;
   const cat = $("nCat").value || "超商鮮食";
   const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
 
   const errMsg = validateNutrition(n, k, p, f, c);
-  if (errMsg) return alert("⚠️ " + errMsg);
+  if (errMsg) return alert(errMsg);
 
   const targetUid = currentUser.id;
   const targetSession = loginSessionId;
@@ -2420,7 +2433,6 @@ $("estList").onchange = e => {
 };
 
 $("mealBtn").onclick = () => {
-  if (!S.geminiKey) return alert("尚未載入辨識金鑰，請確認雲端已配置。");
   $("mealPic").click();
 };
 
@@ -2436,7 +2448,7 @@ $("mealPic").onchange = async e => {
   $("mealMsg").textContent = "";
 
   try {
-    const r = await callGeminiVision(`請拆解餐點中的每樣食物與主副食，以台灣份量估算熱量。只回傳 JSON：{"items":[{"name":"食物名稱","portion":"份量說明","k":熱量大卡,"p":蛋白質克數,"f":脂肪克數,"c":碳水克數}]}`, f);
+    const r = await callGeminiVision("請拆解餐點中的每樣食物與主副食，以台灣份量估算熱量。只回傳 JSON：{\"items\":[{\"name\":\"食物名稱\",\"portion\":\"份量說明\",\"k\":熱量大卡,\"p\":蛋白質克數,\"f\":脂肪克數,\"c\":碳水克數}]}", f);
     
     if (seq !== mealSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
 
@@ -2453,7 +2465,7 @@ $("mealPic").onchange = async e => {
     if (!EST.length) $("mealMsg").textContent = "未能辨識出餐點內容";
   } catch(err) {
     if (seq === mealSequenceId && loginSessionId === targetSession) {
-      $("mealMsg").textContent = "分析失敗，請重試";
+      $("mealMsg").textContent = "AI 估算失敗：" + err.message;
     }
   } finally {
     if (seq === mealSequenceId) {
@@ -2491,7 +2503,6 @@ $("hDays").onclick = e => {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-  applyTheme(S.theme || "system");
   initSupabase();
   enableDesktopDragScroll($("mainCatBar"));
   enableDesktopDragScroll($("subCatBar"));
