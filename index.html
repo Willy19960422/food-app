@@ -512,6 +512,7 @@ const SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWplYWRwenV6cmZ4YXdjeWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MjgzOTEsImV4cCI6MjEwNjMwNDM5MX0.4AYjLPcUQEPIV4RXfqKoYIAAuyhuqe1U-ACDBj3LOMM";
 
 let S = {
+  stateOwnerId: null, // 綁定目前狀態的擁有者 UID
   me: null,
   log: {},
   customFavorites: [],
@@ -527,18 +528,20 @@ let currentUser = null;
 let realtimeChannel = null;
 let isSignUpMode = false;
 
-// 防競態與帳號批次追蹤標記
+// 狀態管理標記
 let isSyncing = false;
 let syncRequested = false;
-let loginSessionId = null; 
-let isHandlingAuth = false; // 初始化互斥鎖
+let loginSessionId = null;
+let isHandlingAuth = false;
+let pendingAuthTarget = null; // 記錄最新排隊的登入/切換帳號目標
 
-function getStorageKey() {
-  return currentUser && currentUser.id ? `nutri_v3_${currentUser.id}` : `nutri_v3_guest`;
+function getStorageKey(uid) {
+  return uid ? `nutri_v3_${uid}` : `nutri_v3_guest`;
 }
 
-function loadUserData() {
+function loadUserData(uid) {
   const defaultState = {
+    stateOwnerId: uid || null,
     me: null,
     log: {},
     customFavorites: [],
@@ -549,7 +552,7 @@ function loadUserData() {
     theme: S.theme || "system"
   };
   try {
-    const raw = localStorage.getItem(getStorageKey());
+    const raw = localStorage.getItem(getStorageKey(uid));
     if (raw) {
       const cached = JSON.parse(raw);
       if (cached && typeof cached === "object") {
@@ -562,6 +565,7 @@ function loadUserData() {
     S = defaultState;
   }
 
+  S.stateOwnerId = uid || null;
   if (!S.customFavorites) S.customFavorites = [];
   if (!S.communityFoods) S.communityFoods = [];
   if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
@@ -569,8 +573,9 @@ function loadUserData() {
 }
 
 const save = () => {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return; // 擁有者不符禁止寫入
   try {
-    localStorage.setItem(getStorageKey(), JSON.stringify(S));
+    localStorage.setItem(getStorageKey(currentUser.id), JSON.stringify(S));
   } catch(e){}
 };
 
@@ -662,69 +667,84 @@ async function checkUser() {
   }
 }
 
-// 帶有互斥鎖與去重的統一初始化入口
+// 支援排隊與最新目標接手的不丟失初始化管理
 async function handleAuthFlow() {
-  if (isHandlingAuth) return;
+  pendingAuthTarget = currentUser ? currentUser.id : null;
+  if (isHandlingAuth) return; // 若正在跑，標記已經更新，跑完會自動接手最新目標
+
   isHandlingAuth = true;
 
   try {
-    const currentSession = generateUUID();
-    loginSessionId = currentSession;
-    const activeUser = currentUser;
+    while (true) {
+      const targetUid = pendingAuthTarget;
+      const currentSession = generateUUID();
+      loginSessionId = currentSession;
 
-    if (!activeUser) {
+      // 清除舊訂閱
       if (realtimeChannel && sbClient) {
         sbClient.removeChannel(realtimeChannel);
         realtimeChannel = null;
       }
-      showOnlySection("p-auth");
-      $("bottomNav").classList.add("hide");
-      return;
-    }
 
-    loadUserData();
-    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUser.id) return;
+      if (!targetUid || !currentUser || currentUser.id !== targetUid) {
+        showOnlySection("p-auth");
+        $("bottomNav").classList.add("hide");
+        break;
+      }
 
-    $("userEmailTag").textContent = `目前登入信箱：${activeUser.email}`;
-    await loadServerConfig(currentSession, activeUser.id);
-    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUser.id) return;
-    
-    await runSyncPipeline();
+      loadUserData(targetUid);
+      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
 
-    if (!S.me) {
-      try {
-        const { data } = await sbClient.from('user_profiles').select('*').eq('user_id', activeUser.id).maybeSingle();
-        if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUser.id) return;
-        if (data) {
-          S.me = {
-            goal: data.goal,
-            sex: data.sex,
-            age: data.age,
-            ht: Number(data.height),
-            wt: Number(data.weight),
-            act: Number(data.activity)
-          };
-          save();
-        }
-      } catch(e) {}
-    }
+      $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
+      await loadServerConfig(currentSession, targetUid);
+      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
+      
+      await runSyncPipeline();
+      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
 
-    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUser.id) return;
+      if (!S.me) {
+        try {
+          const { data } = await sbClient.from('user_profiles').select('*').eq('user_id', targetUid).maybeSingle();
+          if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
+          if (data) {
+            S.me = {
+              goal: data.goal,
+              sex: data.sex,
+              age: data.age,
+              ht: Number(data.height),
+              wt: Number(data.weight),
+              act: Number(data.activity)
+            };
+            save();
+          }
+        } catch(e) {}
+      }
 
-    if (!S.me) {
-      showOnlySection("p-onboarding");
-      $("bottomNav").classList.add("hide");
-    } else {
-      $("bottomNav").classList.remove("hide");
-      loadMe();
-      renderSubCategoryBar();
-      renderFoodList();
-      renderToday();
+      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
 
-      if (currentActiveView === "today" || !currentActiveView) {
-        showView("today");
+      if (!S.me) {
+        showOnlySection("p-onboarding");
+        $("bottomNav").classList.add("hide");
       } else {
-        showView(currentActiveView);
+        $("bottomNav").classList.remove("hide");
+        loadMe();
+        renderSubCategoryBar();
+        renderFoodList();
+        renderToday();
+
+        if (currentActiveView === "today" || !currentActiveView) {
+          showView("today");
+        } else {
+          showView(currentActiveView);
+        }
+      }
+
+      // 啟動 Realtime 即時訂閱
+      subscribeRealtime(targetUid);
+
+      // 檢查在初始化期間是否有更新的帳號切換要求
+      if (pendingAuthTarget === targetUid) {
+        break; // 沒有新請求，順利結束
       }
     }
   } finally {
@@ -732,7 +752,7 @@ async function handleAuthFlow() {
   }
 }
 
-// 具備嚴格 Session Guard 與 await 後二次身分檢查的同步管線
+// 具有身分檢查與狀態擁有者防護的同步管線
 async function runSyncPipeline() {
   const currentSession = loginSessionId;
   const activeUser = currentUser;
@@ -750,13 +770,13 @@ async function runSyncPipeline() {
   try {
     // 1. 處理待刪除佇列
     while (S.pendingDeleteQueue.length > 0) {
-      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
+      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) break;
       const delId = S.pendingDeleteQueue[0];
       try {
         const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
         
-        // 關鍵防護：await 後再次確認身分
-        if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
+        // 嚴格身分二次檢查
+        if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) break;
         if (error) break;
 
         S.pendingDeleteQueue = S.pendingDeleteQueue.filter(id => id !== delId);
@@ -766,11 +786,11 @@ async function runSyncPipeline() {
       }
     }
 
-    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) return;
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
 
     // 2. 處理待新增佇列
     while (S.pendingSyncQueue.length > 0) {
-      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
+      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) break;
       const item = S.pendingSyncQueue[0];
       try {
         const { error } = await sbClient.from('diet_logs').upsert([{
@@ -787,8 +807,8 @@ async function runSyncPipeline() {
           logged_at: item.t
         }]);
 
-        // 關鍵防護：await 後再次確認身分
-        if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
+        // 嚴格身分二次檢查
+        if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) break;
         if (error) break;
 
         S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== item.id);
@@ -798,7 +818,7 @@ async function runSyncPipeline() {
       }
     }
 
-    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) return;
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
 
     // 3. 從雲端抓取最新日誌並智慧合併
     const { data, error } = await sbClient
@@ -807,8 +827,7 @@ async function runSyncPipeline() {
       .eq('user_id', activeUid)
       .order('logged_at', { ascending: true });
 
-    // 關鍵防護：await 後再次確認身分
-    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) return;
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
 
     if (!error && data) {
       const deletedIds = new Set(S.pendingDeleteQueue);
@@ -850,31 +869,35 @@ async function runSyncPipeline() {
       renderRecentFoods();
     }
 
-    // 4. 安全載入食品資料庫
     await loadCommunityFoods(currentSession, activeUid);
 
   } catch(e) {
     console.error("同步管線異常:", e);
   } finally {
     isSyncing = false;
-    // 獨立接續機制：若在同步期間有新請求，交給新一輪同步安全接手
     if (syncRequested && currentUser) {
       runSyncPipeline();
     }
   }
 }
 
-function subscribeRealtime() {
-  if (!sbClient || !currentUser || realtimeChannel) return;
+function subscribeRealtime(targetUid) {
+  if (!sbClient || !targetUid) return;
+  if (realtimeChannel) {
+    sbClient.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
   realtimeChannel = sbClient
-    .channel('diet_logs_changes_' + currentUser.id)
+    .channel('diet_logs_changes_' + targetUid)
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'diet_logs',
-      filter: `user_id=eq.${currentUser.id}`
+      filter: `user_id=eq.${targetUid}`
     }, () => {
-      runSyncPipeline();
+      if (currentUser && currentUser.id === targetUid) {
+        runSyncPipeline();
+      }
     })
     .subscribe();
 }
@@ -1027,10 +1050,16 @@ $("savePasswordBtn").onclick = async () => {
 };
 
 $("signOutBtn").onclick = async () => {
+  if (sbClient && realtimeChannel) {
+    sbClient.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
   if (sbClient) await sbClient.auth.signOut();
   currentUser = null;
-  loginSessionId = generateUUID(); // 作廢舊 Session
+  loginSessionId = generateUUID();
+  pendingAuthTarget = null;
   S = {
+    stateOwnerId: null,
     me: null,
     log: {},
     customFavorites: [],
@@ -1044,10 +1073,10 @@ $("signOutBtn").onclick = async () => {
 };
 
 async function loadServerConfig(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
-  if (!sbClient || !currentUser) return;
+  if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
   try {
     const { data } = await sbClient.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
-    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
     if (data && data.value) {
       S.geminiKey = data.value;
       save();
@@ -1056,10 +1085,10 @@ async function loadServerConfig(targetSession = loginSessionId, targetUid = (cur
 }
 
 async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
-  if (!sbClient) return;
+  if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
   try {
     const { data, error } = await sbClient.from('custom_foods').select('*');
-    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
 
     if (!error && data) {
       S.communityFoods = data.map(row => {
@@ -1612,6 +1641,7 @@ function renderMealSection(dateKey, isEditable = true) {
 }
 
 function renderToday() {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const T = sumList(S.log[today()] || []);
   const g = calc(S.me);
   const left = g.kcal - Math.round(T.k);
@@ -1628,6 +1658,7 @@ function renderToday() {
 }
 
 $("logByMeal").onclick = async e => {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const i = e.target.dataset.del;
   if (i === undefined) return;
   const removed = S.log[today()].splice(i, 1)[0];
@@ -1646,6 +1677,7 @@ $("logByMeal").onclick = async e => {
 };
 
 function renderMe() {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const t = calc(S.me);
   $("result").innerHTML = `
     <h2>${GN[S.me.goal]}：每日目標</h2>
@@ -1669,6 +1701,7 @@ function loadMe() {
 }
 
 $("saveMe").onclick = async () => {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const m = {
     goal: document.querySelector('[name=goal]:checked').value,
     sex: $("sex").value,
@@ -1853,6 +1886,7 @@ async function lookup(code) {
 }
 
 async function addLog(it, n) {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const mealKey = getSelectedMeal();
   const timeStr = new Date().toTimeString().slice(0, 5);
   const logId = generateUUID();
@@ -1891,6 +1925,7 @@ async function addLog(it, n) {
 }
 
 $("addBtn").onclick = async () => {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const n = +$("serv").value || 1;
   if (!curItem) return;
 
@@ -1900,7 +1935,7 @@ $("addBtn").onclick = async () => {
   if (sbClient && currentUser && curBarcode) {
     try {
       const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', curBarcode).maybeSingle();
-      if (!existing) {
+      if (!existing && currentUser && S.stateOwnerId === currentUser.id) {
         await sbClient.from('custom_foods').insert([{
           barcode: curBarcode,
           name: curItem.name,
@@ -1951,6 +1986,7 @@ $("photo").onchange = async e => {
 };
 
 $("saveNew").onclick = async () => {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const n = $("nName").value.trim();
   const k = +$("nK").value;
   const p = +$("nP").value || 0;
@@ -1968,7 +2004,7 @@ $("saveNew").onclick = async () => {
   if (sbClient && currentUser && curBarcode) {
     try {
       const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', curBarcode).maybeSingle();
-      if (!existing) {
+      if (!existing && currentUser && S.stateOwnerId === currentUser.id) {
         await sbClient.from('custom_foods').insert([{
           barcode: curBarcode,
           name: it.name,
