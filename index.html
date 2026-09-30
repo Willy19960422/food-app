@@ -456,7 +456,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
       <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
     </div>
-    <!-- 修正手動新增碳水 ID 為 mC -->
     <div class="row">
       <div><label>脂肪 (g)</label><input id="mF" type="number"></div>
       <div><label>碳水 (g)</label><input id="mC" type="number"></div>
@@ -1433,7 +1432,7 @@ $("foodSearch").oninput = () => {
   searchDebounceTimer = setTimeout(renderFoodList, 200);
 };
 
-// 食物庫確認加入（確保 100g 基準與份數基準換算公式正確，倍數保留精度）
+// 食物庫確認加入（倍數保留完整精度）
 $("cfAdd").onclick = () => {
   if (!chosenFood) return alert("請先選取食物");
   let finalServings = 1;
@@ -1454,7 +1453,7 @@ $("cfAdd").onclick = () => {
       return alert("此商品未提供每份重量基準，無法進行重量換算。");
     }
     logName = `${chosenFood.name} (${w}g)`;
-    finalServings = Math.round(multiplier * 100) / 100;
+    finalServings = multiplier; // 保留完整精度，不提早四捨五入
   }
 
   addLog({
@@ -1485,12 +1484,12 @@ $("mAdd").onclick = async () => {
   const subCat = $("mSubCat").value.trim().replace(/\s+/g, "") || "";
   const p = +$("mP").value || 0;
   const f = +$("mF").value || 0;
-  const c = +$("mC").value || 0; // 已修復為 mC
+  const c = +$("mC").value || 0;
   const basisType = $("mBasisType").value;
   const servingWeight = +$("mServingWeight").value || 0;
 
   const errMsg = validateNutrition(n, k, p, f, c);
-  if (errMsg) return alert("⚠️️ " + errMsg);
+  if (errMsg) return alert("⚠️ " + errMsg);
 
   addLog({ name: n, k, p, f, c }, 1);
 
@@ -1982,7 +1981,6 @@ $("lookBtn").onclick = () => {
   if (c) lookup(c);
 };
 
-// 恢復 Open Food Facts 外部公共庫查詢函式
 async function fetchOpenFoodFacts(barcode) {
   try {
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
@@ -2062,7 +2060,6 @@ async function lookup(code) {
   $("fInfo").textContent = `${it.basis || "每份"} ${it.k} 大卡・蛋白質 ${it.p} g・脂肪 ${it.f} g・碳水 ${it.c} g ${it.servingWeight ? `(每份 ${it.servingWeight}g)` : ''}`;
   $("fTag").textContent = `條碼：${curBarcode}`;
   
-  // 100g 基準商品直接開放重量模式，不強制要求 servingWeight
   const is100g = it.basisType === "100g";
   const hasWeight = it.servingWeight && it.servingWeight > 0;
   
@@ -2080,7 +2077,7 @@ async function lookup(code) {
   document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
 }
 
-// 掃描條碼加入紀錄：修復 100g 與 serving 換算公式及商品快照保護
+// 掃描條碼加入紀錄（倍數保留完整精度）
 $("addBtn").onclick = async () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   if (!curItem) return;
@@ -2108,7 +2105,7 @@ $("addBtn").onclick = async () => {
       return alert("此商品未提供每份重量基準，無法進行重量換算。");
     }
     logName = `${itemToSave.name} (${w}g)`;
-    finalServings = Math.round(multiplier * 100) / 100;
+    finalServings = multiplier; // 保留完整精度
   }
 
   addLog({
@@ -2149,7 +2146,7 @@ $("addBtn").onclick = async () => {
         loadCommunityFoods();
       }
     } catch(err) {
-      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
+      alert("⚠️️ 網路異常，商品分享至社群庫失敗。");
     }
   }
 
@@ -2235,13 +2232,14 @@ $("photo").onchange = async e => {
   }
 };
 
+// 掃不到條碼時新增商品：已修正正確讀取 nC 欄位
 $("saveNew").onclick = async () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const n = $("nName").value.trim();
   const k = +$("nK").value;
   const p = +$("nP").value || 0;
   const f = +$("nF").value || 0;
-  const c = +$("mC").value || 0; // 讀取正確的 mC 欄位
+  const c = +$("nC").value || 0; // 修正為正確的 nC
   const cat = $("nCat").value || "超商鮮食";
   const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
 
