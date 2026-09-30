@@ -530,7 +530,8 @@ let isSignUpMode = false;
 // 防競態與帳號批次追蹤標記
 let isSyncing = false;
 let syncRequested = false;
-let loginSessionId = null; // 登入批次識別碼，徹底防範切換帳號污染
+let loginSessionId = null; 
+let isHandlingAuth = false; // 初始化互斥鎖
 
 function getStorageKey() {
   return currentUser && currentUser.id ? `nutri_v3_${currentUser.id}` : `nutri_v3_guest`;
@@ -661,63 +662,77 @@ async function checkUser() {
   }
 }
 
+// 帶有互斥鎖與去重的統一初始化入口
 async function handleAuthFlow() {
-  // 每次登入或切換，發行全新唯一的 Session 識別碼，使舊的非同步回應失效
-  loginSessionId = generateUUID();
+  if (isHandlingAuth) return;
+  isHandlingAuth = true;
 
-  if (!currentUser) {
-    if (realtimeChannel && sbClient) {
-      sbClient.removeChannel(realtimeChannel);
-      realtimeChannel = null;
-    }
-    showOnlySection("p-auth");
-    $("bottomNav").classList.add("hide");
-    return;
-  }
+  try {
+    const currentSession = generateUUID();
+    loginSessionId = currentSession;
+    const activeUser = currentUser;
 
-  loadUserData();
-  $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
-  loadServerConfig();
-  
-  await runSyncPipeline();
-  subscribeRealtime();
-
-  if (!S.me) {
-    try {
-      const { data } = await sbClient.from('user_profiles').select('*').eq('user_id', currentUser.id).maybeSingle();
-      if (data) {
-        S.me = {
-          goal: data.goal,
-          sex: data.sex,
-          age: data.age,
-          ht: Number(data.height),
-          wt: Number(data.weight),
-          act: Number(data.activity)
-        };
-        save();
+    if (!activeUser) {
+      if (realtimeChannel && sbClient) {
+        sbClient.removeChannel(realtimeChannel);
+        realtimeChannel = null;
       }
-    } catch(e) {}
-  }
-
-  if (!S.me) {
-    showOnlySection("p-onboarding");
-    $("bottomNav").classList.add("hide");
-  } else {
-    $("bottomNav").classList.remove("hide");
-    loadMe();
-    renderSubCategoryBar();
-    renderFoodList();
-    renderToday();
-
-    if (currentActiveView === "today" || !currentActiveView) {
-      showView("today");
-    } else {
-      showView(currentActiveView);
+      showOnlySection("p-auth");
+      $("bottomNav").classList.add("hide");
+      return;
     }
+
+    loadUserData();
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUser.id) return;
+
+    $("userEmailTag").textContent = `目前登入信箱：${activeUser.email}`;
+    await loadServerConfig(currentSession, activeUser.id);
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUser.id) return;
+    
+    await runSyncPipeline();
+
+    if (!S.me) {
+      try {
+        const { data } = await sbClient.from('user_profiles').select('*').eq('user_id', activeUser.id).maybeSingle();
+        if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUser.id) return;
+        if (data) {
+          S.me = {
+            goal: data.goal,
+            sex: data.sex,
+            age: data.age,
+            ht: Number(data.height),
+            wt: Number(data.weight),
+            act: Number(data.activity)
+          };
+          save();
+        }
+      } catch(e) {}
+    }
+
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUser.id) return;
+
+    if (!S.me) {
+      showOnlySection("p-onboarding");
+      $("bottomNav").classList.add("hide");
+    } else {
+      $("bottomNav").classList.remove("hide");
+      loadMe();
+      renderSubCategoryBar();
+      renderFoodList();
+      renderToday();
+
+      if (currentActiveView === "today" || !currentActiveView) {
+        showView("today");
+      } else {
+        showView(currentActiveView);
+      }
+    }
+  } finally {
+    isHandlingAuth = false;
   }
 }
 
-// 完美防護的同步管線：Session Guard + 精確 ID 移除 + 續跑機制
+// 具備嚴格 Session Guard 與 await 後二次身分檢查的同步管線
 async function runSyncPipeline() {
   const currentSession = loginSessionId;
   const activeUser = currentUser;
@@ -730,18 +745,20 @@ async function runSyncPipeline() {
 
   isSyncing = true;
   syncRequested = false;
-
   const activeUid = activeUser.id;
 
   try {
-    // 1. 逐筆處理待刪除佇列（依精確 ID 移除，絕不使用 shift()）
+    // 1. 處理待刪除佇列
     while (S.pendingDeleteQueue.length > 0) {
       if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
       const delId = S.pendingDeleteQueue[0];
       try {
         const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
+        
+        // 關鍵防護：await 後再次確認身分
+        if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
         if (error) break;
-        // 確保精確移除該 ID
+
         S.pendingDeleteQueue = S.pendingDeleteQueue.filter(id => id !== delId);
         save();
       } catch(err) {
@@ -751,7 +768,7 @@ async function runSyncPipeline() {
 
     if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) return;
 
-    // 2. 逐筆處理待新增佇列（依精確 ID 移除，嚴格防範 shift() 索引錯亂）
+    // 2. 處理待新增佇列
     while (S.pendingSyncQueue.length > 0) {
       if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
       const item = S.pendingSyncQueue[0];
@@ -769,8 +786,11 @@ async function runSyncPipeline() {
           carbs: item.c,
           logged_at: item.t
         }]);
+
+        // 關鍵防護：await 後再次確認身分
+        if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
         if (error) break;
-        // 嚴格依確切 ID 過濾移除，絕不誤砍
+
         S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== item.id);
         save();
       } catch(err) {
@@ -787,6 +807,7 @@ async function runSyncPipeline() {
       .eq('user_id', activeUid)
       .order('logged_at', { ascending: true });
 
+    // 關鍵防護：await 後再次確認身分
     if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) return;
 
     if (!error && data) {
@@ -829,15 +850,15 @@ async function runSyncPipeline() {
       renderRecentFoods();
     }
 
-    // 4. 安全載入食品資料庫（含 Session Guard）
+    // 4. 安全載入食品資料庫
     await loadCommunityFoods(currentSession, activeUid);
 
   } catch(e) {
     console.error("同步管線異常:", e);
   } finally {
     isSyncing = false;
-    // 如果在同步過程中又有新操作進來且帳號未變動，自動安全接續下一輪
-    if (syncRequested && loginSessionId === currentSession && currentUser && currentUser.id === activeUid) {
+    // 獨立接續機制：若在同步期間有新請求，交給新一輪同步安全接手
+    if (syncRequested && currentUser) {
       runSyncPipeline();
     }
   }
@@ -1008,7 +1029,7 @@ $("savePasswordBtn").onclick = async () => {
 $("signOutBtn").onclick = async () => {
   if (sbClient) await sbClient.auth.signOut();
   currentUser = null;
-  loginSessionId = generateUUID(); // 立刻作廢舊 Session
+  loginSessionId = generateUUID(); // 作廢舊 Session
   S = {
     me: null,
     log: {},
@@ -1022,12 +1043,11 @@ $("signOutBtn").onclick = async () => {
   handleAuthFlow();
 };
 
-async function loadServerConfig() {
+async function loadServerConfig(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
   if (!sbClient || !currentUser) return;
-  const targetSession = loginSessionId;
   try {
     const { data } = await sbClient.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
-    if (loginSessionId !== targetSession) return; // 檢查 Session Guard
+    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
     if (data && data.value) {
       S.geminiKey = data.value;
       save();
@@ -1039,7 +1059,6 @@ async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (c
   if (!sbClient) return;
   try {
     const { data, error } = await sbClient.from('custom_foods').select('*');
-    // 回應回來後嚴格檢驗 Session 與帳號是否依舊相符
     if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
 
     if (!error && data) {
