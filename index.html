@@ -33,12 +33,16 @@
   --bg:#0D1715;--card:#162421;--ink:#E6F2EE;--mute:#8DAAA2;--line:#223631;
   --brand:#4FC3AB;--brand-light:#132E28;--on:#081F1A
 }
+:root[data-theme="light"]{
+  --bg:#F4F7F5;--card:#FFFFFF;--ink:#142823;--mute:#647C75;--line:#E2ECE8;
+  --brand:#0F5C4F;--brand-light:#E6F3F0;--on:#FFFFFF
+}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans TC",system-ui,sans-serif;padding-bottom:76px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans TC",system-ui,sans-serif;padding-bottom:76px;transition:background .2s,color .2s}
 main{max-width:520px;margin:0 auto;padding:16px}
 h1{font-size:22px;margin:4px 0 12px;font-weight:700}h2{font-size:17px;margin:0 0 10px;font-weight:700}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 6px rgba(0,0,0,0.03)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 6px rgba(0,0,0,0.03);transition:background .2s,border-color .2s}
 .big{font-size:34px;font-weight:700;line-height:1.1}.mute{color:var(--mute);font-size:13px}
 .bar{margin:10px 0}.bar .t{display:flex;justify-content:space-between;font-size:14px}
 .track{height:9px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:4px}
@@ -57,7 +61,7 @@ button.sm{width:auto;margin:0;padding:5px 12px;font-size:13px}
 #reader{width:100%;border-radius:12px;overflow:hidden}
 .item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .item:last-child{border:0}
-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:99}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:99;transition:background .2s,border-color .2s}
 nav button{margin:0;border-radius:0;background:transparent;color:var(--mute);padding:14px 0}
 nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--brand)}
 .tag{font-size:13px;color:var(--brand);margin-top:4px}.hide{display:none !important}.msg{color:var(--warn);font-size:14px;margin-top:8px}
@@ -100,6 +104,12 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .segmented button{margin-top:0;padding:9px 0;background:var(--bg);color:var(--mute);border:1px solid var(--line)}
 .segmented button.active{background:var(--brand);color:var(--on);font-weight:700;border-color:var(--brand)}
 
+/* 主題外觀切換選單 */
+.theme-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.theme-options label{margin:0;padding:10px 0;text-align:center;border:1px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;background:var(--bg);color:var(--ink)}
+.theme-options input{display:none}
+.theme-options label:has(input:checked){border-color:var(--brand);background:var(--brand);color:var(--on);font-weight:700}
+
 .meal-block{border-top:1px solid var(--line);padding:12px 0 6px}
 .meal-block:first-of-type{border-top:none;padding-top:0}
 .meal-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
@@ -107,7 +117,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .meal-summary{font-size:13px;color:var(--mute)}
 .empty-meal{font-size:13px;color:var(--mute);padding:6px 0}
 
+/* 登入介面與 LOGO 樣式 */
 .auth-hero{text-align:center;padding:24px 0 12px}
+.auth-logo{width:76px;height:76px;border-radius:18px;box-shadow:0 4px 14px rgba(15,92,79,0.2);margin-bottom:12px;object-fit:cover;display:inline-block}
 .auth-hero h1{font-size:26px;color:var(--brand);margin-bottom:4px}
 .auth-hero p{color:var(--mute);margin:0;font-size:15px}
 .auth-msg{font-size:13px;color:var(--warn);margin-top:8px;min-height:20px;text-align:center}
@@ -126,9 +138,10 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 </head>
 <body>
 <main>
-<!-- 1. 登入/註冊頁面 -->
+<!-- 1. 登入/註冊頁面 (帶 LOGO) -->
 <section id="p-auth">
   <div class="auth-hero">
+    <img src="icon-192.png" alt="食養紀錄 LOGO" class="auth-logo">
     <h1>食養紀錄</h1>
     <p>智慧掃描 · 精準分類 · 飲食目標管理</p>
   </div>
@@ -144,9 +157,10 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 2. 初次設定目標頁面 -->
+<!-- 2. 初次設定目標頁面 (帶 LOGO) -->
 <section id="p-onboarding" class="hide">
   <div class="auth-hero">
+    <img src="icon-192.png" alt="食養紀錄 LOGO" class="auth-logo">
     <h1>設定個人目標</h1>
     <p>計算您的基礎代謝率與每日消耗量</p>
   </div>
@@ -352,11 +366,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     
     <div class="row">
       <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
-      <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
+      <div><label>蛋白質 (g)</label><input id="nP" type="number"></div>
     </div>
     <div class="row">
-      <div><label>脂肪 (g)</label><input id="mF" type="number"></div>
-      <div><label>碳水 (g)</label><input id="mC" type="number"></div>
+      <div><label>脂肪 (g)</label><input id="nF" type="number"></div>
+      <div><label>碳水 (g)</label><input id="nC" type="number"></div>
     </div>
 
     <label class="check-inline">
@@ -379,6 +393,17 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 <!-- 8. 個人設定頁 -->
 <section id="p-me" class="hide">
   <h1>我的設定與目標</h1>
+
+  <!-- 外觀主題切換卡片 -->
+  <div class="card">
+    <h2>外觀主題模式</h2>
+    <div class="theme-options" id="themeGroup">
+      <label><input type="radio" name="appTheme" value="system" checked><span>跟隨系統</span></label>
+      <label><input type="radio" name="appTheme" value="light"><span>淺色模式</span></label>
+      <label><input type="radio" name="appTheme" value="dark"><span>深色模式</span></label>
+    </div>
+  </div>
+
   <div class="card">
     <h2>雲端帳號</h2>
     <div id="userEmailTag" style="font-weight:700;margin-bottom:12px"></div>
@@ -431,7 +456,8 @@ let S = {
   customFavorites: [],
   communityFoods: [],
   pendingSyncQueue: [],
-  geminiKey: ""
+  geminiKey: "",
+  theme: "system"
 };
 
 try {
@@ -445,6 +471,7 @@ try {
 if (!S.customFavorites) S.customFavorites = [];
 if (!S.communityFoods) S.communityFoods = [];
 if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
+if (!S.theme) S.theme = "system";
 
 const save = () => { try { localStorage.setItem("nutri_v3", JSON.stringify(S)); } catch(e){} };
 const esc = t => String(t || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -477,7 +504,7 @@ let chosenFood = null;
 let isScanCoolingDown = false;
 let searchDebounceTimer = null;
 
-// 二級細節分類對照表（四大超商與標準情境）
+// 二級細節分類對照表
 const SUB_CAT_MAP = {
   "all": ["全部子類"],
   "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "萊爾富鮮食", "OK超商鮮食"],
@@ -487,10 +514,27 @@ const SUB_CAT_MAP = {
   "我的常用": ["全部"]
 };
 
+// 主題模式管理
+function applyTheme(mode) {
+  S.theme = mode;
+  save();
+  const root = document.documentElement;
+  if (mode === "dark") {
+    root.setAttribute("data-theme", "dark");
+  } else if (mode === "light") {
+    root.setAttribute("data-theme", "light");
+  } else {
+    root.removeAttribute("data-theme");
+  }
+
+  const radio = document.querySelector(`input[name="appTheme"][value="${mode}"]`);
+  if (radio) radio.checked = true;
+}
+
 // 註冊 Service Worker (PWA 支援)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW註冊失敗:', err));
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
 
@@ -857,7 +901,6 @@ function renderSubCategoryBar() {
   currentSubCat = "all";
 }
 
-/* 核心篩選函式：精準分類與關鍵字篩選 */
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
@@ -866,12 +909,10 @@ function renderFoodList() {
   const allFoods = getCombinedFoodList();
 
   const filtered = allFoods.filter(item => {
-    // 1. 一級情境分類比對
     const matchMain = (currentMainCat === "all") 
       ? true 
       : (currentMainCat === "我的常用" ? item.isFav : (item.cat === currentMainCat || (currentMainCat === "超商鮮食" && (item.name.includes("7-11") || item.name.includes("全家") || item.name.includes("萊爾富") || item.name.includes("OK")))));
 
-    // 2. 二級細節分類比對
     let matchSub = true;
     if (currentSubCat !== "all") {
       const target = currentSubCat.replace(/\s+/g, "");
@@ -879,7 +920,7 @@ function renderFoodList() {
       const itemName = (item.name || "").replace(/\s+/g, "");
 
       if (currentMainCat === "超商鮮食") {
-        const brandKey = target.replace("鮮食", ""); // "7-11", "全家", "萊爾富", "OK"
+        const brandKey = target.replace("鮮食", "");
         matchSub = itemSub.includes(target) || 
                    itemSub.includes(brandKey) || 
                    itemName.includes(brandKey);
@@ -888,7 +929,6 @@ function renderFoodList() {
       }
     }
 
-    // 3. 關鍵字搜尋比對
     const matchSearch = !keyword ? true : (item.name.toLowerCase().includes(keyword) || (item.subCat && item.subCat.toLowerCase().includes(keyword)));
 
     return matchMain && matchSub && matchSearch;
@@ -968,7 +1008,7 @@ function enableDesktopDragScroll(el) {
     isDown = true;
     isDragging = false;
     startX = e.pageX - el.offsetLeft;
-    scrollLeft = el.scrollLeft;
+    scrollLeft = e.scrollLeft;
   });
   window.addEventListener("mouseup", () => {
     if (isDown) {
@@ -1348,6 +1388,13 @@ $("saveMe").onclick = async () => {
   alert("個人目標已更新！");
 };
 
+// 外觀主題監聽切換
+$("themeGroup").onchange = e => {
+  if (e.target && e.target.name === "appTheme") {
+    applyTheme(e.target.value);
+  }
+};
+
 const fileToBase64 = f => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(r.result.split(",")[1]);
@@ -1397,7 +1444,6 @@ $("startBtn").onclick = async () => {
   qr = qr || new Html5Qrcode("reader");
   try {
     await qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 140 } }, code => {
-      // 條碼防抖：1.5 秒冷卻時間避免重複連續查詢
       if (isScanCoolingDown) return;
       isScanCoolingDown = true;
       setTimeout(() => { isScanCoolingDown = false; }, 1500);
@@ -1736,6 +1782,7 @@ $("hDays").onclick = e => {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
+  applyTheme(S.theme || "system");
   initSupabase();
   enableDesktopDragScroll($("mainCatBar"));
   enableDesktopDragScroll($("subCatBar"));
