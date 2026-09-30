@@ -12,7 +12,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="食養紀錄">
 <link rel="apple-touch-icon" href="icon-192.png">
-<!-- 加入網站 Favicon 圖示 -->
+
+<!-- 瀏覽器分頁 Favicon (解決灰色地球圖示) -->
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="shortcut icon" href="icon-192.png">
 
@@ -138,8 +139,14 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .serving-chip{flex:1;text-align:center;padding:7px 0;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink);font-weight:500}
 .serving-chip.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700}
 
-/* 修改密碼折疊盒 */
-.pwd-box{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+/* 最近吃過晶片標籤樣式 */
+.recent-chips-box{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-top:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.recent-chips-box::-webkit-scrollbar{display:none}
+.recent-chip{width:auto;white-space:nowrap;padding:5px 12px;font-size:13px;border-radius:18px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;font-weight:500}
+.recent-chip:active{background:var(--brand-light);border-color:var(--brand)}
+
+/* 折疊盒樣式 */
+.fold-box{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -154,9 +161,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card">
     <h2 id="authTitle">登入您的帳號</h2>
     <label>Email 信箱</label>
-    <input id="authEmail" type="email" placeholder="請輸入帳號" autocomplete="email">
+    <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="email">
     <label>密碼</label>
-    <input id="authPass" type="password" placeholder="請輸入密碼" autocomplete="current-password">
+    <input id="authPass" type="password" placeholder="密碼至少 6 碼" autocomplete="current-password">
     <button id="authPrimaryBtn"><span>立即登入</span></button>
     <button class="ghost" id="authToggleBtn">還沒有帳號？點此註冊</button>
     <div id="authErrMsg" class="auth-msg"></div>
@@ -206,7 +213,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 4. 新增入口 -->
+<!-- 4. 新增入口 (整合最近吃過與快速熱量) -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -218,13 +225,36 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <label><input type="radio" name="addMeal" value="snack"><span>點心</span></label>
     </div>
 
+    <!-- 最近吃過品項晶片列 -->
+    <div id="recentFoodsSection" class="hide" style="margin-bottom:14px">
+      <label style="margin:0 0 4px">最近吃過（點擊帶入）：</label>
+      <div class="recent-chips-box" id="recentChips"></div>
+    </div>
+
     <button class="ghost" id="copyYesterdayMealBtn" style="margin-top:0;margin-bottom:12px">複製昨日這餐所有品項</button>
 
     <button id="navToCamBtn" style="margin-top:0">相機辨識</button>
     <div class="mute">掃描條碼 或 拍攝整盤餐點智慧估算</div>
     <button id="navToListBtn">食物庫與手動輸入</button>
     <div class="mute">快速挑選分類食物 或 建立社群共享品項</div>
-    <button class="ghost" data-gotoday>返回今日</button>
+    
+    <!-- 快速熱量折疊區 -->
+    <button class="ghost" id="toggleQuickKcalBtn" style="margin-top:14px">⚡ 快速自訂熱量</button>
+    <div id="boxQuickKcal" class="fold-box hide">
+      <div class="row">
+        <div>
+          <label style="margin-top:0">熱量 (大卡)</label>
+          <input id="qkKcal" type="number" placeholder="例如 150">
+        </div>
+        <div>
+          <label style="margin-top:0">品項名稱（選填）</label>
+          <input id="qkName" placeholder="快速熱量">
+        </div>
+      </div>
+      <button id="qkAddBtn" style="margin-top:10px">確認計入這餐</button>
+    </div>
+
+    <button class="ghost" data-gotoday style="margin-top:12px">返回今日</button>
   </div>
 </section>
 
@@ -396,7 +426,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card"><h2>最近紀錄</h2><div id="hDays"></div></div>
 </section>
 
-<!-- 8. 個人設定頁 (全新規劃順序) -->
+<!-- 8. 個人設定頁 (修改目標 -> 每日目標試算 -> 外觀主題 -> 帳號管理) -->
 <section id="p-me" class="hide">
   <h1>設定</h1>
 
@@ -426,7 +456,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <button id="saveMe">更新目標</button>
   </div>
 
-  <!-- 順序 2：XX：每日目標 (試算結果卡片) -->
+  <!-- 順序 2：XX：每日目標 (試算卡片) -->
   <div class="card" id="result"></div>
 
   <!-- 順序 3：外觀主題 -->
@@ -446,7 +476,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     
     <button class="ghost" id="togglePwdBtn" style="margin-top:0;margin-bottom:8px">修改登入密碼</button>
 
-    <div id="pwdFormBox" class="pwd-box hide">
+    <div id="pwdFormBox" class="fold-box hide">
       <label style="margin-top:0">新密碼</label>
       <input id="newPasswordInput" type="password" placeholder="請輸入至少 6 碼新密碼" autocomplete="new-password">
       <button id="savePasswordBtn">確認變更密碼</button>
@@ -857,6 +887,7 @@ async function syncLogsFromSupabase() {
       });
       save();
       renderToday();
+      renderRecentFoods();
     }
   } catch(e) {
     console.error("同步失敗:", e);
@@ -1195,6 +1226,85 @@ $("mAdd").onclick = async () => {
   showView("today");
 };
 
+// 產生「最近吃過」清單
+function renderRecentFoods() {
+  const recentSection = $("recentFoodsSection");
+  const chipContainer = $("recentChips");
+  if (!recentSection || !chipContainer) return;
+
+  const allRecentItems = [];
+  const seenNames = new Set();
+  const sortedDates = Object.keys(S.log || {}).sort().reverse();
+
+  for (const d of sortedDates) {
+    const dayItems = (S.log[d] || []).slice().reverse();
+    for (const item of dayItems) {
+      if (!seenNames.has(item.name)) {
+        seenNames.add(item.name);
+        allRecentItems.push(item);
+      }
+      if (allRecentItems.length >= 8) break;
+    }
+    if (allRecentItems.length >= 8) break;
+  }
+
+  if (!allRecentItems.length) {
+    recentSection.classList.add("hide");
+    return;
+  }
+
+  recentSection.classList.remove("hide");
+  chipContainer.innerHTML = allRecentItems.map((item, idx) => `
+    <div class="recent-chip" data-ridx="${idx}">
+      ${esc(item.name)} (${item.k}k)
+    </div>
+  `).join("");
+
+  chipContainer.querySelectorAll(".recent-chip").forEach(el => {
+    el.onclick = () => {
+      const idx = el.dataset.ridx;
+      const target = allRecentItems[idx];
+      if (target) {
+        addLog({
+          name: target.name,
+          k: target.k,
+          p: target.p,
+          f: target.f,
+          c: target.c
+        }, 1);
+        showView("today");
+      }
+    };
+  });
+}
+
+// 快速熱量功能操作
+$("toggleQuickKcalBtn").onclick = () => {
+  $("boxQuickKcal").classList.toggle("hide");
+  if (!$("boxQuickKcal").classList.contains("hide")) {
+    $("qkKcal").focus();
+  }
+};
+
+$("qkAddBtn").onclick = () => {
+  const kcalVal = +$("qkKcal").value;
+  if (!kcalVal || kcalVal <= 0) return alert("請輸入有效的熱量數值！");
+  const nameVal = $("qkName").value.trim() || "快速熱量";
+
+  addLog({
+    name: nameVal,
+    k: kcalVal,
+    p: 0,
+    f: 0,
+    c: 0
+  }, 1);
+
+  $("qkKcal").value = "";
+  $("qkName").value = "";
+  $("boxQuickKcal").classList.add("hide");
+  showView("today");
+};
+
 $("copyYesterdayMealBtn").onclick = async () => {
   const currentMeal = getSelectedMeal();
   const yDayLogs = S.log[yesterday()] || [];
@@ -1237,6 +1347,7 @@ function showView(v) {
 
   if (v !== "cam") stopScan();
   if (v === "today") renderToday();
+  if (v === "add") renderRecentFoods();
   if (v === "list") renderFoodList();
   if (v === "hist") {
     if (!$("hDate").value) $("hDate").value = today();
