@@ -25,8 +25,8 @@ h1{font-size:22px;margin:4px 0 12px}h2{font-size:17px;margin:0 0 10px}
 label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 input,select{width:100%;padding:11px 12px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-button{font:inherit;font-weight:500;padding:12px 16px;border-radius:10px;border:0;background:var(--brand);color:var(--on);width:100%;margin-top:12px;cursor:pointer}
-button:disabled{opacity:0.6;cursor:not-allowed}
+button{font:inherit;font-weight:500;padding:12px 16px;border-radius:10px;border:0;background:var(--brand);color:var(--on);width:100%;margin-top:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+button:disabled{opacity:0.65;cursor:not-allowed}
 button.ghost{background:transparent;color:var(--brand);border:1px solid var(--brand)}
 button.sm{width:auto;margin:0;padding:4px 10px;font-size:13px}
 .goals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -65,11 +65,12 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .check-inline{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:var(--ink);cursor:pointer}
 .check-inline input{width:auto;margin:0}
 
+/* 專業轉圈 Loading 動畫樣式 */
 .loading-box{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 0;font-size:14px;color:var(--brand);font-weight:500}
 .spinner{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin 0.8s linear infinite}
+.spinner-btn{width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* 分類橫向滑動列（電腦滑鼠支援拖曳與游標提示） */
 .cat-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;scrollbar-width:none}
 .cat-scroll::-webkit-scrollbar{display:none}
 .cat-scroll.dragging{cursor:grabbing}
@@ -101,7 +102,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="email">
     <label>密碼</label>
     <input id="authPass" type="password" placeholder="密碼至少 6 碼" autocomplete="current-password">
-    <button id="authPrimaryBtn">立即登入</button>
+    <button id="authPrimaryBtn"><span>立即登入</span></button>
     <button class="ghost" id="authToggleBtn">還沒有帳號？點此註冊</button>
     <div id="authErrMsg" class="auth-msg"></div>
   </div>
@@ -188,7 +189,8 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <input id="shot" type="file" accept="image/*" capture="environment" class="hide">
       <label>或手動輸入條碼</label>
       <input id="manual" inputmode="numeric" placeholder="例如 4710088410009">
-      <button class="ghost" id="lookBtn">查詢條碼</button>
+      <button class="ghost" id="lookBtn"><span>查詢條碼</span></button>
+      <div class="loading-box hide" id="scanLoading"><div class="spinner"></div></div>
       <div class="msg" id="scanMsg"></div>
     </div>
     <div class="card hide" id="found">
@@ -211,7 +213,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div class="mute">可手動輸入，或拍攝包裝營養標示自動填入（將貢獻至共享庫）。</div>
       <button class="ghost" id="photoBtn">拍營養標示，自動填寫</button>
       <input id="photo" type="file" accept="image/*" capture="environment" class="hide">
-      <div id="photoLoading" class="loading-box hide"><div class="spinner"></div><span>正在辨識營養標示…</span></div>
+      <div id="photoLoading" class="loading-box hide"><div class="spinner"></div></div>
       <label>所屬分類</label>
       <select id="nCat">
         <option value="超商鮮食">超商鮮食</option>
@@ -242,7 +244,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <div class="mute">拍攝餐點，自動分析盤中食材並預估熱量（僅存入個人日誌，不污染公共庫）。</div>
       <button id="mealBtn">拍攝或上傳餐點照片</button>
       <input id="mealPic" type="file" accept="image/*" capture="environment" class="hide">
-      <div id="mealLoading" class="loading-box hide"><div class="spinner"></div><span>正在分析餐點食材與熱量…</span></div>
+      <div id="mealLoading" class="loading-box hide"><div class="spinner"></div></div>
       <div id="estList" style="margin-top:12px"></div>
       <button class="hide" id="estAdd">加入選取項目至紀錄</button>
       <div class="msg" id="mealMsg"></div>
@@ -262,7 +264,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div id="boxSelectFood" class="card">
     <input id="foodSearch" placeholder="搜尋食物名稱（例如：雞胸肉、飯糰）" style="margin-bottom:10px">
     
-    <!-- 分類橫向滑動列（支援滑鼠滾輪與按住拖曳） -->
     <div class="cat-scroll" id="catBar">
       <button class="cat-btn active" data-cat="all">全部</button>
       <button class="cat-btn" data-cat="我的常用">我的常用</button>
@@ -548,34 +549,51 @@ function showOnlySection(secId) {
 $("authToggleBtn").onclick = () => {
   isSignUpMode = !isSignUpMode;
   $("authTitle").textContent = isSignUpMode ? "註冊新帳號" : "登入您的帳號";
-  $("authPrimaryBtn").textContent = isSignUpMode ? "立即註冊" : "立即登入";
+  $("authPrimaryBtn").innerHTML = `<span>${isSignUpMode ? "立即註冊" : "立即登入"}</span>`;
   $("authToggleBtn").textContent = isSignUpMode ? "已有帳號？點此登入" : "還沒有帳號？點此註冊";
   $("authErrMsg").textContent = "";
 };
 
+/* 登入／註冊：按鈕轉圈 Loading 模式，杜絕生硬文字 */
 $("authPrimaryBtn").onclick = async () => {
-  if (!sbClient) return alert("連線尚未準備好，請稍候重試");
+  if (!sbClient) return;
   const email = $("authEmail").value.trim(), password = $("authPass").value.trim();
   if (!email || !password) {
     $("authErrMsg").textContent = "請輸入 Email 與密碼";
     return;
   }
-  $("authErrMsg").textContent = "連線驗證中…";
+  
+  $("authErrMsg").textContent = "";
+  const btn = $("authPrimaryBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner-btn"></div>`;
 
-  if (isSignUpMode) {
-    const { data, error } = await sbClient.auth.signUp({ email, password });
-    if (error) $("authErrMsg").textContent = "註冊失敗：" + error.message;
-    else {
-      currentUser = data.user;
-      handleAuthFlow();
+  try {
+    if (isSignUpMode) {
+      const { data, error } = await sbClient.auth.signUp({ email, password });
+      if (error) {
+        $("authErrMsg").textContent = "註冊失敗：" + error.message;
+        btn.disabled = false;
+        btn.innerHTML = `<span>立即註冊</span>`;
+      } else {
+        currentUser = data.user;
+        handleAuthFlow();
+      }
+    } else {
+      const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        $("authErrMsg").textContent = "登入失敗：" + error.message;
+        btn.disabled = false;
+        btn.innerHTML = `<span>立即登入</span>`;
+      } else {
+        currentUser = data.user;
+        handleAuthFlow();
+      }
     }
-  } else {
-    const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
-    if (error) $("authErrMsg").textContent = "登入失敗：" + error.message;
-    else {
-      currentUser = data.user;
-      handleAuthFlow();
-    }
+  } catch(e) {
+    $("authErrMsg").textContent = "網路異常，請稍後重試";
+    btn.disabled = false;
+    btn.innerHTML = `<span>${isSignUpMode ? "立即註冊" : "立即登入"}</span>`;
   }
 };
 
@@ -807,12 +825,10 @@ function bindChipGroup(groupId, inputId) {
 bindChipGroup("servChips", "serv");
 bindChipGroup("cfChips", "cfN");
 
-/* 電腦端滑鼠滾輪與按住拖曳支援 */
 function setupCatBarDesktopScroll() {
   const catBar = $("catBar");
   if (!catBar) return;
 
-  // 1. 滑鼠滾輪轉為橫向滑動
   catBar.addEventListener("wheel", e => {
     if (e.deltaY !== 0) {
       e.preventDefault();
@@ -820,7 +836,6 @@ function setupCatBarDesktopScroll() {
     }
   }, { passive: false });
 
-  // 2. 滑鼠點住拖曳 (Drag-to-scroll)
   let isDown = false;
   let startX = 0;
   let scrollLeft = 0;
@@ -851,7 +866,6 @@ function setupCatBarDesktopScroll() {
     catBar.scrollLeft = scrollLeft - walk;
   });
 
-  // 避免拖曳放開時誤觸按鈕點擊
   catBar.addEventListener("click", e => {
     if (isDragging) {
       e.stopPropagation();
@@ -1245,7 +1259,7 @@ function stopScan() {
 
 $("startBtn").onclick = async () => {
   if (qr && qr.isScanning) { stopScan(); return; }
-  if (typeof Html5Qrcode === "undefined") { $("scanMsg").textContent = "掃描元件載入失敗，請手動輸入條碼。"; return; }
+  if (typeof Html5Qrcode === "undefined") return;
   qr = qr || new Html5Qrcode("reader");
   try {
     await qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 260, height: 140 } }, code => {
@@ -1263,16 +1277,19 @@ $("shotBtn").onclick = () => $("shot").click();
 $("shot").onchange = async e => {
   const f = e.target.files[0];
   if (!f) return;
-  if (typeof Html5Qrcode === "undefined") return alert("掃描元件載入失敗");
-  $("scanMsg").textContent = "讀取條碼中…";
+  if (typeof Html5Qrcode === "undefined") return;
+  $("scanLoading").classList.remove("hide");
+  $("scanMsg").textContent = "";
   try {
     qr = qr || new Html5Qrcode("reader");
     const code = await qr.scanFile(f, false);
     lookup(cleanBarcode(code));
   } catch(err) {
     $("scanMsg").textContent = "讀不到條碼，請重拍或手動輸入。";
+  } finally {
+    $("scanLoading").classList.add("hide");
+    e.target.value = "";
   }
-  e.target.value = "";
 };
 
 $("lookBtn").onclick = () => {
@@ -1302,7 +1319,8 @@ async function fetchOpenFoodFacts(barcode) {
 
 async function lookup(code) {
   curBarcode = cleanBarcode(code);
-  $("scanMsg").textContent = "查詢中：" + curBarcode;
+  $("scanLoading").classList.remove("hide");
+  $("scanMsg").textContent = "";
   let it = null, source = "";
 
   if (sbClient) {
@@ -1320,17 +1338,16 @@ async function lookup(code) {
     if (it) source = "Open Food Facts 公共庫";
   }
 
+  $("scanLoading").classList.add("hide");
   curItem = it;
   $("found").classList.toggle("hide", !it);
   $("newForm").classList.toggle("hide", !!it);
 
   if (!it) {
-    $("scanMsg").textContent = "社群庫無此商品，請拍照或手動填寫。";
     $("nName").value = ""; $("nK").value = ""; $("nP").value = ""; $("nF").value = ""; $("nC").value = "";
     return;
   }
 
-  $("scanMsg").textContent = "";
   $("fSrc").textContent = source;
   $("fName").textContent = it.name;
   $("fInfo").textContent = `${it.basis || "每份"} ${it.k} 大卡・蛋白質 ${it.p} g・脂肪 ${it.f} g・碳水 ${it.c} g`;
@@ -1448,9 +1465,8 @@ $("photo").onchange = async e => {
     $("nP").value = r.p || 0;
     $("nF").value = r.f || 0;
     $("nC").value = r.c || 0;
-    $("scanMsg").textContent = "已自動填入，請確認數值。";
   } catch(err) {
-    $("scanMsg").textContent = "辨識失敗：" + err.message;
+    $("scanMsg").textContent = "辨識失敗，請重試或手動輸入";
   } finally {
     $("photoLoading").classList.add("hide");
     $("photoBtn").disabled = false;
@@ -1542,9 +1558,9 @@ $("mealPic").onchange = async e => {
       on: true
     }));
     showEst();
-    $("mealMsg").textContent = EST.length ? "分析完成，可調整熱量後加入紀錄。" : "未能辨識出餐點內容。";
+    if (!EST.length) $("mealMsg").textContent = "未能辨識出餐點內容";
   } catch(err) {
-    $("mealMsg").textContent = "分析失敗：" + err.message;
+    $("mealMsg").textContent = "分析失敗，請重試";
   } finally {
     $("mealLoading").classList.add("hide");
     $("mealBtn").disabled = false;
@@ -1580,7 +1596,7 @@ $("hDays").onclick = e => {
 
 window.addEventListener("DOMContentLoaded", () => {
   initSupabase();
-  setupCatBarDesktopScroll(); // 啟用電腦端滾動與拖曳
+  setupCatBarDesktopScroll();
 });
 </script>
 </body>
