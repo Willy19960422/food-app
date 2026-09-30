@@ -53,19 +53,19 @@ nav button{margin:0;border-radius:0;background:transparent;color:var(--mute);pad
 nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--brand)}
 .tag{font-size:13px;color:var(--brand);margin-top:4px}.hide{display:none !important}.msg{color:var(--warn);font-size:14px;margin-top:8px}
 
-/* 一級主分類標籤（大膠囊） */
+/* 一級主分類標籤 */
 .main-cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;scrollbar-width:none}
 .main-cat-scroll::-webkit-scrollbar{display:none}
 .main-cat-btn{width:auto;white-space:nowrap;padding:7px 14px;font-size:14px;border-radius:22px;border:1px solid var(--line);background:var(--bg);color:var(--mute);margin:0;font-weight:500}
 .main-cat-btn.active{background:var(--brand);color:var(--on);border-color:var(--brand);font-weight:700;box-shadow:0 2px 6px rgba(15,92,79,0.25)}
 
-/* 二級子分類標籤（小膠囊） */
+/* 二級子分類標籤 */
 .sub-cat-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;scrollbar-width:none}
 .sub-cat-scroll::-webkit-scrollbar{display:none}
 .sub-cat-btn{width:auto;white-space:nowrap;padding:4px 10px;font-size:12px;border-radius:14px;border:1px dashed var(--line);background:transparent;color:var(--mute);margin:0}
 .sub-cat-btn.active{background:var(--brand-light);color:var(--brand);border-color:var(--brand);border-style:solid;font-weight:700}
 
-/* 精緻食物卡片與彩條指標 */
+/* 食物卡片與彩條指標 */
 .food-list{max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin:10px 0;padding-right:2px}
 .food-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all .15s}
 .food-card:hover{border-color:var(--brand);transform:translateY(-1px)}
@@ -73,7 +73,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .food-title{font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px;margin-bottom:3px}
 .food-subinfo{font-size:12px;color:var(--mute);margin-bottom:6px}
 
-/* 三大營養素微膠囊 (P, F, C 顏色明確化) */
+/* 三大營養素膠囊標籤 */
 .macro-pills{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .pill{font-size:11px;padding:1px 6px;border-radius:4px;font-weight:500;display:inline-flex;align-items:center}
 .pill-kcal{background:rgba(237,137,54,0.12);color:var(--kcal);font-weight:700}
@@ -248,7 +248,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
         <option value="基礎食材">基礎食材</option>
         <option value="飲品點心">飲品點心</option>
       </select>
-      <label>細部子分類（如：飯糰、高蛋白乳品）</label>
+      <label>細部子分類（如：飯糰手捲、高蛋白乳品）</label>
       <input id="nSubCat" placeholder="例如：飯糰手捲、即食雞胸肉">
       <label>標示基準</label><select id="nB"><option>每份</option><option>每100g</option></select>
       <label>商品名稱</label><input id="nName">
@@ -278,7 +278,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 6. 整合食物庫（雙層細節分類 ＋ 精緻卡片） -->
+<!-- 6. 整合食物庫 -->
 <section id="p-list" class="hide">
   <h1>食物清單與自訂</h1>
   <button class="ghost" data-goadd style="margin:0 0 14px">返回選擇方式</button>
@@ -300,7 +300,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button class="main-cat-btn" data-cat="我的常用">我的常用</button>
     </div>
 
-    <!-- 二級子細節分類（連動更新） -->
+    <!-- 二級子細節分類 -->
     <div class="sub-cat-scroll" id="subCatBar">
       <button class="sub-cat-btn active" data-sub="all">全部子類</button>
     </div>
@@ -458,15 +458,15 @@ let currentUser = null;
 let realtimeChannel = null;
 let isSignUpMode = false;
 
-// 雙層分類狀態
+// 狀態與二級標籤對照表
+let currentActiveView = "today"; // 記錄當前頁面，防止被非同步回呼踢回今日
 let currentMainCat = "all";
 let currentSubCat = "all";
 let chosenFood = null;
 
-// 二級細節分類對照表
 const SUB_CAT_MAP = {
   "all": ["全部子類"],
-  "超商鮮食": ["全部", "7-11 鮮食", "全家鮮食", "飯糰手捲", "三明治吐司", "便當燴飯", "即食雞胸肉"],
+  "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "飯糰手捲", "三明治吐司", "便當燴飯", "即食雞胸肉"],
   "外食餐飲": ["全部", "便當小吃", "麵食湯水", "速食連鎖", "台式小吃"],
   "基礎食材": ["全部", "蛋豆肉", "主食澱粉", "蔬菜水果"],
   "飲品點心": ["全部", "高蛋白乳品", "無糖茶飲", "手搖飲品", "輕食點心"],
@@ -543,7 +543,13 @@ async function handleAuthFlow() {
     renderSubCategoryBar();
     renderFoodList();
     renderToday();
-    showView("today");
+
+    // 智慧停留：避免過幾秒後被強制跳轉回今日
+    if (currentActiveView === "today" || !currentActiveView) {
+      showView("today");
+    } else {
+      showView(currentActiveView);
+    }
   }
 }
 
@@ -761,7 +767,6 @@ async function flushPendingSyncQueue() {
   save();
 }
 
-/* 核心：載入 Supabase custom_foods，支援多層級分類映射 */
 async function loadCommunityFoods() {
   if (!sbClient) return;
   try {
@@ -769,7 +774,6 @@ async function loadCommunityFoods() {
     if (!error && data) {
       S.communityFoods = data.map(row => {
         let cat = row.category || "外食餐飲";
-        // 舊資料自動歸類映射
         if (cat === "便當小吃" || cat === "連鎖餐飲") cat = "外食餐飲";
         if (cat === "主食" || cat === "蛋豆肉" || cat === "蔬果") cat = "基礎食材";
         if (cat === "飲品") cat = "飲品點心";
@@ -814,7 +818,6 @@ function getCombinedFoodList() {
   return result;
 }
 
-/* 二級子分類動態產生 */
 function renderSubCategoryBar() {
   const bar = $("subCatBar");
   if (!bar) return;
@@ -828,7 +831,7 @@ function renderSubCategoryBar() {
   currentSubCat = "all";
 }
 
-/* 雙層篩選與精緻卡片渲染 */
+/* 雙向智慧比對：確保「全家鮮食」、「飯糰手捲」精準撈出所有資料 */
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
@@ -837,18 +840,24 @@ function renderFoodList() {
   const allFoods = getCombinedFoodList();
 
   const filtered = allFoods.filter(item => {
-    // 一級分類
+    // 一級分類比對
     const matchMain = (currentMainCat === "all") 
       ? true 
-      : (currentMainCat === "我的常用" ? item.isFav : item.cat === currentMainCat);
+      : (currentMainCat === "我的常用" ? item.isFav : (item.cat === currentMainCat || (currentMainCat === "超商鮮食" && (item.name.includes("7-11") || item.name.includes("全家")))));
 
-    // 二級分類 (比對子分類欄位或名稱關鍵字)
+    // 二級子分類比對（品牌與型態模糊相容）
     let matchSub = true;
     if (currentSubCat !== "all") {
-      matchSub = (item.subCat && item.subCat.includes(currentSubCat)) || item.name.includes(currentSubCat);
+      const target = currentSubCat.replace("鮮食", "");
+      const subTag = (item.subCat || "").replace(/\s+/g, "");
+      const itemName = (item.name || "").replace(/\s+/g, "");
+
+      matchSub = subTag.includes(currentSubCat) || 
+                 subTag.includes(target) || 
+                 itemName.includes(target);
     }
 
-    // 搜尋比對
+    // 關鍵字搜尋
     const matchSearch = !keyword ? true : (item.name.toLowerCase().includes(keyword) || (item.subCat && item.subCat.toLowerCase().includes(keyword)));
 
     return matchMain && matchSub && matchSearch;
@@ -870,7 +879,7 @@ function renderFoodList() {
         <div class="macro-pills">
           <span class="pill pill-kcal">${item.k} kcal</span>
           <span class="pill pill-pro">P ${item.p}g</span>
-          <span class="pill pill-fat">F ${item.fat !== undefined ? item.fat : item.f}g</span>
+          <span class="pill pill-fat">F ${item.f}g</span>
           <span class="pill pill-carb">C ${item.c}g</span>
         </div>
       </div>
@@ -914,7 +923,6 @@ function bindChipGroup(groupId, inputId) {
 bindChipGroup("servChips", "serv");
 bindChipGroup("cfChips", "cfN");
 
-/* 桌面滑鼠橫向滾動與拖曳通用函式 */
 function enableDesktopDragScroll(el) {
   if (!el) return;
   el.addEventListener("wheel", e => {
@@ -950,7 +958,6 @@ function enableDesktopDragScroll(el) {
   }, true);
 }
 
-// 一級分類切換
 $("mainCatBar").onclick = e => {
   const btn = e.target.closest(".main-cat-btn");
   if (!btn) return;
@@ -961,7 +968,6 @@ $("mainCatBar").onclick = e => {
   renderFoodList();
 };
 
-// 二級分類切換
 $("subCatBar").onclick = e => {
   const btn = e.target.closest(".sub-cat-btn");
   if (!btn) return;
@@ -1075,6 +1081,8 @@ $("copyYesterdayMealBtn").onclick = async () => {
 const VIEWS = ["today", "add", "cam", "list", "hist", "me"];
 function showView(v) {
   if (!currentUser || !S.me) return handleAuthFlow();
+
+  currentActiveView = v; // 核心：鎖定並記住當前頁面
 
   VIEWS.forEach(p => {
     const el = $("p-" + p);
