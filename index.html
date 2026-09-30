@@ -527,9 +527,10 @@ let currentUser = null;
 let realtimeChannel = null;
 let isSignUpMode = false;
 
-// 狀態管理標記（防競態與補傳觸發）
+// 防競態與帳號批次追蹤標記
 let isSyncing = false;
 let syncRequested = false;
+let loginSessionId = null; // 登入批次識別碼，徹底防範切換帳號污染
 
 function getStorageKey() {
   return currentUser && currentUser.id ? `nutri_v3_${currentUser.id}` : `nutri_v3_guest`;
@@ -661,6 +662,9 @@ async function checkUser() {
 }
 
 async function handleAuthFlow() {
+  // 每次登入或切換，發行全新唯一的 Session 識別碼，使舊的非同步回應失效
+  loginSessionId = generateUUID();
+
   if (!currentUser) {
     if (realtimeChannel && sbClient) {
       sbClient.removeChannel(realtimeChannel);
@@ -675,7 +679,6 @@ async function handleAuthFlow() {
   $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
   loadServerConfig();
   
-  // 啟動統一同步入口
   await runSyncPipeline();
   subscribeRealtime();
 
@@ -714,9 +717,11 @@ async function handleAuthFlow() {
   }
 }
 
-// 嚴格防禦的同步管線（帶 Session Guard 與動態續跑機制）
+// 完美防護的同步管線：Session Guard + 精確 ID 移除 + 續跑機制
 async function runSyncPipeline() {
-  if (!sbClient || !currentUser || !navigator.onLine) return;
+  const currentSession = loginSessionId;
+  const activeUser = currentUser;
+  if (!sbClient || !activeUser || !navigator.onLine) return;
   
   if (isSyncing) {
     syncRequested = true;
@@ -726,29 +731,29 @@ async function runSyncPipeline() {
   isSyncing = true;
   syncRequested = false;
 
-  const activeUser = currentUser;
-  const activeUid = activeUser ? activeUser.id : null;
+  const activeUid = activeUser.id;
 
   try {
-    // 1. 處理待刪除佇列
+    // 1. 逐筆處理待刪除佇列（依精確 ID 移除，絕不使用 shift()）
     while (S.pendingDeleteQueue.length > 0) {
-      if (!currentUser || currentUser.id !== activeUid) break; // Session Guard
+      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
       const delId = S.pendingDeleteQueue[0];
       try {
         const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
-        if (error) break; // 網路或伺服器異常則暫停
-        S.pendingDeleteQueue.shift();
+        if (error) break;
+        // 確保精確移除該 ID
+        S.pendingDeleteQueue = S.pendingDeleteQueue.filter(id => id !== delId);
         save();
       } catch(err) {
         break;
       }
     }
 
-    if (!currentUser || currentUser.id !== activeUid) return;
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) return;
 
-    // 2. 處理待新增佇列
+    // 2. 逐筆處理待新增佇列（依精確 ID 移除，嚴格防範 shift() 索引錯亂）
     while (S.pendingSyncQueue.length > 0) {
-      if (!currentUser || currentUser.id !== activeUid) break; // Session Guard
+      if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) break;
       const item = S.pendingSyncQueue[0];
       try {
         const { error } = await sbClient.from('diet_logs').upsert([{
@@ -765,14 +770,15 @@ async function runSyncPipeline() {
           logged_at: item.t
         }]);
         if (error) break;
-        S.pendingSyncQueue.shift();
+        // 嚴格依確切 ID 過濾移除，絕不誤砍
+        S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== item.id);
         save();
       } catch(err) {
         break;
       }
     }
 
-    if (!currentUser || currentUser.id !== activeUid) return;
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) return;
 
     // 3. 從雲端抓取最新日誌並智慧合併
     const { data, error } = await sbClient
@@ -781,7 +787,7 @@ async function runSyncPipeline() {
       .eq('user_id', activeUid)
       .order('logged_at', { ascending: true });
 
-    if (!currentUser || currentUser.id !== activeUid) return;
+    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid) return;
 
     if (!error && data) {
       const deletedIds = new Set(S.pendingDeleteQueue);
@@ -823,15 +829,15 @@ async function runSyncPipeline() {
       renderRecentFoods();
     }
 
-    // 4. 初始化補回載入食品資料庫
-    await loadCommunityFoods();
+    // 4. 安全載入食品資料庫（含 Session Guard）
+    await loadCommunityFoods(currentSession, activeUid);
 
   } catch(e) {
     console.error("同步管線異常:", e);
   } finally {
     isSyncing = false;
-    // 如果在同步過程中又有新操作進來，自動觸發下一輪補跑
-    if (syncRequested && currentUser && currentUser.id === activeUid) {
+    // 如果在同步過程中又有新操作進來且帳號未變動，自動安全接續下一輪
+    if (syncRequested && loginSessionId === currentSession && currentUser && currentUser.id === activeUid) {
       runSyncPipeline();
     }
   }
@@ -1002,6 +1008,7 @@ $("savePasswordBtn").onclick = async () => {
 $("signOutBtn").onclick = async () => {
   if (sbClient) await sbClient.auth.signOut();
   currentUser = null;
+  loginSessionId = generateUUID(); // 立刻作廢舊 Session
   S = {
     me: null,
     log: {},
@@ -1017,8 +1024,10 @@ $("signOutBtn").onclick = async () => {
 
 async function loadServerConfig() {
   if (!sbClient || !currentUser) return;
+  const targetSession = loginSessionId;
   try {
     const { data } = await sbClient.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
+    if (loginSessionId !== targetSession) return; // 檢查 Session Guard
     if (data && data.value) {
       S.geminiKey = data.value;
       save();
@@ -1026,10 +1035,13 @@ async function loadServerConfig() {
   } catch(e) {}
 }
 
-async function loadCommunityFoods() {
+async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
   if (!sbClient) return;
   try {
     const { data, error } = await sbClient.from('custom_foods').select('*');
+    // 回應回來後嚴格檢驗 Session 與帳號是否依舊相符
+    if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+
     if (!error && data) {
       S.communityFoods = data.map(row => {
         let cat = (row.category || "外食餐飲").trim();
