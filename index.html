@@ -512,7 +512,7 @@ const SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWplYWRwenV6cmZ4YXdjeWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MjgzOTEsImV4cCI6MjEwNjMwNDM5MX0.4AYjLPcUQEPIV4RXfqKoYIAAuyhuqe1U-ACDBj3LOMM";
 
 let S = {
-  stateOwnerId: null, // 綁定目前狀態的擁有者 UID
+  stateOwnerId: null,
   me: null,
   log: {},
   customFavorites: [],
@@ -528,12 +528,11 @@ let currentUser = null;
 let realtimeChannel = null;
 let isSignUpMode = false;
 
-// 狀態管理標記
 let isSyncing = false;
 let syncRequested = false;
 let loginSessionId = null;
 let isHandlingAuth = false;
-let pendingAuthTarget = null; // 記錄最新排隊的登入/切換帳號目標
+let pendingAuthTarget = null;
 
 function getStorageKey(uid) {
   return uid ? `nutri_v3_${uid}` : `nutri_v3_guest`;
@@ -573,7 +572,7 @@ function loadUserData(uid) {
 }
 
 const save = () => {
-  if (!currentUser || S.stateOwnerId !== currentUser.id) return; // 擁有者不符禁止寫入
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   try {
     localStorage.setItem(getStorageKey(currentUser.id), JSON.stringify(S));
   } catch(e){}
@@ -667,10 +666,9 @@ async function checkUser() {
   }
 }
 
-// 支援排隊與最新目標接手的不丟失初始化管理
 async function handleAuthFlow() {
   pendingAuthTarget = currentUser ? currentUser.id : null;
-  if (isHandlingAuth) return; // 若正在跑，標記已經更新，跑完會自動接手最新目標
+  if (isHandlingAuth) return;
 
   isHandlingAuth = true;
 
@@ -680,7 +678,12 @@ async function handleAuthFlow() {
       const currentSession = generateUUID();
       loginSessionId = currentSession;
 
-      // 清除舊訂閱
+      // 每次切換帳號或初始化，強制清除舊帳號的暫存畫面狀態
+      curItem = null;
+      curBarcode = null;
+      chosenFood = null;
+      EST = [];
+
       if (realtimeChannel && sbClient) {
         sbClient.removeChannel(realtimeChannel);
         realtimeChannel = null;
@@ -739,12 +742,10 @@ async function handleAuthFlow() {
         }
       }
 
-      // 啟動 Realtime 即時訂閱
       subscribeRealtime(targetUid);
 
-      // 檢查在初始化期間是否有更新的帳號切換要求
       if (pendingAuthTarget === targetUid) {
-        break; // 沒有新請求，順利結束
+        break;
       }
     }
   } finally {
@@ -752,7 +753,6 @@ async function handleAuthFlow() {
   }
 }
 
-// 具有身分檢查與狀態擁有者防護的同步管線
 async function runSyncPipeline() {
   const currentSession = loginSessionId;
   const activeUser = currentUser;
@@ -768,14 +768,11 @@ async function runSyncPipeline() {
   const activeUid = activeUser.id;
 
   try {
-    // 1. 處理待刪除佇列
     while (S.pendingDeleteQueue.length > 0) {
       if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) break;
       const delId = S.pendingDeleteQueue[0];
       try {
         const { error } = await sbClient.from('diet_logs').delete().eq('id', delId);
-        
-        // 嚴格身分二次檢查
         if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) break;
         if (error) break;
 
@@ -788,7 +785,6 @@ async function runSyncPipeline() {
 
     if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
 
-    // 2. 處理待新增佇列
     while (S.pendingSyncQueue.length > 0) {
       if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) break;
       const item = S.pendingSyncQueue[0];
@@ -807,7 +803,6 @@ async function runSyncPipeline() {
           logged_at: item.t
         }]);
 
-        // 嚴格身分二次檢查
         if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) break;
         if (error) break;
 
@@ -820,7 +815,6 @@ async function runSyncPipeline() {
 
     if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
 
-    // 3. 從雲端抓取最新日誌並智慧合併
     const { data, error } = await sbClient
       .from('diet_logs')
       .select('*')
@@ -1354,9 +1348,14 @@ $("mAdd").onclick = async () => {
     }
   }
 
-  if (sbClient && currentUser) {
+  // 獨立固定的動作防護快照
+  const targetUid = currentUser ? currentUser.id : null;
+  const targetSession = loginSessionId;
+
+  if (sbClient && targetUid) {
     try {
-      const { error } = await sbClient.from('custom_foods').insert([{
+      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+      await sbClient.from('custom_foods').insert([{
         barcode: "custom_" + Date.now(),
         name: n,
         basis: "1份",
@@ -1367,11 +1366,10 @@ $("mAdd").onclick = async () => {
         category: cat,
         sub_category: subCat,
         is_verified: false,
-        created_by: currentUser.id
+        created_by: targetUid // 嚴格綁定發起時的使用者 ID
       }]);
-      if (!error) {
-        await loadCommunityFoods();
-      }
+      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+      await loadCommunityFoods();
     } catch(err) {}
   }
 
@@ -1924,30 +1922,41 @@ async function addLog(it, n) {
   }
 }
 
+// 掃描條碼加入紀錄：固定快照驗證，確保 created_by 絕對屬於發起時的使用者
 $("addBtn").onclick = async () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const n = +$("serv").value || 1;
   if (!curItem) return;
 
-  addLog(curItem, n);
+  const targetUid = currentUser.id;
+  const targetSession = loginSessionId;
+  const barcodeToSave = curBarcode;
+  const itemToSave = curItem;
+
+  addLog(itemToSave, n);
   $("found").classList.add("hide");
 
-  if (sbClient && currentUser && curBarcode) {
+  if (sbClient && barcodeToSave) {
     try {
-      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', curBarcode).maybeSingle();
-      if (!existing && currentUser && S.stateOwnerId === currentUser.id) {
+      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
+      
+      // 嚴格身分與 Session 驗證
+      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+
+      if (!existing) {
         await sbClient.from('custom_foods').insert([{
-          barcode: curBarcode,
-          name: curItem.name,
-          basis: curItem.basis || "每份",
-          kcal: curItem.k,
-          protein: curItem.p,
-          fat: curItem.f,
-          carbs: curItem.c,
+          barcode: barcodeToSave,
+          name: itemToSave.name,
+          basis: itemToSave.basis || "每份",
+          kcal: itemToSave.k,
+          protein: itemToSave.p,
+          fat: itemToSave.f,
+          carbs: itemToSave.c,
           category: "超商鮮食",
           is_verified: false,
-          created_by: currentUser.id
+          created_by: targetUid // 鎖定發起時的使用者 ID
         }]);
+        if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
         loadCommunityFoods();
       }
     } catch(err) {}
@@ -1998,15 +2007,22 @@ $("saveNew").onclick = async () => {
   const errMsg = validateNutrition(n, k, p, f, c);
   if (errMsg) return alert("⚠️ " + errMsg);
 
+  const targetUid = currentUser.id;
+  const targetSession = loginSessionId;
+  const barcodeToSave = curBarcode;
+
   const it = { name: n, basis: $("nB").value, k, p, f, c, category: cat, subCat };
   addLog(it, 1);
 
-  if (sbClient && currentUser && curBarcode) {
+  if (sbClient && barcodeToSave) {
     try {
-      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', curBarcode).maybeSingle();
-      if (!existing && currentUser && S.stateOwnerId === currentUser.id) {
+      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
+      
+      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
+
+      if (!existing) {
         await sbClient.from('custom_foods').insert([{
-          barcode: curBarcode,
+          barcode: barcodeToSave,
           name: it.name,
           basis: it.basis,
           kcal: it.k,
@@ -2016,8 +2032,9 @@ $("saveNew").onclick = async () => {
           category: it.category,
           sub_category: it.subCat,
           is_verified: false,
-          created_by: currentUser.id
+          created_by: targetUid // 鎖定發起時的使用者 ID
         }]);
+        if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
         loadCommunityFoods();
       }
     } catch(e) {}
