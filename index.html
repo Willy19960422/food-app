@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>食養紀錄 · 雲端同步版</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#EDF3F0;--card:#fff;--ink:#12302B;--mute:#5F7A73;--line:#D3E0DB;--brand:#0F5C4F;--on:#fff;--kcal:#E8961E;--pro:#2F6FD0;--fat:#C0508A;--carb:#3E9B5B;--warn:#B3402A;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1A17;--card:#172924;--ink:#E4F1EC;--mute:#8FAAA2;--line:#284039;--brand:#4FC3AB;--on:#06201B}}
+:root[data-theme="dark"]{--bg:#0E1A17;--card:#172924;--ink:#E4F1EC;--mute:#8FAAA2;--line:#284039;--brand:#4FC3AB;--on:#06201B}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans TC",system-ui,sans-serif;padding-bottom:76px}
+main{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 12px}h2{font-size:17px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.ring{display:flex;align-items:center;gap:16px}
+.big{font-size:34px;font-weight:700;line-height:1.1}.mute{color:var(--mute);font-size:14px}
+.bar{margin:10px 0}.bar .t{display:flex;justify-content:space-between;font-size:14px}
+.track{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:4px}
+.fill{height:100%;border-radius:6px;transition:width .4s}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+input,select{width:100%;padding:11px 12px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{font:inherit;font-weight:500;padding:12px 16px;border-radius:10px;border:0;background:var(--brand);color:var(--on);width:100%;margin-top:12px;cursor:pointer}
+button.ghost{background:transparent;color:var(--brand);border:1px solid var(--brand)}
+button.sm{width:auto;margin:0;padding:4px 10px;font-size:13px}
+.goals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.goals label{margin:0;padding:10px 4px;text-align:center;border:1px solid var(--line);border-radius:10px;color:var(--ink);cursor:pointer}
+.goals input{display:none}.goals input:checked+span{font-weight:700;color:var(--brand)}
+.goals label:has(input:checked){border-color:var(--brand);background:var(--bg)}
+#reader{width:100%;border-radius:12px;overflow:hidden}
+.item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border:0}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:99}
+nav button{margin:0;border-radius:0;background:transparent;color:var(--mute);padding:14px 0}
+nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--brand)}
+.tag{font-size:13px;color:var(--brand);margin-top:4px}.hide{display:none}.msg{color:var(--warn);font-size:14px;margin-top:8px}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;background:var(--bg);color:var(--mute);margin-bottom:6px}
+
+.meal-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 16px}
+.meal-tabs label{margin:0;padding:9px 0;text-align:center;border:1px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;background:var(--card);color:var(--mute)}
+.meal-tabs input{display:none}
+.meal-tabs label:has(input:checked){border-color:var(--brand);background:var(--brand);color:var(--on);font-weight:700}
+
+.meal-block{border-top:1px solid var(--line);padding:12px 0 6px}
+.meal-block:first-of-type{border-top:none;padding-top:0}
+.meal-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.meal-title{font-size:16px;font-weight:700;color:var(--ink)}
+.meal-summary{font-size:13px;color:var(--mute)}
+.empty-meal{font-size:13px;color:var(--mute);padding:6px 0}
+.auth-status{font-size:13px;padding:4px 8px;border-radius:6px;background:var(--bg);display:inline-block;margin-bottom:8px}
+</style>
+</head>
+<body>
+<main>
+<section id="p-today">
+  <h1>今日攝取</h1>
+  <button id="newBtn" style="margin:0 0 14px">＋ 新增食物</button>
+  <div class="card" id="sum"></div>
+  <div class="card">
+    <h2>今天吃了什麼</h2>
+    <div id="logByMeal"></div>
+  </div>
+</section>
+
+<section id="p-add" class="hide">
+  <h1>新增食物</h1>
+  <div class="card">
+    <label style="margin-top:0">選擇記錄到哪一餐：</label>
+    <div class="meal-tabs" id="activeMealTabs">
+      <label><input type="radio" name="addMeal" value="breakfast"><span>早餐</span></label>
+      <label><input type="radio" name="addMeal" value="lunch"><span>午餐</span></label>
+      <label><input type="radio" name="addMeal" value="dinner"><span>晚餐</span></label>
+      <label><input type="radio" name="addMeal" value="snack"><span>點心</span></label>
+    </div>
+    <button data-m="scan" style="margin-top:0">掃描條碼</button>
+    <div class="mute">Open Food Facts ＋ Supabase 社群共享庫</div>
+    <button data-m="cardAI">拍餐點，AI 估算</button>
+    <div class="mute">透過 Gemini 視覺模型分析便當、小吃熱量</div>
+    <button data-m="cardCF">選常見食物</button>
+    <div class="mute">白飯、超商鮮食、連鎖餐飲等</div>
+    <button data-m="cardM">自己輸入</button>
+    <div class="mute">手動填寫熱量與三大營養素</div>
+    <button class="ghost" data-gotoday>返回今日</button>
+  </div>
+</section>
+
+<section id="p-scan" class="hide">
+  <h1>掃描食品</h1>
+  <button class="ghost" data-goadd style="margin:0 0 14px">← 返回選擇方式</button>
+  <div class="card">
+    <div id="reader"></div>
+    <button id="startBtn">開啟相機掃條碼</button>
+    <button class="ghost" id="shotBtn">拍照掃條碼（相機打不開時用）</button>
+    <input id="shot" type="file" accept="image/*" capture="environment" class="hide">
+    <label>或手動輸入條碼</label>
+    <input id="manual" inputmode="numeric" placeholder="例如 4710088410009">
+    <button class="ghost" id="lookBtn">查詢</button>
+    <div class="msg" id="scanMsg"></div>
+  </div>
+  <div class="card hide" id="found">
+    <div class="badge" id="fSrc">資料來源</div>
+    <h2 id="fName" style="margin-top:4px"></h2>
+    <div class="mute" id="fInfo"></div>
+    <label>份數</label><input id="serv" type="number" step="0.5" min="0.5" value="1">
+    <div class="tag" id="fTag"></div>
+    <button id="addBtn">加入紀錄</button>
+  </div>
+  <div class="card hide" id="newForm">
+    <h2>資料庫還沒有這個商品</h2>
+    <div class="mute">可手動輸入，或拍攝包裝營養標示自動辨識。存入後將同步至 Supabase 社群庫。</div>
+    <button class="ghost" id="photoBtn">拍營養標示，自動填寫</button>
+    <input id="photo" type="file" accept="image/*" capture="environment" class="hide">
+    <label>標示基準</label><select id="nB"><option>每份</option><option>每100g</option></select>
+    <label>商品名稱</label><input id="nName">
+    <div class="row">
+      <div><label>熱量 (大卡)</label><input id="nK" type="number"></div>
+      <div><label>蛋白質 (g)</label><input id="nP" type="number"></div>
+    </div>
+    <div class="row">
+      <div><label>脂肪 (g)</label><input id="nF" type="number"></div>
+      <div><label>碳水 (g)</label><input id="nC" type="number"></div>
+    </div>
+    <button id="saveNew">存進資料庫並加入紀錄</button>
+  </div>
+</section>
+
+<section id="p-meal" class="hide">
+  <h1>沒有條碼的餐點</h1>
+  <button class="ghost" data-goadd style="margin:0 0 14px">← 返回選擇方式</button>
+  <div class="card" id="cardAI">
+    <h2>拍餐點，AI 估算</h2>
+    <div class="mute">拍下整份餐點，由 Gemini 辨識食材與預估熱量。</div>
+    <button id="mealBtn">拍餐點估熱量</button>
+    <input id="mealPic" type="file" accept="image/*" capture="environment" class="hide">
+    <div id="estList" style="margin-top:12px"></div>
+    <button class="hide" id="estAdd">加入紀錄</button>
+    <div class="msg" id="mealMsg"></div>
+  </div>
+  <div class="card" id="cardCF">
+    <h2>選常見食物</h2>
+    <label>選擇食物</label>
+    <select id="cfName"></select>
+    <div class="mute" id="cfUnit"></div>
+    <label>份數</label><input id="cfN" type="number" step="0.5" min="0.5" value="1">
+    <button id="cfAdd">加入紀錄</button>
+  </div>
+  <div class="card" id="cardM">
+    <h2>自己輸入</h2>
+    <label>名稱</label><input id="mName">
+    <div class="row">
+      <div><label>熱量 (大卡)</label><input id="mK" type="number"></div>
+      <div><label>蛋白質 (g)</label><input id="mP" type="number"></div>
+    </div>
+    <div class="row">
+      <div><label>脂肪 (g)</label><input id="mF" type="number"></div>
+      <div><label>碳水 (g)</label><input id="mC" type="number"></div>
+    </div>
+    <button id="mAdd">加入紀錄</button>
+  </div>
+</section>
+
+<section id="p-hist" class="hide">
+  <h1>飲食紀錄</h1>
+  <div class="card"><label>選擇日期</label><input id="hDate" type="date"><div id="hSum" style="margin-top:10px"></div></div>
+  <div class="card"><h2>當日明細</h2><div id="hLog"></div></div>
+  <div class="card"><h2>最近紀錄</h2><div id="hDays"></div></div>
+</section>
+
+<section id="p-me" class="hide">
+  <h1>目標與雲端設定</h1>
+  <div class="card">
+    <div id="authBox">
+      <h2>Supabase 雲端帳號</h2>
+      <div id="authStatus" class="auth-status">檢查連線中…</div>
+      <div id="loginForm">
+        <label>Email</label><input id="authEmail" type="email" placeholder="name@example.com">
+        <label>密碼</label><input id="authPass" type="password" placeholder="密碼至少 6 碼">
+        <div class="row">
+          <button id="signInBtn">登入同步</button>
+          <button class="ghost" id="signUpBtn">註冊新帳號</button>
+        </div>
+      </div>
+      <div id="userPanel" class="hide">
+        <button class="ghost" id="signOutBtn">登出帳號</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>個人目標</h2>
+    <div class="goals">
+      <label><input type="radio" name="goal" value="muscle"><span>增肌</span></label>
+      <label><input type="radio" name="goal" value="fat" checked><span>減脂</span></label>
+      <label><input type="radio" name="goal" value="lose"><span>減重</span></label>
+    </div>
+    <div class="row">
+      <div><label>性別</label><select id="sex"><option value="m">男</option><option value="f">女</option></select></div>
+      <div><label>年齡</label><input id="age" type="number" value="30"></div>
+    </div>
+    <div class="row">
+      <div><label>身高 (cm)</label><input id="ht" type="number" value="170"></div>
+      <div><label>體重 (kg)</label><input id="wt" type="number" value="65"></div>
+    </div>
+    <label>活動量</label>
+    <select id="act">
+      <option value="1.2">幾乎不運動</option>
+      <option value="1.375">每週運動 1–3 天</option>
+      <option value="1.55" selected>每週運動 3–5 天</option>
+      <option value="1.725">每週運動 6–7 天</option>
+    </select>
+    <button id="saveMe">計算並儲存</button>
+  </div>
+  <div class="card" id="result"></div>
+  
+  <div class="card">
+    <h2>API 設定</h2>
+    <label>Supabase URL</label>
+    <input id="sbUrl" placeholder="https://your-project.supabase.co">
+    <label>Supabase Anon Key</label>
+    <input id="sbKey" type="password" placeholder="eyJh... 或 sb_publishable_...">
+    <label>Google Gemini API Key</label>
+    <input id="geminiKey" type="password" placeholder="AIzaSy...">
+    <button class="ghost" id="saveKeysBtn">儲存所有金鑰</button>
+  </div>
+</section>
+</main>
+
+<nav>
+  <button data-p="today" class="on">今日</button>
+  <button data-p="hist">紀錄</button>
+  <button data-p="me">設定</button>
+</nav>
+
+<script>
+const $=id=>document.getElementById(id);
+let S = {
+  me: null,
+  log: {},
+  sbUrl: "",
+  sbKey: "",
+  geminiKey: ""
+};
+
+try{
+  const r = localStorage.getItem("nutri_v3");
+  if(r) S = Object.assign(S, JSON.parse(r));
+}catch(e){}
+
+const save=()=>{try{localStorage.setItem("nutri_v3", JSON.stringify(S))}catch(e){}};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today=()=>new Date().toLocaleDateString("sv");
+const GN={muscle:"增肌",fat:"減脂",lose:"減重"};
+const MEALS=[
+  {key:"breakfast",name:"早餐",icon:"🌅"},
+  {key:"lunch",name:"午餐",icon:"☀️"},
+  {key:"dinner",name:"晚餐",icon:"🌙"},
+  {key:"snack",name:"點心／補給",icon:"🍎"}
+];
+
+let sbClient = null;
+let currentUser = null;
+
+function initSupabase(){
+  if(S.sbUrl && S.sbKey && window.supabase){
+    sbClient = window.supabase.createClient(S.sbUrl, S.sbKey);
+    checkUser();
+  } else {
+    updateAuthUI(null, "尚未設定 Supabase 金鑰（資料僅存於本機）");
+  }
+}
+
+async function checkUser(){
+  if(!sbClient) return;
+  const { data: { session } } = await sbClient.auth.getSession();
+  currentUser = session ? session.user : null;
+  if(currentUser){
+    updateAuthUI(currentUser, `已登入：${currentUser.email}`);
+    syncLogsFromSupabase();
+  } else {
+    updateAuthUI(null, "未登入（目前紀錄僅保留在瀏覽器）");
+  }
+}
+
+function updateAuthUI(user, statusText){
+  $("authStatus").textContent = statusText;
+  $("loginForm").classList.toggle("hide", !!user);
+  $("userPanel").classList.toggle("hide", !user);
+}
+
+$("signInBtn").onclick=async()=>{
+  if(!sbClient){alert("請先在下方填入 Supabase URL 與 Anon Key 並儲存。");return;}
+  const email=$("authEmail").value.trim(), password=$("authPass").value.trim();
+  const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+  if(error) alert("登入失敗："+error.message);
+  else {
+    currentUser = data.user;
+    updateAuthUI(currentUser, `已登入：${currentUser.email}`);
+    syncLogsFromSupabase();
+  }
+};
+
+$("signUpBtn").onclick=async()=>{
+  if(!sbClient){alert("請先在下方填入 Supabase URL 與 Anon Key 並儲存。");return;}
+  const email=$("authEmail").value.trim(), password=$("authPass").value.trim();
+  const { data, error } = await sbClient.auth.signUp({ email, password });
+  if(error) alert("註冊失敗："+error.message);
+  else alert("註冊成功！");
+};
+
+$("signOutBtn").onclick=async()=>{
+  if(sbClient) await sbClient.auth.signOut();
+  currentUser = null;
+  updateAuthUI(null, "未登入");
+};
+
+$("saveKeysBtn").onclick=()=>{
+  S.sbUrl = $("sbUrl").value.trim();
+  S.sbKey = $("sbKey").value.trim();
+  S.geminiKey = $("geminiKey").value.trim();
+  save();
+  initSupabase();
+  alert("金鑰已儲存！");
+};
+
+async function syncLogsFromSupabase(){
+  if(!sbClient || !currentUser) return;
+  const { data, error } = await sbClient.from('diet_logs').select('*');
+  if(!error && data){
+    S.log = {};
+    data.forEach(row => {
+      const d = row.date;
+      if(!S.log[d]) S.log[d] = [];
+      S.log[d].push({
+        id: row.id,
+        meal: row.meal,
+        name: row.name,
+        k: Number(row.kcal),
+        p: Number(row.protein),
+        f: Number(row.fat),
+        c: Number(row.carbs),
+        n: Number(row.servings),
+        t: row.logged_at
+      });
+    });
+    save();
+    renderToday();
+  }
+}
+
+function getCurrentMealKey(){
+  const h=new Date().getHours(), m=new Date().getMinutes();
+  const time = h + m/60;
+  if(time >= 5 && time < 10.5) return "breakfast";
+  if(time >= 10.5 && time < 14.5) return "lunch";
+  if(time >= 16.5 && time < 21) return "dinner";
+  return "snack";
+}
+
+function getSelectedMeal(){
+  const checked = document.querySelector('input[name="addMeal"]:checked');
+  return checked ? checked.value : getCurrentMealKey();
+}
+
+function setSelectedMeal(key){
+  const el = document.querySelector(`input[name="addMeal"][value="${key}"]`);
+  if(el) el.checked = true;
+}
+
+const fileToBase64=f=>new Promise((res,rej)=>{
+  const r=new FileReader();
+  r.onload=()=>res(r.result.split(",")[1]);
+  r.onerror=rej;
+  r.readAsDataURL(f);
+});
+
+async function callGeminiVision(prompt, file){
+  if(!S.geminiKey) throw new Error("請先至「設定」填寫 Gemini API Key。");
+  const base64Data = await fileToBase64(file);
+  const mimeType = file.type || "image/jpeg";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.geminiKey}`;
+  
+  const payload = {
+    contents: [{
+      parts: [
+        { text: prompt },
+        { inline_data: { mime_type: mimeType, data: base64Data } }
+      ]
+    }],
+    generationConfig: {
+      response_mime_type: "application/json",
+      temperature: 0.2
+    }
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err.error?.message || `API 請求失敗 (${res.status})`);
+  }
+  const data = await res.json();
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if(!rawText) throw new Error("無法取得分析結果");
+  return JSON.parse(rawText);
+}
+
+async function fetchOpenFoodFacts(barcode){
+  try{
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(data.status !== 1 || !data.product) return null;
+    const p = data.product, nut = p.nutriments || {};
+    const isServing = nut["energy-kcal_serving"] !== undefined;
+    return {
+      name: p.product_name_zh || p.product_name || `商品 (${barcode})`,
+      basis: isServing ? "每份" : "每100g",
+      k: Math.round(Number(isServing ? nut["energy-kcal_serving"] : nut["energy-kcal_100g"])) || 0,
+      p: Math.round(Number(isServing ? nut["proteins_serving"] : nut["proteins_100g"]) * 10) / 10 || 0,
+      f: Math.round(Number(isServing ? nut["fat_serving"] : nut["fat_100g"]) * 10) / 10 || 0,
+      c: Math.round(Number(isServing ? nut["carbohydrates_serving"] : nut["carbohydrates_100g"]) * 10) / 10 || 0,
+      source: "Open Food Facts"
+    };
+  }catch(e){ return null; }
+}
+
+function calc(m){
+  const bmr=10*m.wt+6.25*m.ht-5*m.age+(m.sex==="m"?5:-161);
+  const tdee=bmr*m.act;
+  const adj={muscle:1.12,fat:0.85,lose:0.8}[m.goal];
+  const floor=m.sex==="m"?1500:1200;
+  let kcal=Math.max(Math.round(tdee*adj),floor);
+  const pk={muscle:2.0,fat:2.0,lose:1.6}[m.goal];
+  const p=Math.round(m.wt*pk), f=Math.round(kcal*0.25/9);
+  const c=Math.max(Math.round((kcal-p*4-f*9)/4),0);
+  return {bmr:Math.round(bmr),tdee:Math.round(tdee),kcal,p,f,c,floored:Math.round(tdee*adj)<floor};
+}
+
+function renderMe(){
+  if(!S.me){$("result").innerHTML='<span class="mute">填好個人資料後按「計算並儲存」。</span>';}
+  else{
+    const t=calc(S.me);
+    $("result").innerHTML=`<h2>${GN[S.me.goal]}：每日目標</h2><div class="big">${t.kcal} <span class="mute">大卡</span></div>
+    <div class="mute">基礎代謝 ${t.bmr}・每日總消耗 ${t.tdee}</div>
+    <p>蛋白質 ${t.p} g 脂肪 ${t.f} g 碳水 ${t.c} g</p>
+    ${t.floored?'<div class="msg">已套用安全下限，不建議再低於此熱量。</div>':''}`;
+  }
+  if(S.sbUrl) $("sbUrl").value = S.sbUrl;
+  if(S.sbKey) $("sbKey").value = S.sbKey;
+  if(S.geminiKey) $("geminiKey").value = S.geminiKey;
+}
+
+function sumList(L){
+  return L.reduce((a,e)=>{a.k+=e.k*e.n;a.p+=e.p*e.n;a.f+=e.f*e.n;a.c+=e.c*e.n;return a},{k:0,p:0,f:0,c:0});
+}
+
+function bar(name,v,goal,col,u){
+  const pct=goal?Math.min(v/goal*100,100):0;
+  return `<div class="bar"><div class="t"><span>${name}</span><span>${Math.round(v)} / ${goal||"?"} ${u}</span></div><div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+}
+
+function renderMealSection(dateKey, isEditable=true){
+  const dayLogs = S.log[dateKey] || [];
+  if(!dayLogs.length) return '<div class="mute" style="padding:10px 0">尚無紀錄。按上方「＋ 新增食物」開始記錄。</div>';
+
+  return MEALS.map(meal => {
+    const itemsWithIndex = dayLogs
+      .map((item, idx) => ({ ...item, originalIdx: idx }))
+      .filter(item => (item.meal || "snack") === meal.key);
+
+    const mealSum = sumList(itemsWithIndex);
+
+    let itemsHtml = itemsWithIndex.map(e => `
+      <div class="item">
+        <div>
+          ${e.t ? `<span class="mute">${e.t}</span> ` : ""}${esc(e.name)}
+          <div class="mute">${e.n} 份・${Math.round(e.k*e.n)} 大卡・P ${Math.round(e.p*e.n)}g / F ${Math.round(e.f*e.n)}g / C ${Math.round(e.c*e.n)}g</div>
+        </div>
+        ${isEditable ? `<button class="sm ghost" data-del="${e.originalIdx}">刪除</button>` : ''}
+      </div>
+    `).join("");
+
+    if(!itemsWithIndex.length){
+      itemsHtml = `<div class="empty-meal">尚未記錄</div>`;
+    }
+
+    return `
+      <div class="meal-block">
+        <div class="meal-header">
+          <span class="meal-title">${meal.icon} ${meal.name}</span>
+          <span class="meal-summary">${Math.round(mealSum.k)} 大卡</span>
+        </div>
+        ${itemsHtml}
+      </div>
+    `;
+  }).join("");
+}
+
+function renderToday(){
+  const T=sumList(S.log[today()]||[]), g=S.me?calc(S.me):null;
+  const left=g?g.kcal-Math.round(T.k):null;
+  $("sum").innerHTML=(g?`<div class="big">${left>=0?left:-left} <span class="mute">大卡${left>=0?"還可以吃":"已超過"}</span></div>`:'<div class="mute">先到「設定」填個人資料，就能看到每日目標。</div>')
+   +bar("熱量",T.k,g&&g.kcal,"var(--kcal)","大卡")+bar("蛋白質",T.p,g&&g.p,"var(--pro)","g")+bar("脂肪",T.f,g&&g.f,"var(--fat)","g")+bar("碳水",T.c,g&&g.c,"var(--carb)","g");
+
+  $("logByMeal").innerHTML = renderMealSection(today(), true);
+}
+
+$("logByMeal").onclick=async e=>{
+  const i=e.target.dataset.del;
+  if(i===undefined) return;
+  const removed = S.log[today()].splice(i,1)[0];
+  save();
+  renderToday();
+
+  if(sbClient && currentUser && removed.id){
+    await sbClient.from('diet_logs').delete().eq('id', removed.id);
+  }
+};
+
+$("saveMe").onclick=()=>{
+  try{
+    const m={goal:document.querySelector('[name=goal]:checked').value,sex:$("sex").value,age:+$("age").value,ht:+$("ht").value,wt:+$("wt").value,act:+$("act").value};
+    if(!(m.age>0&&m.ht>0&&m.wt>0)){$("result").innerHTML='<span class="msg">請把年齡、身高、體重都填好。</span>';return}
+    S.me=m;renderMe();renderToday();
+    if($("result").scrollIntoView)$("result").scrollIntoView({behavior:"smooth",block:"center"});
+    save();
+  }catch(e){$("result").innerHTML='<span class="msg">發生錯誤：'+e.message+'</span>'}
+};
+
+function loadMe(){
+  if(!S.me)return;
+  const m=S.me;
+  $("sex").value=m.sex;$("age").value=m.age;$("ht").value=m.ht;$("wt").value=m.wt;$("act").value=m.act;
+  document.querySelector(`[name=goal][value=${m.goal}]`).checked=true;
+}
+
+const VIEWS=["today","add","scan","meal","hist","me"];
+function showView(v,mode){
+  VIEWS.forEach(p=>$("p-"+p).classList.toggle("hide",p!==v));
+  const nv=({add:"today",scan:"today",meal:"today"})[v]||v;
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.p===nv));
+  if(v!=="scan")stopScan();
+  if(v==="scan"){$("found").classList.add("hide");$("newForm").classList.add("hide");$("scanMsg").textContent="";$("manual").value=""}
+  if(v==="meal"){["cardAI","cardCF","cardM"].forEach(id=>$(id).classList.toggle("hide",id!==mode));$("mealMsg").textContent=""}
+  if(v==="today")renderToday();
+  if(v==="hist"){if(!$("hDate").value)$("hDate").value=today();renderHist()}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showView(b.dataset.p));
+$("newBtn").onclick=()=>{
+  setSelectedMeal(getCurrentMealKey());
+  showView("add");
+};
+document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const m=b.dataset.m;m==="scan"?showView("scan"):showView("meal",m)});
+document.querySelectorAll("[data-goadd]").forEach(b=>b.onclick=()=>showView("add"));
+document.querySelectorAll("[data-gotoday]").forEach(b=>b.onclick=()=>showView("today"));
+
+let qr=null,curBarcode=null,curItem=null;
+function stopScan(){if(qr&&qr.isScanning){qr.stop().catch(()=>{})}$("startBtn").textContent="開啟相機掃條碼"}
+
+$("startBtn").onclick=async()=>{
+  if(qr&&qr.isScanning){stopScan();return}
+  if(typeof Html5Qrcode==="undefined"){$("scanMsg").textContent="掃描元件載入失敗，請手動輸入條碼。";return}
+  qr=qr||new Html5Qrcode("reader");
+  try{
+    await qr.start({facingMode:"environment"},{fps:10,qrbox:{width:260,height:140}},code=>{stopScan();lookup(code)});
+    $("startBtn").textContent="關閉相機";$("scanMsg").textContent="";
+  }catch(e){$("scanMsg").textContent="即時相機無法開啟，請改用拍照上傳。"}
+};
+
+$("shotBtn").onclick=()=>$("shot").click();
+$("shot").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(typeof Html5Qrcode==="undefined"){$("scanMsg").textContent="掃描元件載入失敗，請手動輸入條碼。";return}
+  $("scanMsg").textContent="讀取條碼中…";
+  try{
+    qr=qr||new Html5Qrcode("reader");
+    const code=await qr.scanFile(f,false);
+    lookup(code);
+  }catch(err){$("scanMsg").textContent="讀不到條碼，請對焦清楚再試，或手動輸入。"}
+  e.target.value="";
+};
+
+$("lookBtn").onclick=()=>{const c=$("manual").value.trim();if(c)lookup(c)};
+
+async function lookup(code){
+  curBarcode=code;
+  $("scanMsg").textContent="查詢中："+code;
+  
+  let it = null, source = "";
+
+  if(sbClient){
+    const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', code).maybeSingle();
+    if(data){
+      it = { name: data.name, basis: data.basis, k: Number(data.kcal), p: Number(data.protein), f: Number(data.fat), c: Number(data.carbs) };
+      source = "Supabase 社群資料庫";
+    }
+  }
+
+  if(!it){
+    it = await fetchOpenFoodFacts(code);
+    if(it) source = "Open Food Facts 公共資料庫";
+  }
+
+  curItem = it;
+  $("found").classList.toggle("hide",!it);
+  $("newForm").classList.toggle("hide",!!it);
+  
+  if(!it){
+    $("scanMsg").textContent="資料庫無此商品，請拍照自動辨識或手動輸入。";
+    $("nName").value="";$("nK").value="";$("nP").value="";$("nF").value="";$("nC").value="";
+    return;
+  }
+  
+  $("scanMsg").textContent="";
+  $("fSrc").textContent=source;
+  $("fName").textContent=it.name;
+  $("fInfo").textContent=`${it.basis||"每份"} ${it.k} 大卡・蛋白質 ${it.p} g・脂肪 ${it.f} g・碳水 ${it.c} g`;
+  $("fTag").textContent=`條碼：${code}`;
+}
+
+async function addLog(it, n){
+  const mealKey = getSelectedMeal();
+  const timeStr = new Date().toTimeString().slice(0,5);
+  const logItem = {
+    name: it.name,
+    k: it.k,
+    p: it.p,
+    f: it.f,
+    c: it.c,
+    n: n,
+    meal: mealKey,
+    t: timeStr
+  };
+
+  (S.log[today()] = S.log[today()] || []).push(logItem);
+  save();
+
+  if(sbClient && currentUser){
+    const { data, error } = await sbClient.from('diet_logs').insert([{
+      user_id: currentUser.id,
+      date: today(),
+      meal: mealKey,
+      name: it.name,
+      servings: n,
+      kcal: it.k,
+      protein: it.p,
+      fat: it.f,
+      carbs: it.c,
+      logged_at: timeStr
+    }]).select();
+
+    if(!error && data && data[0]){
+      logItem.id = data[0].id;
+      save();
+    }
+  }
+}
+
+$("addBtn").onclick=()=>{
+  const n=+$("serv").value||1;
+  addLog(curItem,n);
+  $("found").classList.add("hide");
+  showView("today");
+};
+
+$("photoBtn").onclick=()=>{
+  if(!S.geminiKey){alert("請先到「設定」輸入 Google Gemini API Key。");return;}
+  $("photo").click();
+};
+
+$("photo").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  $("scanMsg").textContent="Gemini 辨識標示中…";
+  
+  const prompt = `你是精確的營養標示讀取助理。這是一張包裝上的營養標籤照片。
+請讀出商品名稱（若無則留空字串）、標示基準（"每份" 或 "每100g"，優先取每份）、熱量 (大卡 kcal)、蛋白質 (g)、脂肪 (g)、碳水化合物 (g)。
+必須嚴格回傳符合此格式的 JSON：
+{"name":"","basis":"每份","k":0,"p":0,"f":0,"c":0}
+看不清的數值給 0。數字必須為數值型態。`;
+
+  try{
+    const r = await callGeminiVision(prompt, f);
+    if(r.name) $("nName").value = r.name;
+    $("nB").value = r.basis === "每100g" ? "每100g" : "每份";
+    $("nK").value = r.k || 0;
+    $("nP").value = r.p || 0;
+    $("nF").value = r.f || 0;
+    $("nC").value = r.c || 0;
+    $("scanMsg").textContent="已由 AI 填入，請對照確認數值。";
+  }catch(err){
+    $("scanMsg").textContent="辨識失敗："+err.message;
+  }
+  e.target.value="";
+};
+
+$("saveNew").onclick=async()=>{
+  const it={
+    name:$("nName").value.trim(),
+    basis:$("nB").value,
+    k:+$("nK").value,
+    p:+$("nP").value||0,
+    f:+$("nF").value||0,
+    c:+$("nC").value||0
+  };
+  if(!it.name||!(it.k>=0)){$("scanMsg").textContent="請至少填寫商品名稱和熱量。";return}
+  
+  if(sbClient && currentUser && curBarcode){
+    await sbClient.from('custom_foods').upsert([{
+      barcode: curBarcode,
+      name: it.name,
+      basis: it.basis,
+      kcal: it.k,
+      protein: it.p,
+      fat: it.f,
+      carbs: it.c,
+      created_by: currentUser.id
+    }]);
+  }
+
+  addLog(it, 1);
+  showView("today");
+};
+
+let EST=[];
+function showEst(){
+  $("estList").innerHTML=EST.map((e,i)=>`<div class="item"><div><input type="checkbox" data-c="${i}" ${e.on?"checked":""}> ${esc(e.name)}<div class="mute">${esc(e.portion||"")}・蛋白質 ${Math.round(e.p)} g</div></div><input type="number" data-k="${i}" value="${Math.round(e.k)}" style="width:84px"></div>`).join("");
+  $("estAdd").classList.toggle("hide",!EST.length);
+}
+$("estList").onchange=e=>{
+  const t=e.target;
+  if(t.dataset.c!==undefined)EST[t.dataset.c].on=t.checked;
+  if(t.dataset.k!==undefined){
+    const x=EST[t.dataset.k],r=(+t.value||0)/(x.k||1);
+    x.p*=r;x.f*=r;x.c*=r;x.k=+t.value||0;
+  }
+};
+
+$("mealBtn").onclick=()=>{
+  if(!S.geminiKey){alert("請先到「設定」輸入 Google Gemini API Key。");return;}
+  $("mealPic").click();
+};
+
+$("mealPic").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  $("mealMsg").textContent="Gemini 正在分析餐點食材與熱量…";
+  
+  const prompt = `這是一張餐點照片。請拆解盤中的每樣食物與主副食，以台灣常見烹調手法與份量估算份量與熱量。
+嚴格回傳此 JSON 格式：
+{"items":[{"name":"食物名稱","portion":"估計份量說明","k":熱量大卡,"p":蛋白質克數,"f":脂肪克數,"c":碳水克數}]}
+若照片完全不是食物，請回傳 {"items":[]}`;
+
+  try{
+    const r = await callGeminiVision(prompt, f);
+    EST = (r.items||[]).map(x=>({
+      name:String(x.name||"食物"),
+      portion:x.portion||"",
+      k:+x.k||0,
+      p:+x.p||0,
+      f:+x.f||0,
+      c:+x.c||0,
+      on:true
+    }));
+    showEst();
+    $("mealMsg").textContent = EST.length ? "辨識完成，可微調熱量後勾選加入。" : "未能辨識出餐點。";
+  }catch(err){
+    $("mealMsg").textContent = "分析失敗：" + err.message;
+  }
+  e.target.value="";
+};
+
+$("estAdd").onclick=()=>{
+  const on=EST.filter(x=>x.on&&x.k>0);
+  if(!on.length){$("mealMsg").textContent="沒有選取任何項目。";return}
+  on.forEach(x=>addLog({name:x.name,k:x.k,p:x.p,f:x.f,c:x.c},1));
+  EST=[];
+  showEst();
+  showView("today");
+};
+
+function renderHist(){
+  const max=today();
+  $("hDate").max=max;
+  const d=$("hDate").value||max;
+  const L=S.log[d]||[], T=sumList(L), g=S.me?calc(S.me):null;
+  $("hSum").innerHTML=`<div class="big">${Math.round(T.k)} <span class="mute">大卡${g?"／目標 "+g.kcal:""}</span></div><div class="mute">蛋白質 ${Math.round(T.p)} g・脂肪 ${Math.round(T.f)} g・碳水 ${Math.round(T.c)} g</div>`;
+  $("hLog").innerHTML = renderMealSection(d, false);
+  
+  const days=Object.keys(S.log).filter(k=>(S.log[k]||[]).length&&k<=max).sort().reverse();
+  $("hDays").innerHTML=days.length?days.map(k=>`<div class="item" data-d="${k}" style="cursor:pointer"><span>${k}</span><span>${Math.round(sumList(S.log[k]).k)} 大卡</span></div>`).join(""):'<div class="mute">尚無紀錄。</div>';
+}
+$("hDate").onchange=renderHist;
+$("hDays").onclick=e=>{const r=e.target.closest("[data-d]");if(r){$("hDate").value=r.dataset.d;renderHist()}};
+
+const CF=[["白飯","1碗(約200g)",280,5,0.5,62],["糙米飯","1碗",260,6,2,55],["滷蛋／水煮蛋／茶葉蛋","1顆",75,6.5,5,0.5],["雞胸肉(熟)","100g",165,31,3.6,0],["無糖豆漿","1杯(360ml)",110,10,5,6],["吐司","1片",100,3.5,1,19],["蛋餅","1份",300,10,15,30],["飯糰","1個",400,10,10,68],["地瓜","中1條",180,2,0.3,42],["香蕉","1根",105,1.3,0.4,27],["蘋果","1顆",100,0.5,0.3,26],["牛奶","1杯(240ml)",150,8,8,12],["拿鐵","1杯(360ml)",150,8,8,12],["珍珠奶茶(全糖)","500ml",450,3,10,85],["排骨便當","1個",800,30,35,95],["滷肉飯","1碗",480,14,22,55],["牛肉麵","1碗",650,30,20,80],["陽春麵","1碗",350,10,8,60],["水餃","1顆",45,2.5,2,5],["小籠包","1顆",55,3,3,4],["鹽酥雞","100g",280,18,18,10],["燙青菜","1份",50,2,3,5],["乳清蛋白粉","1匙",120,24,2,3],["7-11 雙蔬鮪魚飯糰", "1個(109g)", 221, 5.0, 6.2, 38.0],["7-11 御選肉鬆飯糰", "1個(103g)", 260, 5.9, 8, 41.1],["7-11 炙燒明太子鮭魚飯糰", "1個(102g)", 191, 7.0, 3.4, 33.1],["7-11 鮪魚蛋雙拼三明治", "1份(108g)", 292, 9.7, 18.4, 21.8],["7-11 焗烤起司鮪魚三明治", "1份(123g)", 330, 11, 12, 29],["7-11 北海道秋鮭鮪魚雙手捲", "1份(185g)", 364, 9.6, 10.4, 58.1],["麥當勞 大麥克", "1個", 604, 28, 32, 51],["麥當勞 麥香雞", "1個", 393, 14, 17, 45],["麥當勞 雙層麥香雞", "1個", 529, 22, 25, 54],["麥當勞 麥克雞塊4塊", "4塊", 178, 11, 11, 9],["麥當勞 麥克雞塊6塊", "6塊", 269, 16, 17, 13],["星巴克 美式咖啡", "大杯473ml", 22, 1, 0, 4],["星巴克 那堤", "大杯473ml", 220, 12, 10, 18],["7-11 冰烤地瓜", "1份", 192, 3.4, 0.7, 44.4],["7-11 統一陽光高纖豆漿（無加糖）", "1份(包裝)", 183, 15.3, 8.6, 15.8],["全家 鹽蔥燒肉飯糰", "1個(108g)", 179, 5.8, 3.2, 31.6]];
+const CG=[["主食",["白飯","糙米飯","吐司","蛋餅","飯糰","地瓜"]],["蛋・肉・豆",["滷蛋／水煮蛋／茶葉蛋","雞胸肉(熟)","鹽酥雞","乳清蛋白粉"]],["水果・蔬菜",["香蕉","蘋果","燙青菜"]],["飲品",["無糖豆漿","牛奶","拿鐵","珍珠奶茶(全糖)"]],["便當・麵・小吃",["排骨便當","滷肉飯","牛肉麵","陽春麵","水餃","小籠包"]],["7-11 鮮食",["7-11 雙蔬鮪魚飯糰", "7-11 御選肉鬆飯糰", "7-11 炙燒明太子鮭魚飯糰", "7-11 鮪魚蛋雙拼三明治", "7-11 焗烤起司鮪魚三明治", "7-11 北海道秋鮭鮪魚雙手捲","7-11 冰烤地瓜","7-11 統一陽光高纖豆漿（無加糖）"]],["連鎖速食與咖啡",["麥當勞 大麥克", "麥當勞 麥香雞", "麥當勞 雙層麥香雞", "麥當勞 麥克雞塊4塊", "麥當勞 麥克雞塊6塊","星巴克 美式咖啡","星巴克 那堤","全家 鹽蔥燒肉飯糰"]]];
+
+$("cfName").innerHTML='<option value="">請選擇食物</option>'+CG.map(g=>`<optgroup label="${g[0]}">`+g[1].map(n=>`<option>${n}</option>`).join("")+"</optgroup>").join("");
+$("cfName").onchange=()=>{const f=CF.find(x=>x[0]===$("cfName").value);$("cfUnit").textContent=f?`每 ${f[1]}：${f[2]} 大卡・蛋白質 ${f[3]} g・脂肪 ${f[4]} g・碳水 ${f[5]} g`:""};
+$("cfAdd").onclick=()=>{
+  const f=CF.find(x=>x[0]===$("cfName").value);
+  if(!f){alert("請先選擇食物");return}
+  addLog({name:f[0]+"（"+f[1]+"）",k:f[2],p:f[3],f:f[4],c:f[5]},+$("cfN").value||1);
+  showView("today");
+};
+
+$("mAdd").onclick=()=>{
+  const k=+$("mK").value,n=$("mName").value.trim();
+  if(!n||isNaN(k)){alert("請填寫品項名稱與熱量");return}
+  addLog({name:n,k,p:+$("mP").value||0,f:+$("mF").value\vert{}\vert{}0,c:+$("mC").value||0},1);
+  ["mName","mK","mP","mF","mC"].forEach(i=>$(i).value="");
+  showView("today");
+};
+
+loadMe();
+renderMe();
+renderToday();
+initSupabase();
+</script>
+</body>
+</html>
