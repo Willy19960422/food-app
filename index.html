@@ -18,7 +18,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans TC"
 main{max-width:520px;margin:0 auto;padding:16px}
 h1{font-size:22px;margin:4px 0 12px}h2{font-size:17px;margin:0 0 10px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
-.ring{display:flex;align-items:center;gap:16px}
 .big{font-size:34px;font-weight:700;line-height:1.1}.mute{color:var(--mute);font-size:14px}
 .bar{margin:10px 0}.bar .t{display:flex;justify-content:space-between;font-size:14px}
 .track{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:4px}
@@ -39,7 +38,7 @@ button.sm{width:auto;margin:0;padding:4px 10px;font-size:13px}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:99}
 nav button{margin:0;border-radius:0;background:transparent;color:var(--mute);padding:14px 0}
 nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--brand)}
-.tag{font-size:13px;color:var(--brand);margin-top:4px}.hide{display:none}.msg{color:var(--warn);font-size:14px;margin-top:8px}
+.tag{font-size:13px;color:var(--brand);margin-top:4px}.hide{display:none !important}.msg{color:var(--warn);font-size:14px;margin-top:8px}
 .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;background:var(--bg);color:var(--mute);margin-bottom:6px}
 
 .meal-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 16px}
@@ -53,12 +52,36 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .meal-title{font-size:16px;font-weight:700;color:var(--ink)}
 .meal-summary{font-size:13px;color:var(--mute)}
 .empty-meal{font-size:13px;color:var(--mute);padding:6px 0}
-.auth-status{font-size:13px;padding:4px 8px;border-radius:6px;background:var(--bg);display:inline-block;margin-bottom:8px}
+
+/* 登入介面專用樣式 */
+.auth-hero{text-align:center;padding:24px 0 12px}
+.auth-hero h1{font-size:26px;color:var(--brand);margin-bottom:4px}
+.auth-hero p{color:var(--mute);margin:0;font-size:15px}
+.auth-msg{font-size:13px;color:var(--warn);margin-top:8px;min-height:20px;text-align:center}
 </style>
 </head>
 <body>
 <main>
-<section id="p-today">
+<!-- 1. 獨立登入與註冊頁面 (未登入時預設顯示) -->
+<section id="p-auth">
+  <div class="auth-hero">
+    <h1>食養紀錄</h1>
+    <p>智慧掃描 · 雲端同步 · 飲食目標管理</p>
+  </div>
+  <div class="card">
+    <h2 id="authTitle">登入您的帳號</h2>
+    <label>Email 信箱</label>
+    <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="email">
+    <label>密碼</label>
+    <input id="authPass" type="password" placeholder="密碼至少 6 碼" autocomplete="current-password">
+    <button id="authPrimaryBtn">立即登入</button>
+    <button class="ghost" id="authToggleBtn">還沒有帳號？點此註冊</button>
+    <div id="authErrMsg" class="auth-msg"></div>
+  </div>
+</section>
+
+<!-- 2. 今日主頁 -->
+<section id="p-today" class="hide">
   <h1>今日攝取</h1>
   <button id="newBtn" style="margin:0 0 14px">＋ 新增食物</button>
   <div class="card" id="sum"></div>
@@ -68,6 +91,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
+<!-- 3. 新增食物導航 -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -90,6 +114,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
+<!-- 4. 掃描與條碼商品查詢 -->
 <section id="p-scan" class="hide">
   <h1>掃描食品</h1>
   <button class="ghost" data-goadd style="margin:0 0 14px">← 返回選擇方式</button>
@@ -130,6 +155,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
+<!-- 5. 拍餐點 AI 估算與常見食物 -->
 <section id="p-meal" class="hide">
   <h1>沒有條碼的餐點</h1>
   <button class="ghost" data-goadd style="margin:0 0 14px">← 返回選擇方式</button>
@@ -165,6 +191,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
+<!-- 6. 歷史紀錄 -->
 <section id="p-hist" class="hide">
   <h1>飲食紀錄</h1>
   <div class="card"><label>選擇日期</label><input id="hDate" type="date"><div id="hSum" style="margin-top:10px"></div></div>
@@ -172,24 +199,13 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card"><h2>最近紀錄</h2><div id="hDays"></div></div>
 </section>
 
+<!-- 7. 個人設定 -->
 <section id="p-me" class="hide">
-  <h1>目標與雲端設定</h1>
+  <h1>我的設定與目標</h1>
   <div class="card">
-    <div id="authBox">
-      <h2>Supabase 雲端帳號</h2>
-      <div id="authStatus" class="auth-status">連線中…</div>
-      <div id="loginForm">
-        <label>Email</label><input id="authEmail" type="email" placeholder="name@example.com">
-        <label>密碼</label><input id="authPass" type="password" placeholder="密碼至少 6 碼">
-        <div class="row">
-          <button id="signInBtn">登入同步</button>
-          <button class="ghost" id="signUpBtn">註冊新帳號</button>
-        </div>
-      </div>
-      <div id="userPanel" class="hide">
-        <button class="ghost" id="signOutBtn">登出帳號</button>
-      </div>
-    </div>
+    <h2>雲端帳號</h2>
+    <div id="userEmailTag" style="font-weight:700;margin-bottom:8px"></div>
+    <button class="ghost" id="signOutBtn" style="color:var(--warn);border-color:var(--warn)">登出帳號</button>
   </div>
 
   <div class="card">
@@ -214,67 +230,42 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <option value="1.55" selected>每週運動 3–5 天</option>
       <option value="1.725">每週運動 6–7 天</option>
     </select>
-    <button id="saveMe">計算並儲存</button>
+    <button id="saveMe">計算並儲存目標</button>
   </div>
   <div class="card" id="result"></div>
-  
-  <div class="card">
-    class="card hide"
-    <h2>API 設定</h2>
-    <label>Supabase URL</label>
-    <input id="sbUrl">
-    <label>Supabase Publishable Key</label>
-    <input id="sbKey" type="password">
-    <label>Google Gemini API Key</label>
-    <input id="geminiKey" type="password" placeholder="登入後自動載入，或手動輸入">
-    <button class="ghost" id="saveKeysBtn">儲存所有金鑰</button>
-    <button class="ghost" id="resetCacheBtn" style="color:var(--warn);border-color:var(--warn);margin-top:16px">清除本地快取並重新整理</button>
-  </div>
 </section>
 </main>
 
-<nav>
+<!-- 底部導航 (登入後才會顯示) -->
+<nav id="bottomNav" class="hide">
   <button data-p="today" class="on">今日</button>
   <button data-p="hist">紀錄</button>
   <button data-p="me">設定</button>
 </nav>
 
 <script>
-// 全域錯誤捕獲，防止白畫面無提示
-window.onerror = function(msg, url, line) {
-  console.error("Critical Error:", msg, "at line:", line);
-};
-
 const $ = id => document.getElementById(id);
 
-const DEFAULT_SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
-const DEFAULT_SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWplYWRwenV6cmZ4YXdjeWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MjgzOTEsImV4cCI6MjEwNjMwNDM5MX0.4AYjLPcUQEPIV4RXfqKoYIAAuyhuqe1U-ACDBj3LOMM";
+// 寫死 Supabase 連線資訊 (包含你專屬的 anon public JWT Key)
+const SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWplYWRwenV6cmZ4YXdjeWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MjgzOTEsImV4cCI6MjEwNjMwNDM5MX0.4AYjLPcUQEPIV4RXfqKoYIAAuyhuqe1U-ACDBj3LOMM";
 const DEFAULT_ME = { goal: "fat", sex: "m", age: 30, ht: 170, wt: 65, act: 1.55 };
 
 let S = {
   me: DEFAULT_ME,
   log: {},
-  sbUrl: DEFAULT_SB_URL,
-  sbKey: DEFAULT_SB_KEY,
   geminiKey: ""
 };
 
-// 安全載入快取
 try {
   const r = localStorage.getItem("nutri_v3");
   if (r) {
     const cached = JSON.parse(r);
-    if (cached && typeof cached === "object") {
-      S = Object.assign(S, cached);
-    }
+    if (cached && typeof cached === "object") S = Object.assign(S, cached);
   }
-} catch(e) {
-  console.warn("快取解析失敗");
-}
+} catch(e) {}
 
-if (!S.me || typeof S.me !== "object") S.me = DEFAULT_ME;
-if (!S.sbUrl) S.sbUrl = DEFAULT_SB_URL;
-if (!S.sbKey) S.sbKey = DEFAULT_SB_KEY;
+if (!S.me) S.me = DEFAULT_ME;
 
 const save = () => { try { localStorage.setItem("nutri_v3", JSON.stringify(S)); } catch(e){} };
 const esc = t => String(t || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -282,17 +273,150 @@ const today = () => new Date().toLocaleDateString("sv");
 const GN = { muscle: "增肌", fat: "減脂", lose: "減重" };
 const MEALS = [
   { key: "breakfast", name: "早餐", icon: "🌅" },
-  { key: "lunch", name: "午餐", icon: "☀️" },
+  { key: "lunch", name: "午餐", icon: "☀️️" },
   { key: "dinner", name: "晚餐", icon: "🌙" },
   { key: "snack", name: "點心／補給", icon: "🍎" }
 ];
 
 let sbClient = null;
 let currentUser = null;
+let isSignUpMode = false;
 
-/* 優先綁定核心導航與點擊事件 */
-const VIEWS = ["today", "add", "scan", "meal", "hist", "me"];
+/* 初始化 Supabase 與身分驗證檢查 */
+function initSupabase() {
+  try {
+    if (window.supabase && typeof window.supabase.createClient === "function") {
+      sbClient = window.supabase.createClient(SB_URL, SB_KEY);
+      sbClient.auth.onAuthStateChange((event, session) => {
+        currentUser = session ? session.user : null;
+        updateViewByAuth();
+      });
+      checkUser();
+    }
+  } catch(err) {
+    console.error("Supabase 連線失敗:", err);
+  }
+}
+
+async function checkUser() {
+  if (!sbClient) return;
+  try {
+    const { data: { session } } = await sbClient.auth.getSession();
+    currentUser = session ? session.user : null;
+    updateViewByAuth();
+  } catch(e) {
+    updateViewByAuth();
+  }
+}
+
+/* 核心跳轉：根據登入狀態切換介面 */
+function updateViewByAuth() {
+  if (currentUser) {
+    $("p-auth").classList.add("hide");
+    $("bottomNav").classList.remove("hide");
+    $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
+    loadServerConfig();
+    syncLogsFromSupabase();
+    showView("today");
+  } else {
+    // 未登入：強制停留在登入頁，隱藏下方導航
+    VIEWS.forEach(p => {
+      const el = $("p-" + p);
+      if (el) el.classList.add("hide");
+    });
+    $("p-auth").classList.remove("hide");
+    $("bottomNav").classList.add("hide");
+    window.scrollTo(0, 0);
+  }
+}
+
+/* 登入／註冊切換 */
+$("authToggleBtn").onclick = () => {
+  isSignUpMode = !isSignUpMode;
+  $("authTitle").textContent = isSignUpMode ? "註冊新帳號" : "登入您的帳號";
+  $("authPrimaryBtn").textContent = isSignUpMode ? "立即註冊" : "立即登入";
+  $("authToggleBtn").textContent = isSignUpMode ? "已有帳號？點此登入" : "還沒有帳號？點此註冊";
+  $("authErrMsg").textContent = "";
+};
+
+$("authPrimaryBtn").onclick = async () => {
+  if (!sbClient) return alert("連線尚未準備好，請稍候重試");
+  const email = $("authEmail").value.trim(), password = $("authPass").value.trim();
+  if (!email || !password) {
+    $("authErrMsg").textContent = "請輸入 Email 與密碼";
+    return;
+  }
+  $("authErrMsg").textContent = "連線驗證中…";
+
+  if (isSignUpMode) {
+    const { data, error } = await sbClient.auth.signUp({ email, password });
+    if (error) $("authErrMsg").textContent = "註冊失敗：" + error.message;
+    else {
+      currentUser = data.user;
+      alert("註冊成功！已自動登入。");
+      updateViewByAuth();
+    }
+  } else {
+    const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+    if (error) $("authErrMsg").textContent = "登入失敗：" + error.message;
+    else {
+      currentUser = data.user;
+      updateViewByAuth();
+    }
+  }
+};
+
+$("signOutBtn").onclick = async () => {
+  if (sbClient) await sbClient.auth.signOut();
+  currentUser = null;
+  updateViewByAuth();
+};
+
+async function loadServerConfig() {
+  if (!sbClient || !currentUser) return;
+  try {
+    const { data } = await sbClient.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
+    if (data && data.value) {
+      S.geminiKey = data.value;
+      save();
+    }
+  } catch(e) {}
+}
+
+async function syncLogsFromSupabase() {
+  if (!sbClient || !currentUser) return;
+  try {
+    const { data, error } = await sbClient.from('diet_logs').select('*');
+    if (!error && data) {
+      S.log = {};
+      data.forEach(row => {
+        const d = row.date;
+        if (!S.log[d]) S.log[d] = [];
+        S.log[d].push({
+          id: row.id,
+          meal: row.meal,
+          name: row.name,
+          k: Number(row.kcal) || 0,
+          p: Number(row.protein) || 0,
+          f: Number(row.fat) || 0,
+          c: Number(row.carbs) || 0,
+          n: Number(row.servings) || 1,
+          t: row.logged_at
+        });
+      });
+      save();
+      renderToday();
+    }
+  } catch(e) {}
+}
+
+/* 視圖切換與導航 */
+const VIEWS = ["auth", "today", "add", "scan", "meal", "hist", "me"];
 function showView(v, mode) {
+  if (!currentUser && v !== "auth") {
+    updateViewByAuth();
+    return;
+  }
   VIEWS.forEach(p => {
     const el = $("p-" + p);
     if (el) el.classList.toggle("hide", p !== v);
@@ -319,6 +443,7 @@ function showView(v, mode) {
     if (!$("hDate").value) $("hDate").value = today();
     renderHist();
   }
+  if (v === "me") renderMe();
   window.scrollTo(0, 0);
 }
 
@@ -461,9 +586,6 @@ function renderMe() {
     <p>蛋白質 ${t.p} g 脂肪 ${t.f} g 碳水 ${t.c} g</p>
     ${t.floored ? '<div class="msg">已套用安全下限，不建議再低於此熱量。</div>' : ''}
   `;
-  if ($("sbUrl")) $("sbUrl").value = S.sbUrl || "";
-  if ($("sbKey")) $("sbKey").value = S.sbKey || "";
-  if ($("geminiKey")) $("geminiKey").value = S.geminiKey || "";
 }
 
 function loadMe() {
@@ -494,126 +616,7 @@ $("saveMe").onclick = () => {
   alert("個人目標已更新！");
 };
 
-$("resetCacheBtn").onclick = () => {
-  if (confirm("這將清除本地暫存的連線狀態並重新整理，確定嗎？")) {
-    localStorage.removeItem("nutri_v3");
-    location.reload();
-  }
-};
-
-/* 安全的 Supabase 初始化 */
-function initSupabase() {
-  try {
-    if (window.supabase && typeof window.supabase.createClient === "function") {
-      sbClient = window.supabase.createClient(S.sbUrl, S.sbKey);
-      checkUser();
-    } else {
-      updateAuthUI(null, "Supabase 套件載入中或離線模式");
-    }
-  } catch(err) {
-    console.error("Supabase 連線失敗:", err);
-    updateAuthUI(null, "連線尚未建立（本地紀錄正常運作）");
-  }
-}
-
-async function loadServerConfig() {
-  if (!sbClient || !currentUser) return;
-  try {
-    const { data } = await sbClient.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
-    if (data && data.value) {
-      S.geminiKey = data.value;
-      save();
-      if ($("geminiKey")) $("geminiKey").value = S.geminiKey;
-    }
-  } catch(e) {}
-}
-
-async function checkUser() {
-  if (!sbClient) return;
-  try {
-    const { data: { session } } = await sbClient.auth.getSession();
-    currentUser = session ? session.user : null;
-    if (currentUser) {
-      updateAuthUI(currentUser, `已登入：${currentUser.email}`);
-      syncLogsFromSupabase();
-      loadServerConfig();
-    } else {
-      updateAuthUI(null, "未登入（紀錄目前存於本機）");
-    }
-  } catch(e) {
-    updateAuthUI(null, "未登入");
-  }
-}
-
-function updateAuthUI(user, statusText) {
-  if ($("authStatus")) $("authStatus").textContent = statusText;
-  if ($("loginForm")) $("loginForm").classList.toggle("hide", !!user);
-  if ($("userPanel")) $("userPanel").classList.toggle("hide", !user);
-}
-
-$("signInBtn").onclick = async () => {
-  if (!sbClient) return alert("尚未連線到 Supabase。");
-  const email = $("authEmail").value.trim(), password = $("authPass").value.trim();
-  const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
-  if (error) alert("登入失敗：" + error.message);
-  else {
-    currentUser = data.user;
-    updateAuthUI(currentUser, `已登入：${currentUser.email}`);
-    syncLogsFromSupabase();
-    loadServerConfig();
-  }
-};
-
-$("signUpBtn").onclick = async () => {
-  if (!sbClient) return alert("尚未連線到 Supabase。");
-  const email = $("authEmail").value.trim(), password = $("authPass").value.trim();
-  const { data, error } = await sbClient.auth.signUp({ email, password });
-  if (error) alert("註冊失敗：" + error.message);
-  else alert("註冊成功！請直接點選「登入同步」。");
-};
-
-$("signOutBtn").onclick = async () => {
-  if (sbClient) await sbClient.auth.signOut();
-  currentUser = null;
-  updateAuthUI(null, "未登入");
-};
-
-$("saveKeysBtn").onclick = () => {
-  S.sbUrl = $("sbUrl").value.trim() || DEFAULT_SB_URL;
-  S.sbKey = $("sbKey").value.trim() || DEFAULT_SB_KEY;
-  S.geminiKey = $("geminiKey").value.trim();
-  save();
-  initSupabase();
-  alert("金鑰已儲存！");
-};
-
-async function syncLogsFromSupabase() {
-  if (!sbClient || !currentUser) return;
-  try {
-    const { data, error } = await sbClient.from('diet_logs').select('*');
-    if (!error && data) {
-      S.log = {};
-      data.forEach(row => {
-        const d = row.date;
-        if (!S.log[d]) S.log[d] = [];
-        S.log[d].push({
-          id: row.id,
-          meal: row.meal,
-          name: row.name,
-          k: Number(row.kcal) || 0,
-          p: Number(row.protein) || 0,
-          f: Number(row.fat) || 0,
-          c: Number(row.carbs) || 0,
-          n: Number(row.servings) || 1,
-          t: row.logged_at
-        });
-      });
-      save();
-      renderToday();
-    }
-  } catch(e) {}
-}
-
+/* 檔案轉 Base64 */
 const fileToBase64 = f => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(r.result.split(",")[1]);
@@ -622,7 +625,7 @@ const fileToBase64 = f => new Promise((res, rej) => {
 });
 
 async function callGeminiVision(prompt, file) {
-  if (!S.geminiKey) throw new Error("尚未載入 Gemini API Key，請先登入帳號或於設定手動輸入。");
+  if (!S.geminiKey) throw new Error("尚未載入 Gemini API Key，請確認 Supabase app_config 表中已有配置。");
   const base64Data = await fileToBase64(file);
   const mimeType = file.type || "image/jpeg";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.geminiKey}`;
@@ -651,6 +654,7 @@ async function callGeminiVision(prompt, file) {
   return JSON.parse(rawText);
 }
 
+/* 條碼掃描與商品查詢 */
 let qr = null, curBarcode = null, curItem = null;
 function stopScan() {
   if (qr && qr.isScanning) { qr.stop().catch(() => {}); }
@@ -800,7 +804,7 @@ $("addBtn").onclick = () => {
 };
 
 $("photoBtn").onclick = () => {
-  if (!S.geminiKey) return alert("請先登入帳號載入 AI 金鑰，或於設定手動輸入。");
+  if (!S.geminiKey) return alert("尚未載入 AI 金鑰，請先確認後端配置。");
   $("photo").click();
 };
 
@@ -853,6 +857,7 @@ $("saveNew").onclick = async () => {
   showView("today");
 };
 
+/* 拍餐點估算 */
 let EST = [];
 function showEst() {
   $("estList").innerHTML = EST.map((e, i) => `
@@ -877,7 +882,7 @@ $("estList").onchange = e => {
 };
 
 $("mealBtn").onclick = () => {
-  if (!S.geminiKey) return alert("請先登入帳號載入 AI 金鑰，或於設定手動輸入。");
+  if (!S.geminiKey) return alert("尚未載入 AI 金鑰，請先確認後端配置。");
   $("mealPic").click();
 };
 
@@ -913,6 +918,7 @@ $("estAdd").onclick = () => {
   showView("today");
 };
 
+/* 歷史紀錄 */
 function renderHist() {
   const max = today();
   $("hDate").max = max;
@@ -930,6 +936,7 @@ $("hDays").onclick = e => {
   if (r) { $("hDate").value = r.dataset.d; renderHist(); }
 };
 
+/* 常見食物庫 */
 const CF=[["白飯","1碗(約200g)",280,5,0.5,62],["糙米飯","1碗",260,6,2,55],["滷蛋／水煮蛋／茶葉蛋","1顆",75,6.5,5,0.5],["雞胸肉(熟)","100g",165,31,3.6,0],["無糖豆漿","1杯(360ml)",110,10,5,6],["吐司","1片",100,3.5,1,19],["蛋餅","1份",300,10,15,30],["飯糰","1個",400,10,10,68],["地瓜","中1條",180,2,0.3,42],["香蕉","1根",105,1.3,0.4,27],["蘋果","1顆",100,0.5,0.3,26],["牛奶","1杯(240ml)",150,8,8,12],["拿鐵","1杯(360ml)",150,8,8,12],["珍珠奶茶(全糖)","500ml",450,3,10,85],["排骨便當","1個",800,30,35,95],["滷肉飯","1碗",480,14,22,55],["牛肉麵","1碗",650,30,20,80],["陽春麵","1碗",350,10,8,60],["水餃","1顆",45,2.5,2,5],["小籠包","1顆",55,3,3,4],["鹽酥雞","100g",280,18,18,10],["燙青菜","1份",50,2,3,5],["乳清蛋白粉","1匙",120,24,2,3],["7-11 雙蔬鮪魚飯糰", "1個(109g)", 221, 5.0, 6.2, 38.0],["7-11 御選肉鬆飯糰", "1個(103g)", 260, 5.9, 8, 41.1],["7-11 炙燒明太子鮭魚飯糰", "1個(102g)", 191, 7.0, 3.4, 33.1],["7-11 鮪魚蛋雙拼三明治", "1份(108g)", 292, 9.7, 18.4, 21.8],["7-11 焗烤起司鮪魚三明治", "1份(123g)", 330, 11, 12, 29],["7-11 北海道秋鮭鮪魚雙手捲", "1份(185g)", 364, 9.6, 10.4, 58.1],["麥當勞 大麥克", "1個", 604, 28, 32, 51],["麥當勞 麥香雞", "1個", 393, 14, 17, 45],["麥當勞 雙層麥香雞", "1個", 529, 22, 25, 54],["麥當勞 麥克雞塊4塊", "4塊", 178, 11, 11, 9],["麥當勞 麥克雞塊6塊", "6塊", 269, 16, 17, 13],["星巴克 美式咖啡", "大杯473ml", 22, 1, 0, 4],["星巴克 那堤", "大杯473ml", 220, 12, 10, 18],["7-11 冰烤地瓜", "1份", 192, 3.4, 0.7, 44.4],["7-11 統一陽光高纖豆漿（無加糖）", "1份(包裝)", 183, 15.3, 8.6, 15.8],["全家 鹽蔥燒肉飯糰", "1個(108g)", 179, 5.8, 3.2, 31.6]];
 const CG=[["主食",["白飯","糙米飯","吐司","蛋餅","飯糰","地瓜"]],["蛋・肉・豆",["滷蛋／水煮蛋／茶葉蛋","雞胸肉(熟)","鹽酥雞","乳清蛋白粉"]],["水果・蔬菜",["香蕉","蘋果","燙青菜"]],["飲品",["無糖豆漿","牛奶","拿鐵","珍珠奶茶(全糖)"]],["便當・麵・小吃",["排骨便當","滷肉飯","牛肉麵","陽春麵","水餃","小籠包"]],["7-11 鮮食",["7-11 雙蔬鮪魚飯糰", "7-11 御選肉鬆飯糰", "7-11 炙燒明太子鮭魚飯糰", "7-11 鮪魚蛋雙拼三明治", "7-11 焗烤起司鮪魚三明治", "7-11 北海道秋鮭鮪魚雙手捲","7-11 冰烤地瓜","7-11 統一陽光高纖豆漿（無加糖）"]],["連鎖速食與咖啡",["麥當勞 大麥克", "麥當勞 麥香雞", "麥當勞 雙層麥香雞", "麥當勞 麥克雞塊4塊", "麥當勞 麥克雞塊6塊","星巴克 美式咖啡","星巴克 那堤","全家 鹽蔥燒肉飯糰"]]];
 
@@ -945,7 +952,6 @@ $("cfAdd").onclick = () => {
   showView("today");
 };
 
-// 修正：嚴格對齊 mP, mF, mC 的元素 ID
 $("mAdd").onclick = () => {
   const k = +$("mK").value, n = $("mName").value.trim();
   if (!n || isNaN(k)) return alert("請填寫品項名稱與熱量");
@@ -963,16 +969,9 @@ $("mAdd").onclick = () => {
   showView("today");
 };
 
-// 網頁載入時依序執行
 window.addEventListener("DOMContentLoaded", () => {
-  try {
-    loadMe();
-    renderMe();
-    renderToday();
-    initSupabase();
-  } catch(e) {
-    console.error("Initialization error:", e);
-  }
+  loadMe();
+  initSupabase();
 });
 </script>
 </body>
