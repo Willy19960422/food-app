@@ -58,7 +58,7 @@ input,select{width:100%;padding:11px 12px;font:inherit;color:var(--ink);backgrou
 button{font:inherit;font-weight:500;padding:12px 16px;border-radius:10px;border:0;background:var(--brand);color:var(--on);width:100%;margin-top:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
 button:disabled{opacity:0.65;cursor:not-allowed}
 button.ghost{background:transparent;color:var(--brand);border:1px solid var(--brand)}
-button.sm{width:auto;margin:0;padding:5px 12px;font-size:13px}
+button.sm{width:auto;margin:0;padding:5px 10px;font-size:13px}
 .goals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .goals label{margin:0;padding:10px 4px;text-align:center;border:1px solid var(--line);border-radius:10px;color:var(--ink);cursor:pointer}
 .goals input{display:none}.goals input:checked+span{font-weight:700;color:var(--brand)}
@@ -158,6 +158,10 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .recent-chip span{color:var(--kcal);font-weight:700}
 
 .fold-box{margin-top:8px;padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--line)}
+
+/* 彈窗樣式 (修改紀錄用) */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
+.modal-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:100%;max-width:420px;box-shadow:0 4px 16px rgba(0,0,0,0.15)}
 </style>
 </head>
 <body>
@@ -172,9 +176,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card">
     <h2 id="authTitle">登入您的帳號</h2>
     <label>Email 信箱</label>
-    <input id="authEmail" type="email" placeholder="請輸入您的帳號" autocomplete="email">
+    <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="email">
     <label>密碼</label>
-    <input id="authPass" type="password" placeholder="請輸入您的密碼" autocomplete="current-password">
+    <input id="authPass" type="password" placeholder="密碼至少 6 碼" autocomplete="current-password">
     <button id="authPrimaryBtn"><span>立即登入</span></button>
     <button class="ghost" id="authToggleBtn">還沒有帳號？點此註冊</button>
     <div id="authErrMsg" class="auth-msg"></div>
@@ -541,6 +545,34 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <button data-p="hist">紀錄</button>
   <button data-p="me">設定</button>
 </nav>
+
+<!-- 第二階段：飲食紀錄修改彈窗 -->
+<div id="editLogModal" class="modal-overlay hide">
+  <div class="modal-card">
+    <h2>修改飲食紀錄</h2>
+    <input type="hidden" id="editLogId">
+    <input type="hidden" id="editLogDate">
+    
+    <label>品項名稱</label>
+    <input id="editLogName" readonly style="background:var(--line);cursor:not-allowed">
+
+    <label>記錄餐別</label>
+    <select id="editLogMeal">
+      <option value="breakfast">早餐</option>
+      <option value="lunch">午餐</option>
+      <option value="dinner">晚餐</option>
+      <option value="snack">點心</option>
+    </select>
+
+    <label>份數 / 比例</label>
+    <input id="editLogServings" type="number" step="0.1" min="0.1" value="1">
+
+    <div class="row" style="margin-top:14px">
+      <button class="ghost" id="editLogCancelBtn" style="margin-top:0">取消</button>
+      <button id="editLogSaveBtn" style="margin-top:0">儲存修改</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -1453,7 +1485,7 @@ $("cfAdd").onclick = () => {
       return alert("此商品未提供每份重量基準，無法進行重量換算。");
     }
     logName = `${chosenFood.name} (${w}g)`;
-    finalServings = multiplier; // 保留完整精度，不提早四捨五入
+    finalServings = multiplier; // 保留完整精度
   }
 
   addLog({
@@ -1760,6 +1792,7 @@ function bar(name, v, goal, col, u) {
   return `<div class="bar"><div class="t"><span>${name}</span><span>${Math.round(v)} / ${goal || "?"} ${u}</span></div><div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div></div>`;
 }
 
+// 第二階段：支援點擊開啟修改紀錄彈窗
 function renderMealSection(dateKey, isEditable = true) {
   const dayLogs = S.log[dateKey] || [];
   return MEALS.map(meal => {
@@ -1775,7 +1808,12 @@ function renderMealSection(dateKey, isEditable = true) {
           ${e.t ? `<span class="mute">${e.t}</span> ` : ""}${esc(e.name)}
           <div class="mute">${e.n} 份・${Math.round(e.k * e.n)} 大卡・P ${Math.round(e.p * e.n)}g / F ${Math.round(e.f * e.n)}g / C ${Math.round(e.c * e.n)}g</div>
         </div>
-        ${isEditable ? `<button class="sm ghost" data-del="${e.originalIdx}">刪除</button>` : ''}
+        ${isEditable ? `
+          <div style="display:flex;gap:6px">
+            <button class="sm ghost" data-edit="${dateKey}" data-editidx="${e.originalIdx}">修改</button>
+            <button class="sm ghost" data-del="${e.originalIdx}" style="color:var(--warn);border-color:var(--warn)">刪除</button>
+          </div>
+        ` : ''}
       </div>
     `).join("");
 
@@ -1812,22 +1850,85 @@ function renderToday() {
   $("logByMeal").innerHTML = renderMealSection(today(), true);
 }
 
+// 監聽修改與刪除動作
 $("logByMeal").onclick = async e => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
-  const i = e.target.dataset.del;
-  if (i === undefined) return;
-  const removed = S.log[today()].splice(i, 1)[0];
+  
+  // 處理刪除
+  const delIdx = e.target.dataset.del;
+  if (delIdx !== undefined) {
+    const removed = S.log[today()].splice(delIdx, 1)[0];
+    save();
+    renderToday();
+
+    if (removed && removed.id) {
+      S.pendingDeleteQueue.push(removed.id);
+      S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== removed.id);
+      save();
+      if (sbClient && currentUser && navigator.onLine) runSyncPipeline();
+    }
+    return;
+  }
+
+  // 處理修改彈窗開啟
+  const editDate = e.target.dataset.edit;
+  const editIdx = e.target.dataset.editidx;
+  if (editDate !== undefined && editIdx !== undefined) {
+    const item = S.log[editDate][editIdx];
+    if (!item) return;
+
+    $("editLogId").value = item.id;
+    $("editLogDate").value = editDate;
+    $("editLogName").value = item.name;
+    $("editLogMeal").value = item.meal || "snack";
+    $("editLogServings").value = item.n || 1;
+    $("editLogModal").classList.remove("hide");
+  }
+};
+
+// 第二階段：儲存修改後的紀錄
+$("editLogCancelBtn").onclick = () => {
+  $("editLogModal").classList.add("hide");
+};
+
+$("editLogSaveBtn").onclick = async () => {
+  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
+  const logId = $("editLogId").value;
+  const logDate = $("editLogDate").value;
+  const newMeal = $("editLogMeal").value;
+  const newServings = +$("editLogServings").value || 1;
+
+  const dayLogs = S.log[logDate] || [];
+  const targetItem = dayLogs.find(x => x.id === logId);
+  if (!targetItem) {
+    $("editLogModal").classList.add("hide");
+    return alert("找不到該筆紀錄。");
+  }
+
+  targetItem.meal = newMeal;
+  targetItem.n = newServings;
   save();
   renderToday();
+  $("editLogModal").classList.add("hide");
 
-  if (removed && removed.id) {
-    S.pendingDeleteQueue.push(removed.id);
-    S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== removed.id);
-    save();
+  // 同步更新至待同步佇列與雲端
+  S.pendingSyncQueue = S.pendingSyncQueue.filter(q => q.id !== logId);
+  S.pendingSyncQueue.push({
+    id: targetItem.id,
+    date: logDate,
+    meal: targetItem.meal,
+    name: targetItem.name,
+    n: targetItem.n,
+    k: targetItem.k,
+    p: targetItem.p,
+    f: targetItem.f,
+    c: targetItem.c,
+    t: targetItem.t || "00:00"
+  });
+  save();
 
-    if (sbClient && currentUser && navigator.onLine) {
-      runSyncPipeline();
-    }
+  if (sbClient && currentUser && navigator.onLine) {
+    runSyncPipeline();
   }
 };
 
@@ -2077,7 +2178,6 @@ async function lookup(code) {
   document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
 }
 
-// 掃描條碼加入紀錄（倍數保留完整精度）
 $("addBtn").onclick = async () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   if (!curItem) return;
@@ -2105,7 +2205,7 @@ $("addBtn").onclick = async () => {
       return alert("此商品未提供每份重量基準，無法進行重量換算。");
     }
     logName = `${itemToSave.name} (${w}g)`;
-    finalServings = multiplier; // 保留完整精度
+    finalServings = multiplier;
   }
 
   addLog({
@@ -2146,7 +2246,7 @@ $("addBtn").onclick = async () => {
         loadCommunityFoods();
       }
     } catch(err) {
-      alert("⚠️️ 網路異常，商品分享至社群庫失敗。");
+      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
     }
   }
 
@@ -2232,14 +2332,14 @@ $("photo").onchange = async e => {
   }
 };
 
-// 掃不到條碼時新增商品：已修正正確讀取 nC 欄位
+// 掃不到條碼時新增商品：正確讀取 nC 欄位
 $("saveNew").onclick = async () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const n = $("nName").value.trim();
   const k = +$("nK").value;
   const p = +$("nP").value || 0;
   const f = +$("nF").value || 0;
-  const c = +$("nC").value || 0; // 修正為正確的 nC
+  const c = +$("nC").value || 0; // 讀取正確的 nC
   const cat = $("nCat").value || "超商鮮食";
   const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
 
