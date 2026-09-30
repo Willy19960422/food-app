@@ -53,7 +53,6 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .meal-summary{font-size:13px;color:var(--mute)}
 .empty-meal{font-size:13px;color:var(--mute);padding:6px 0}
 
-/* 登入介面專用樣式 */
 .auth-hero{text-align:center;padding:24px 0 12px}
 .auth-hero h1{font-size:26px;color:var(--brand);margin-bottom:4px}
 .auth-hero p{color:var(--mute);margin:0;font-size:15px}
@@ -62,7 +61,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 </head>
 <body>
 <main>
-<!-- 1. 獨立登入與註冊頁面 (未登入時預設顯示) -->
+<!-- 1. 登入/註冊頁面 -->
 <section id="p-auth">
   <div class="auth-hero">
     <h1>食養紀錄</h1>
@@ -80,7 +79,38 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 2. 今日主頁 -->
+<!-- 2. 初次設定目標頁面 (Onboarding 引導頁) -->
+<section id="p-onboarding" class="hide">
+  <div class="auth-hero">
+    <h1>設定個人目標</h1>
+    <p>計算您的基礎代謝率 (BMR) 與每日總消耗 (TDEE)</p>
+  </div>
+  <div class="card">
+    <div class="goals">
+      <label><input type="radio" name="ob-goal" value="muscle"><span>增肌</span></label>
+      <label><input type="radio" name="ob-goal" value="fat" checked><span>減脂</span></label>
+      <label><input type="radio" name="ob-goal" value="lose"><span>減重</span></label>
+    </div>
+    <div class="row">
+      <div><label>性別</label><select id="ob-sex"><option value="m">男</option><option value="f">女</option></select></div>
+      <div><label>年齡</label><input id="ob-age" type="number" value="30"></div>
+    </div>
+    <div class="row">
+      <div><label>身高 (cm)</label><input id="ob-ht" type="number" value="170"></div>
+      <div><label>體重 (kg)</label><input id="ob-wt" type="number" value="65"></div>
+    </div>
+    <label>活動量</label>
+    <select id="ob-act">
+      <option value="1.2">幾乎不運動</option>
+      <option value="1.375">每週運動 1–3 天</option>
+      <option value="1.55" selected>每週運動 3–5 天</option>
+      <option value="1.725">每週運動 6–7 天</option>
+    </select>
+    <button id="obSaveBtn">完成設定，開始使用</button>
+  </div>
+</section>
+
+<!-- 3. 今日主頁 -->
 <section id="p-today" class="hide">
   <h1>今日攝取</h1>
   <button id="newBtn" style="margin:0 0 14px">＋ 新增食物</button>
@@ -91,7 +121,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 3. 新增食物導航 -->
+<!-- 4. 新增食物選項 -->
 <section id="p-add" class="hide">
   <h1>新增食物</h1>
   <div class="card">
@@ -114,7 +144,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 4. 掃描與條碼商品查詢 -->
+<!-- 5. 掃描與條碼商品查詢 -->
 <section id="p-scan" class="hide">
   <h1>掃描食品</h1>
   <button class="ghost" data-goadd style="margin:0 0 14px">← 返回選擇方式</button>
@@ -155,7 +185,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 5. 拍餐點 AI 估算與常見食物 -->
+<!-- 6. 拍餐點 AI 估算與常見食物 -->
 <section id="p-meal" class="hide">
   <h1>沒有條碼的餐點</h1>
   <button class="ghost" data-goadd style="margin:0 0 14px">← 返回選擇方式</button>
@@ -191,7 +221,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 </section>
 
-<!-- 6. 歷史紀錄 -->
+<!-- 7. 歷史紀錄 -->
 <section id="p-hist" class="hide">
   <h1>飲食紀錄</h1>
   <div class="card"><label>選擇日期</label><input id="hDate" type="date"><div id="hSum" style="margin-top:10px"></div></div>
@@ -199,7 +229,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <div class="card"><h2>最近紀錄</h2><div id="hDays"></div></div>
 </section>
 
-<!-- 7. 個人設定 -->
+<!-- 8. 個人設定頁 -->
 <section id="p-me" class="hide">
   <h1>我的設定與目標</h1>
   <div class="card">
@@ -209,7 +239,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 
   <div class="card">
-    <h2>個人目標</h2>
+    <h2>修改個人目標</h2>
     <div class="goals">
       <label><input type="radio" name="goal" value="muscle"><span>增肌</span></label>
       <label><input type="radio" name="goal" value="fat" checked><span>減脂</span></label>
@@ -230,13 +260,13 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <option value="1.55" selected>每週運動 3–5 天</option>
       <option value="1.725">每週運動 6–7 天</option>
     </select>
-    <button id="saveMe">計算並儲存目標</button>
+    <button id="saveMe">更新目標</button>
   </div>
   <div class="card" id="result"></div>
 </section>
 </main>
 
-<!-- 底部導航 (登入後才會顯示) -->
+<!-- 底部導航 (只有在已登入且設定過目標時才會顯示) -->
 <nav id="bottomNav" class="hide">
   <button data-p="today" class="on">今日</button>
   <button data-p="hist">紀錄</button>
@@ -246,13 +276,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 <script>
 const $ = id => document.getElementById(id);
 
-// 寫死 Supabase 連線資訊 (包含你專屬的 anon public JWT Key)
 const SB_URL = "https://ytmjeadpzuzrfxawcyfi.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bWplYWRwenV6cmZ4YXdjeWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MjgzOTEsImV4cCI6MjEwNjMwNDM5MX0.4AYjLPcUQEPIV4RXfqKoYIAAuyhuqe1U-ACDBj3LOMM";
-const DEFAULT_ME = { goal: "fat", sex: "m", age: 30, ht: 170, wt: 65, act: 1.55 };
 
 let S = {
-  me: DEFAULT_ME,
+  me: null, // 為 null 時代表初次使用，需要跑 onboarding
   log: {},
   geminiKey: ""
 };
@@ -265,15 +293,13 @@ try {
   }
 } catch(e) {}
 
-if (!S.me) S.me = DEFAULT_ME;
-
 const save = () => { try { localStorage.setItem("nutri_v3", JSON.stringify(S)); } catch(e){} };
 const esc = t => String(t || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today = () => new Date().toLocaleDateString("sv");
 const GN = { muscle: "增肌", fat: "減脂", lose: "減重" };
 const MEALS = [
   { key: "breakfast", name: "早餐", icon: "🌅" },
-  { key: "lunch", name: "午餐", icon: "☀️️" },
+  { key: "lunch", name: "午餐", icon: "☀" },
   { key: "dinner", name: "晚餐", icon: "🌙" },
   { key: "snack", name: "點心／補給", icon: "🍎" }
 ];
@@ -282,14 +308,14 @@ let sbClient = null;
 let currentUser = null;
 let isSignUpMode = false;
 
-/* 初始化 Supabase 與身分驗證檢查 */
+/* 初始化 Supabase */
 function initSupabase() {
   try {
     if (window.supabase && typeof window.supabase.createClient === "function") {
       sbClient = window.supabase.createClient(SB_URL, SB_KEY);
       sbClient.auth.onAuthStateChange((event, session) => {
         currentUser = session ? session.user : null;
-        updateViewByAuth();
+        handleAuthFlow();
       });
       checkUser();
     }
@@ -303,34 +329,66 @@ async function checkUser() {
   try {
     const { data: { session } } = await sbClient.auth.getSession();
     currentUser = session ? session.user : null;
-    updateViewByAuth();
+    handleAuthFlow();
   } catch(e) {
-    updateViewByAuth();
+    handleAuthFlow();
   }
 }
 
-/* 核心跳轉：根據登入狀態切換介面 */
-function updateViewByAuth() {
-  if (currentUser) {
-    $("p-auth").classList.add("hide");
-    $("bottomNav").classList.remove("hide");
-    $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
-    loadServerConfig();
-    syncLogsFromSupabase();
-    showView("today");
-  } else {
-    // 未登入：強制停留在登入頁，隱藏下方導航
-    VIEWS.forEach(p => {
-      const el = $("p-" + p);
-      if (el) el.classList.add("hide");
-    });
-    $("p-auth").classList.remove("hide");
+/* 核心流程：判斷 未登入 -> 初次設定目標 -> 正式主頁 */
+async function handleAuthFlow() {
+  if (!currentUser) {
+    // 1. 未登入
+    showOnlySection("p-auth");
     $("bottomNav").classList.add("hide");
-    window.scrollTo(0, 0);
+    return;
+  }
+
+  // 2. 已登入，檢查是否有個人目標（先查本地快取，再查 Supabase）
+  $("userEmailTag").textContent = `目前登入帳號：${currentUser.email}`;
+  loadServerConfig();
+  syncLogsFromSupabase();
+
+  if (!S.me) {
+    // 本地沒有，嘗試從 Supabase user_profiles 抓取
+    try {
+      const { data } = await sbClient.from('user_profiles').select('*').eq('user_id', currentUser.id).maybeSingle();
+      if (data) {
+        S.me = {
+          goal: data.goal,
+          sex: data.sex,
+          age: data.age,
+          ht: Number(data.height),
+          wt: Number(data.weight),
+          act: Number(data.activity)
+        };
+        save();
+      }
+    } catch(e) {}
+  }
+
+  if (!S.me) {
+    // 3. 第一次登入且無目標：顯示 Onboarding 引導頁
+    showOnlySection("p-onboarding");
+    $("bottomNav").classList.add("hide");
+  } else {
+    // 4. 已有目標：直接進今日主頁並顯示導航
+    $("bottomNav").classList.remove("hide");
+    loadMe();
+    showView("today");
   }
 }
 
-/* 登入／註冊切換 */
+function showOnlySection(secId) {
+  const allSecs = ["p-auth", "p-onboarding", "p-today", "p-add", "p-scan", "p-meal", "p-hist", "p-me"];
+  allSecs.forEach(id => {
+    const el = $(id);
+    if (el) el.classList.toggle("hide", id !== secId);
+  });
+  window.scrollTo(0, 0);
+}
+
+/* 登入／註冊 */
 $("authToggleBtn").onclick = () => {
   isSignUpMode = !isSignUpMode;
   $("authTitle").textContent = isSignUpMode ? "註冊新帳號" : "登入您的帳號";
@@ -353,23 +411,59 @@ $("authPrimaryBtn").onclick = async () => {
     if (error) $("authErrMsg").textContent = "註冊失敗：" + error.message;
     else {
       currentUser = data.user;
-      alert("註冊成功！已自動登入。");
-      updateViewByAuth();
+      handleAuthFlow();
     }
   } else {
     const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
     if (error) $("authErrMsg").textContent = "登入失敗：" + error.message;
     else {
       currentUser = data.user;
-      updateViewByAuth();
+      handleAuthFlow();
     }
   }
+};
+
+/* 完成初次目標設定 (Onboarding) */
+$("obSaveBtn").onclick = async () => {
+  const target = {
+    goal: document.querySelector('[name=ob-goal]:checked').value,
+    sex: $("ob-sex").value,
+    age: +$("ob-age").value,
+    ht: +$("ob-ht").value,
+    wt: +$("ob-wt").value,
+    act: +$("ob-act").value
+  };
+
+  S.me = target;
+  save();
+
+  // 同步至 Supabase user_profiles
+  if (sbClient && currentUser) {
+    try {
+      await sbClient.from('user_profiles').upsert([{
+        user_id: currentUser.id,
+        goal: target.goal,
+        sex: target.sex,
+        age: target.age,
+        height: target.ht,
+        weight: target.wt,
+        activity: target.act,
+        updated_at: new Date()
+      }]);
+    } catch(err) {}
+  }
+
+  $("bottomNav").classList.remove("hide");
+  loadMe();
+  showView("today");
 };
 
 $("signOutBtn").onclick = async () => {
   if (sbClient) await sbClient.auth.signOut();
   currentUser = null;
-  updateViewByAuth();
+  S.me = null;
+  save();
+  handleAuthFlow();
 };
 
 async function loadServerConfig() {
@@ -410,20 +504,22 @@ async function syncLogsFromSupabase() {
   } catch(e) {}
 }
 
-/* 視圖切換與導航 */
-const VIEWS = ["auth", "today", "add", "scan", "meal", "hist", "me"];
+/* 視圖導航切換 */
+const VIEWS = ["today", "add", "scan", "meal", "hist", "me"];
 function showView(v, mode) {
-  if (!currentUser && v !== "auth") {
-    updateViewByAuth();
-    return;
-  }
+  if (!currentUser) return handleAuthFlow();
+  if (!S.me) return handleAuthFlow();
+
   VIEWS.forEach(p => {
     const el = $("p-" + p);
     if (el) el.classList.toggle("hide", p !== v);
   });
+  $("p-auth").classList.add("hide");
+  $("p-onboarding").classList.add("hide");
+
   const nv = ({ add: "today", scan: "today", meal: "today" })[v] || v;
   document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x.dataset.p === nv));
-  
+
   if (v !== "scan") stopScan();
   if (v === "scan") {
     $("found").classList.add("hide");
@@ -485,7 +581,7 @@ function setSelectedMeal(key) {
 }
 
 function calc(m) {
-  if (!m) m = DEFAULT_ME;
+  if (!m) m = { goal: "fat", sex: "m", age: 30, ht: 170, wt: 65, act: 1.55 };
   const bmr = 10 * (m.wt || 65) + 6.25 * (m.ht || 170) - 5 * (m.age || 30) + (m.sex === "m" ? 5 : -161);
   const tdee = bmr * (m.act || 1.55);
   const adj = { muscle: 1.12, fat: 0.85, lose: 0.8 }[m.goal] || 0.85;
@@ -600,7 +696,7 @@ function loadMe() {
   if (r) r.checked = true;
 }
 
-$("saveMe").onclick = () => {
+$("saveMe").onclick = async () => {
   const m = {
     goal: document.querySelector('[name=goal]:checked').value,
     sex: $("sex").value,
@@ -613,6 +709,22 @@ $("saveMe").onclick = () => {
   save();
   renderMe();
   renderToday();
+
+  if (sbClient && currentUser) {
+    try {
+      await sbClient.from('user_profiles').upsert([{
+        user_id: currentUser.id,
+        goal: m.goal,
+        sex: m.sex,
+        age: m.age,
+        height: m.ht,
+        weight: m.wt,
+        activity: m.act,
+        updated_at: new Date()
+      }]);
+    } catch(e) {}
+  }
+
   alert("個人目標已更新！");
 };
 
@@ -625,7 +737,7 @@ const fileToBase64 = f => new Promise((res, rej) => {
 });
 
 async function callGeminiVision(prompt, file) {
-  if (!S.geminiKey) throw new Error("尚未載入 Gemini API Key，請確認 Supabase app_config 表中已有配置。");
+  if (!S.geminiKey) throw new Error("尚未載入 Gemini API Key，請確認後端已配置。");
   const base64Data = await fileToBase64(file);
   const mimeType = file.type || "image/jpeg";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${S.geminiKey}`;
@@ -654,7 +766,7 @@ async function callGeminiVision(prompt, file) {
   return JSON.parse(rawText);
 }
 
-/* 條碼掃描與商品查詢 */
+/* 條碼掃描與查詢 */
 let qr = null, curBarcode = null, curItem = null;
 function stopScan() {
   if (qr && qr.isScanning) { qr.stop().catch(() => {}); }
@@ -970,7 +1082,6 @@ $("mAdd").onclick = () => {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-  loadMe();
   initSupabase();
 });
 </script>
