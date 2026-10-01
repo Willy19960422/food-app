@@ -488,7 +488,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   <h1>設定</h1>
 
   <div class="card">
-    <h2>修改個人目標</h2>
+    <h2>身體資料與目標類型</h2>
     <div class="goals">
       <label><input type="radio" name="goal" value="muscle"><span>增肌</span></label>
       <label><input type="radio" name="goal" value="fat" checked><span>減脂</span></label>
@@ -513,6 +513,27 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 
   <div class="card" id="result"></div>
+
+  <div class="card" id="cardTargets">
+    <h2>每日目標</h2>
+    <div class="segmented">
+      <button id="tgtModeAuto" class="active">自動計算</button>
+      <button id="tgtModeCustom">自訂</button>
+    </div>
+    <div class="mute" id="tgtAutoInfo"></div>
+    <div id="tgtCustomBox" class="hide">
+      <div class="row">
+        <div><label>熱量 (大卡)</label><input id="tgtK" type="number" inputmode="numeric" min="0"></div>
+        <div><label>蛋白質 (g)</label><input id="tgtP" type="number" inputmode="numeric" min="0"></div>
+      </div>
+      <div class="row">
+        <div><label>脂肪 (g)</label><input id="tgtF" type="number" inputmode="numeric" min="0"></div>
+        <div><label>碳水 (g)</label><input id="tgtC" type="number" inputmode="numeric" min="0"></div>
+      </div>
+      <div class="mute" id="tgtCheck" style="margin-top:8px"></div>
+      <button id="tgtSave">儲存每日目標</button>
+    </div>
+  </div>
 
   <div class="card">
     <h2>外觀主題</h2>
@@ -587,6 +608,7 @@ let S = {
   log: {},
   customFavorites: [],
   mealCombos: [],
+  customTargets: null,
   pendingSyncQueue: [],
   pendingDeleteQueue: [],
   theme: "system"
@@ -625,6 +647,7 @@ function loadUserData(uid) {
     log: {},
     customFavorites: [],
     mealCombos: [],
+    customTargets: null,
     pendingSyncQueue: [],
     pendingDeleteQueue: [],
     theme: S.theme || "system"
@@ -646,6 +669,7 @@ function loadUserData(uid) {
   S.stateOwnerId = uid || null;
   if (!S.customFavorites) S.customFavorites = [];
   if (!S.mealCombos) S.mealCombos = [];
+  if (S.customTargets === undefined) S.customTargets = null;
   if (!S.pendingSyncQueue) S.pendingSyncQueue = [];
   if (!S.pendingDeleteQueue) S.pendingDeleteQueue = [];
   // 清掉舊版可能留在手機裡的金鑰與整包社群食物庫
@@ -810,7 +834,7 @@ async function handleAuthFlow() {
       await runSyncPipeline();
       if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
 
-      if (!S.me) {
+      {
         // 讀取失敗（網路或權限問題）時停下來，絕不當成新使用者
         let profileFailed = false;
         try {
@@ -822,14 +846,18 @@ async function handleAuthFlow() {
             console.error("個人資料讀取失敗:", error);
           } else if (data) {
             S.me = {
-              goal: data.goal,
-              sex: data.sex,
-              age: data.age,
-              ht: Number(data.height),
-              wt: Number(data.weight),
-              act: Number(data.activity)
-            };
-            save();
+  goal: data.goal,
+  sex: data.sex,
+  age: data.age,
+  ht: Number(data.height),
+  wt: Number(data.weight),
+  act: Number(data.activity)
+};
+
+// 載入雲端的自訂每日目標
+S.customTargets = data.custom_targets ?? null;
+
+save();
           }
         } catch(e) {
           profileFailed = true;
@@ -1198,6 +1226,7 @@ $("signOutBtn").onclick = async () => {
     log: {},
     customFavorites: [],
     mealCombos: [],
+    customTargets: null,
     pendingSyncQueue: [],
     pendingDeleteQueue: [],
     theme: S.theme || "system"
@@ -1933,7 +1962,7 @@ function renderMealSection(dateKey, isEditable = true) {
 function renderToday() {
   if (!currentUser || S.stateOwnerId !== currentUser.id || !S.me) return;
   const T = sumList(S.log[today()] || []);
-  const g = calc(S.me);
+  const g = getTargets();
   const left = g.kcal - Math.round(T.k);
 
   $("sum").innerHTML = `
@@ -2028,12 +2057,13 @@ function renderMe() {
   if (!currentUser || S.stateOwnerId !== currentUser.id || !S.me) return;
   const t = calc(S.me);
   $("result").innerHTML = `
-    <h2>${GN[S.me.goal]}：每日目標</h2>
+    <h2>自動計算建議（${GN[S.me.goal]}）</h2>
     <div class="big">${t.kcal} <span class="mute">大卡</span></div>
     <div class="mute">基礎代謝 ${t.bmr}・每日總消耗 ${t.tdee}</div>
     <p style="margin:8px 0 0">蛋白質 ${t.p} g 脂肪 ${t.f} g 碳水 ${t.c} g</p>
     ${t.floored ? '<div class="msg">已套用安全下限，不建議再低於此熱量。</div>' : ''}
   `;
+  renderTargets();
 }
 
 function loadMe() {
@@ -2083,6 +2113,179 @@ $("saveMe").onclick = async () => {
 
   alert("個人目標已更新！");
 };
+
+// ===== 每日目標（自動計算 / 自訂）=====
+function getTargets() {
+  const a = calc(S.me);
+  const t = S.customTargets;
+  if (t && t.kcal > 0) return { kcal: t.kcal, p: t.p, f: t.f, c: t.c, custom: true };
+  return { kcal: a.kcal, p: a.p, f: a.f, c: a.c, custom: false };
+}
+
+let tgtCustomOpen = false;
+
+function updateTgtCheck() {
+  const k = +$("tgtK").value, p = +$("tgtP").value || 0, f = +$("tgtF").value || 0, c = +$("tgtC").value || 0;
+  const est = Math.round(p * 4 + c * 4 + f * 9);
+  const el = $("tgtCheck");
+  if (!(est > 0)) { el.textContent = ""; return; }
+  let txt = `三大營養素換算約 ${est} 大卡`;
+  if (k > 0 && Math.abs(k - est) / est > 0.1) txt += `，和你設定的 ${k} 大卡差距較大`;
+  el.textContent = txt;
+}
+
+function renderTargets() {
+  if (!S.me) return;
+  const a = calc(S.me);
+  const custom = !!(S.customTargets && S.customTargets.kcal > 0);
+  const showCustom = custom || tgtCustomOpen;
+
+  $("tgtModeAuto").classList.toggle("active", !showCustom);
+  $("tgtModeCustom").classList.toggle("active", showCustom);
+  $("tgtCustomBox").classList.toggle("hide", !showCustom);
+
+  $("tgtAutoInfo").textContent = custom
+    ? `目前使用自訂目標：${S.customTargets.kcal} 大卡・蛋白質 ${S.customTargets.p} g・脂肪 ${S.customTargets.f} g・碳水 ${S.customTargets.c} g。`
+    : (showCustom
+        ? `自動計算建議：${a.kcal} 大卡・蛋白質 ${a.p} g・脂肪 ${a.f} g・碳水 ${a.c} g。填寫後按儲存才會生效。`
+        : `目前使用自動計算：${a.kcal} 大卡・蛋白質 ${a.p} g・脂肪 ${a.f} g・碳水 ${a.c} g。`);
+
+  if (showCustom) {
+    const src = custom ? S.customTargets : { kcal: a.kcal, p: a.p, f: a.f, c: a.c };
+    if (document.activeElement && ["tgtK","tgtP","tgtF","tgtC"].includes(document.activeElement.id)) return;
+    $("tgtK").value = src.kcal; $("tgtP").value = src.p; $("tgtF").value = src.f; $("tgtC").value = src.c;
+    updateTgtCheck();
+  }
+}
+
+// 每日目標：同步至雲端
+let savingTargets = false;
+
+async function persistTargets(targets) {
+  if (savingTargets) return false;
+
+  if (
+    !sbClient ||
+    !currentUser ||
+    S.stateOwnerId !== currentUser.id
+  ) {
+    alert("請先登入，再儲存每日目標。");
+    return false;
+  }
+
+  const uid = currentUser.id;
+  const session = loginSessionId;
+
+  const isCurrent = () =>
+    currentUser?.id === uid &&
+    loginSessionId === session &&
+    S.stateOwnerId === uid;
+
+  savingTargets = true;
+  $("tgtSave").disabled = true;
+  $("tgtModeAuto").disabled = true;
+
+  try {
+    const { data, error } = await sbClient
+      .from("user_profiles")
+      .update({
+        custom_targets: targets,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", uid)
+      .select("user_id");
+
+    if (!isCurrent()) return false;
+    if (error) throw error;
+
+    if (!data || data.length !== 1) {
+      throw new Error("個人資料未更新，請確認帳號資料或資料庫權限。");
+    }
+
+    S.customTargets = targets;
+    tgtCustomOpen = false;
+
+    save();
+    renderTargets();
+    renderToday();
+
+    return true;
+  } catch (err) {
+    if (isCurrent()) {
+      alert("儲存失敗，請重試：" + err.message);
+    }
+    return false;
+  } finally {
+    savingTargets = false;
+    $("tgtSave").disabled = false;
+    $("tgtModeAuto").disabled = false;
+  }
+}
+
+// 切回自動計算，也同步至雲端
+$("tgtModeAuto").onclick = async () => {
+  if (await persistTargets(null)) {
+    alert("已切換為自動計算，並同步至雲端。");
+  }
+};
+
+// 展開自訂欄位
+$("tgtModeCustom").onclick = () => {
+  tgtCustomOpen = true;
+  renderTargets();
+};
+
+// 輸入時更新熱量換算提示
+["tgtK", "tgtP", "tgtF", "tgtC"].forEach(id => {
+  $(id).addEventListener("input", updateTgtCheck);
+});
+
+// 儲存自訂每日目標
+$("tgtSave").onclick = async () => {
+  if (
+    savingTargets ||
+    !currentUser ||
+    S.stateOwnerId !== currentUser.id ||
+    !S.me
+  ) return;
+
+  const ids = ["tgtK", "tgtP", "tgtF", "tgtC"];
+
+  if (ids.some(id => $(id).value.trim() === "")) {
+    return alert("請完整填寫熱量、蛋白質、脂肪和碳水。");
+  }
+
+  const values = ids.map(id => Number($(id).value));
+
+  if (!values.every(v => Number.isFinite(v) && v >= 0)) {
+    return alert("請輸入有效數字，不能填負數。");
+  }
+
+  const [k, p, f, c] = values;
+
+  if (k < 500 || k > 8000) {
+    return alert("熱量請填寫在 500～8000 大卡之間。");
+  }
+
+  if (p > 800 || f > 800 || c > 1500) {
+    return alert("營養素數值太高，請確認是否填錯。");
+  }
+
+  const est = p * 4 + f * 9 + c * 4;
+
+  if (
+    Math.abs(k - est) / k > 0.1 &&
+    !confirm(
+      `三大營養素換算約 ${Math.round(est)} 大卡，` +
+      `與設定的 ${k} 大卡差距較大，確定要儲存嗎？`
+    )
+  ) return;
+
+  if (await persistTargets({ kcal: k, p, f, c })) {
+    alert("每日目標已同步至雲端！");
+  }
+};
+
 
 $("themeGroup").onchange = e => {
   if (e.target && e.target.name === "appTheme") {
@@ -2518,7 +2721,7 @@ function renderHist() {
   const max = today();
   $("hDate").max = max;
   const d = $("hDate").value || max;
-  const L = S.log[d] || [], T = sumList(L), g = calc(S.me);
+  const L = S.log[d] || [], T = sumList(L), g = getTargets();
   $("hSum").innerHTML = `<div class="big">${Math.round(T.k)} <span class="mute">大卡／目標 ${g.kcal}</span></div><div class="mute">蛋白質 ${Math.round(T.p)} g・脂肪 ${Math.round(T.f)} g・碳水 ${Math.round(T.c)} g</div>`;
   $("hLog").innerHTML = renderMealSection(d, false);
 
