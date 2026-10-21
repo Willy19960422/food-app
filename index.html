@@ -687,6 +687,8 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
       <option value="外食餐飲">外食餐飲</option>
       <option value="基礎食材">基礎食材</option>
       <option value="飲品點心">飲品點心</option>
+      <option value="即食／冷凍食品">即食／冷凍食品</option>
+      <option value="營養補充">營養補充</option>
     </select>
 
     <label>細部子分類標籤</label>
@@ -1610,10 +1612,11 @@ function getCombinedFoodList() {
   (S.customFavorites || []).forEach(f => {
     // 常用清單中舊版同名餃類，優先引用更新後的「每顆」正式資料；
     // 避免常用食品遮蔽主食品庫已校正的單顆基準。
-    const matchedDumpling=(communityFoodsCache || []).find(v =>
-      v.cat === "餃類點心" && v.name === f.name);
-    result.push(matchedDumpling ? { ...matchedDumpling, isFav: true } :
-      { ...f, cat: "我的常用", isFav: true });
+    // Keep the original category even when the food was added to Favorites.
+    // A favorite does not cease to be a FamilyMart meal or a drink.
+    const existing=(communityFoodsCache || []).find(v => v.name===f.name);
+    result.push(existing ? { ...existing, isFav:true } :
+      { ...f, cat:f.cat || "我的常用", isFav:true });
     addedNames.add(f.name);
   });
 
@@ -1710,7 +1713,7 @@ function candidateDisplayName(x){
 function prefillOfficialFood(x){
   switchListMode("manual");
   const byPiece=x.unit_type==="piece"||x.category==="餃類點心";
-  $("mCat").value=byPiece?"餃類點心":x.category==="蛋白健康"?"超商鮮食":x.category;
+  $("mCat").value=byPiece?"餃類點心":FoodTaxonomy.canonicalCategory(x.category);
   $("mSubCat").value=byPiece?(x.brand==="好市多"?"奇美":x.brand):(x.sub_category||x.brand);
   $("mName").value=candidateDisplayName(x);
   $("mBasisType").value=byPiece?"serving":/100g|100ml/i.test(x.basis||"")?"100g":"serving";
@@ -1952,9 +1955,9 @@ function renderFoodList() {
   }
 
   const filtered = allFoods.filter(item => {
-    const matchMain = (currentMainCat === "all")
-      ? true
-      : (currentMainCat === "我的常用" ? item.isFav : (item.cat === currentMainCat || (currentMainCat === "超商鮮食" && (item.name.includes("7-11") || item.name.includes("全家") || item.name.includes("萊爾富") || item.name.includes("OK")))));
+    const matchMain = currentMainCat==="all" ? true :
+      currentMainCat==="我的常用" ? item.isFav :
+      FoodTaxonomy.canonicalCategory(item.cat)===currentMainCat;
 
     let matchSub = true;
     if (currentSubCat !== "all") {
