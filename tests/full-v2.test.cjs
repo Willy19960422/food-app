@@ -4,7 +4,7 @@ const base=path.resolve(__dirname,".."),read=p=>fs.readFileSync(path.join(base,p
 const html=read("index.html"),database=read("db/v2_1_to_v2_3_safe_additive.sql");
 let passed=0;
 function check(name,fn){fn();passed++;console.log("PASS "+name);}
-const scripts=["food-cloud.js","food-trends.js","food-account.js","food-admin-ui.js","food-sheet.js",
+const scripts=["food-cloud.js","food-trends.js","food-account.js","food-admin-ui.js","food-candidate-admin.js","food-sheet.js",
  "barcode-v2.js","settings-menu.js","push-settings.js","ui-scale.js","food-taxonomy.js","sw.js"];
 check("All HTML inline scripts and all new modules parse",()=>{
  const matches=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
@@ -111,6 +111,23 @@ check("Offline cache contains app shell but never Supabase/auth API responses",(
  assert.ok(sw.includes("fetch(req)"));
  assert.ok(sw.includes('url.origin!==self.location.origin'));
  assert.ok(sw.includes('addEventListener("push"')||sw.includes("addEventListener('push'"));
+});
+check("Candidate completion uses administrator and evidence review",()=>{
+ const ui=read("food-candidate-admin.js");
+ const edge=read("supabase/functions/food-admin/index.ts");
+ assert.ok(ui.includes('api("complete_candidate"'));
+ assert.ok(ui.includes('api("status")'));
+ assert.ok(edge.includes('action==="candidate_gaps"'));
+ assert.ok(edge.includes('action==="complete_candidate"'));
+ assert.ok(edge.includes("OFFICIAL_EVIDENCE_REQUIRED"));
+ assert.ok(edge.includes("source_quality:\"official_nutrition\""));
+});
+check("Complete JSON export pulls weight history from server, not just on-screen cache",()=>{
+ const code=read("food-account.js");
+ assert.ok(code.includes("async function allCloudWeights(uid)"));
+ assert.ok(code.includes('from("food_weight_logs")'));
+ assert.ok(code.includes("const weightRows=await allCloudWeights(uid)"));
+ assert.ok(code.includes("weights:weightRows"));
 });
 check("Removed privileged public database helper permissions",()=>{
  assert.ok(database.includes("REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC,anon,authenticated"));
