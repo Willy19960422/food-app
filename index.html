@@ -1459,12 +1459,28 @@ function prefillOfficialFood(x){
     "只有部分營養數值，請依包裝補齊熱量、蛋白質、脂肪和碳水，未知值不可填0。";
   $("boxManualFood").scrollIntoView({block:"start",behavior:"smooth"});
 }
+function canQuickRecordOfficial(x){
+  return x && x.nutrition_status === "complete" && x.source_quality === "official_nutrition" &&
+    x.market_status !== "discontinued" &&
+    ["kcal","protein","fat","carbs"].every(k=>x[k]!==null&&x[k]!==undefined&&
+      Number.isFinite(Number(x[k]))&&Number(x[k])>=0);
+}
+function officialCatalogToFoodItem(x){
+  const weight=String(x.basis||"").match(/(\d+(?:\.\d+)?)\s*g\b/i);
+  return {
+    name:candidateDisplayName(x),basis:x.basis||"每份",
+    k:Number(x.kcal),p:Number(x.protein),f:Number(x.fat),c:Number(x.carbs),
+    cat:x.category||"連鎖餐飲",subCat:x.sub_category||x.brand,
+    basisType:"serving",servingWeight:weight?Number(weight[1]):0
+  };
+}
 function buildOfficialCandidateCard(x){
   const card=document.createElement("div");card.className="food-card";card.style.display="block";
   const h=document.createElement("div");h.className="food-title";h.textContent=candidateDisplayName(x);
   const note=document.createElement("div");note.className="mute";note.style.margin="6px 0";
   const complete=["kcal","protein","fat","carbs"].every(k=>x[k]!=null);
-  note.textContent=(x.source_quality==="third_party_nutrition"?"第三方估算／彙整":complete?"數值待確認":"營養資料待補")+
+  const official=canQuickRecordOfficial(x);
+  note.textContent=(official?"台灣品牌官方營養資訊":x.source_quality==="third_party_nutrition"?"第三方估算／彙整":complete?"數值待確認":"營養資料待補")+
     (x.market_status==="seasonal"?"｜季節／限時商品":x.market_status==="discontinued"?"｜已下架（歷史保留）":"")+
     (x.unit_type==="piece"?"｜每顆計算"+(x.piece_weight_g?"・約"+x.piece_weight_g+"g":""):(x.basis?"｜"+x.basis:""));
   const pills=document.createElement("div");pills.className="macro-pills";
@@ -1475,8 +1491,35 @@ function buildOfficialCandidateCard(x){
   }
   const actions=document.createElement("div");actions.style.cssText="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px";
   const button=document.createElement("button");button.type="button";button.className="sm ghost";
-  button.textContent=complete?"核對營養並記錄":x.unit_type==="piece"?"補齊每顆營養":"補齊數值後記錄";button.onclick=()=>prefillOfficialFood(x);
+  button.textContent=official?"一份快速記錄":complete?"核對營養並記錄":x.unit_type==="piece"?"補齊每顆營養":"補齊數值後記錄";
+  if(official){
+    button.onclick=async()=>{
+      if(!currentUser||S.stateOwnerId!==currentUser.id)return alert("請先登入再新增紀錄。");
+      if(button.disabled)return;
+      const uid=currentUser.id,session=loginSessionId;
+      button.disabled=true;
+      try{
+        await addLog(officialCatalogToFoodItem(x),1);
+        if(currentUser?.id===uid && loginSessionId===session)showView("today");
+      }catch(err){
+        console.error("官方食品快捷記錄失敗",err);
+        alert("新增失敗，請重試。");
+        button.disabled=false;
+      }
+    };
+  }else{
+    button.onclick=()=>prefillOfficialFood(x);
+  }
   actions.append(button);
+  if(official){
+    const adjust=document.createElement("button");
+    adjust.type="button";adjust.className="sm ghost";adjust.textContent="調整份量";
+    adjust.onclick=()=>{
+      selectFoodItem(officialCatalogToFoodItem(x));
+      $("selectedFoodInfo").scrollIntoView({block:"center",behavior:"smooth"});
+    };
+    actions.append(adjust);
+  }
   if(/^https:\/\//i.test(x.source_url||"")){
     const a=document.createElement("a");a.href=x.source_url;a.target="_blank";a.rel="noopener noreferrer";
     a.textContent="查看資料來源";actions.append(a);
@@ -1529,8 +1572,10 @@ function renderCatalogSection(container,keyword,foods){
       !candidateHasCompleteDuplicate(x,foods);
   });
   const rows=[...known.map(item=>({type:"known",item})),...candidates.map(item=>({type:"candidate",item}))];
+  const recordableCandidates=candidates.filter(canQuickRecordOfficial).length;
   const counter=document.createElement("p");counter.className="mute";
-  counter.textContent="共 "+rows.length+" 筆｜可直接記錄 "+known.length+"｜待核對 "+candidates.length;container.append(counter);
+  counter.textContent="共 "+rows.length+" 筆｜可直接記錄 "+(known.length+recordableCandidates)+
+    "｜待核對 "+(candidates.length-recordableCandidates);container.append(counter);
   for(const r of rows.slice(0,foodListLimit)){
     if(r.type==="candidate"){container.append(buildOfficialCandidateCard(r.item));continue}
     const item=r.item,card=document.createElement("div");card.className="food-card";card.style.display="block";
@@ -1623,7 +1668,7 @@ function renderFoodList() {
       .filter(x => !candidateHasCompleteDuplicate(x,allFoods));
     if (matches.length) {
       const heading = document.createElement("h3");
-      heading.textContent = "外食資料（營養待補與估算）";
+      heading.textContent = "品牌食品營養資料（含官方標示及待補資料）";
       container.append(heading);
       for (const x of matches.slice(0,20)) container.append(buildOfficialCandidateCard(x));
     }
