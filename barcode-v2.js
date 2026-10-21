@@ -88,6 +88,7 @@ async function fetchOpenFoodFacts(barcode) {
 
 async function lookup(code) {
   const seq = ++lookupSequenceId;
+  ++photoSequenceId; // Invalidate any OCR started for a previously scanned barcode.
   const targetUid = currentUser ? currentUser.id : null;
   const targetSession = loginSessionId;
   const barcode = String(code || "").trim();
@@ -276,13 +277,14 @@ $("photo").onchange = async event => {
   const seq = ++photoSequenceId;
   const userId = currentUser ? currentUser.id : null;
   const sessionId = loginSessionId;
+  const barcodeAtCapture = curBarcode;
   $("photoLoading").classList.remove("hide");
   $("photoBtn").disabled = true;
   barcodeV2ShowStatus("");
   try {
     const result = await callGeminiVision(
       '你是營養標示逐字讀取助理。只擷取照片實際看得到的欄位，不得猜測。回傳JSON：{"name":null,"basis":null,"k":null,"p":null,"f":null,"c":null}。未知請保持null，不可填0；每100ml請標為每100ml。',file);
-    if (seq !== photoSequenceId || !currentUser || currentUser.id !== userId || loginSessionId !== sessionId) return;
+    if (seq !== photoSequenceId || !currentUser || currentUser.id !== userId || loginSessionId !== sessionId || curBarcode !== barcodeAtCapture) return;
     barcodeV2PhotoUsed = true;
     if (result && typeof result.name === "string" && result.name.trim()) $("nName").value = result.name.trim();
     if (result.basis === "每100g" || result.basis === "每100ml") $("nB").value = result.basis;
