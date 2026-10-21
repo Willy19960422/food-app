@@ -398,12 +398,14 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 
   <div id="boxSelectFood" class="card">
-    <input id="foodSearch" placeholder="搜尋食物（例如：雞胸肉、鮭魚飯糰）" style="margin-bottom:12px">
+    <input id="foodSearch" placeholder="搜尋食品、夜市小吃與連鎖品牌" style="margin-bottom:12px">
 
     <div class="main-cat-scroll" id="mainCatBar">
       <button class="main-cat-btn active" data-cat="all">全部食物</button>
       <button class="main-cat-btn" data-cat="超商鮮食">超商鮮食</button>
       <button class="main-cat-btn" data-cat="蛋白健康">蛋白健康新品</button>
+      <button class="main-cat-btn" data-cat="夜市小吃">夜市小吃</button>
+      <button class="main-cat-btn" data-cat="連鎖餐飲">連鎖餐飲</button>
       <button class="main-cat-btn" data-cat="外食餐飲">外食餐飲</button>
       <button class="main-cat-btn" data-cat="基礎食材">基礎食材</button>
       <button class="main-cat-btn" data-cat="飲品點心">飲品點心</button>
@@ -454,6 +456,8 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <label>所屬情境分類</label>
     <select id="mCat">
       <option value="超商鮮食">超商鮮食</option>
+      <option value="夜市小吃">夜市小吃</option>
+      <option value="連鎖餐飲">連鎖餐飲</option>
       <option value="外食餐飲">外食餐飲</option>
       <option value="基礎食材">基礎食材</option>
       <option value="飲品點心">飲品點心</option>
@@ -735,6 +739,8 @@ const SUB_CAT_MAP = {
   "all": ["全部子類"],
   "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "萊爾富鮮食", "OK超商鮮食"],
   "蛋白健康": ["全部", "7-ELEVEN", "全家"],
+  "夜市小吃": ["全部", "主食", "炸物", "燒烤滷味", "甜品飲品", "參考估算"],
+  "連鎖餐飲": ["全部", "麥當勞", "肯德基", "丹丹漢堡", "漢堡王", "摩斯漢堡", "SUBWAY", "八方雲集", "吉野家"],
   "外食餐飲": ["全部", "便當小吃", "麵食湯水", "速食連鎖"],
   "基礎食材": ["全部", "蛋豆肉", "主食澱粉", "蔬菜水果"],
   "飲品點心": ["全部", "高蛋白乳品", "無糖茶飲", "手搖飲品"],
@@ -1299,23 +1305,22 @@ async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (c
   }
 }
 
-async function loadFoodCandidates(session, uid) {
-  try {
-    const {data,error} = await sbClient.from("food_catalog_candidates")
-      .select("brand,name,category,sub_category,kcal,protein,fat,carbs,basis,source_name,source_url,checked_at,nutrition_status")
-      .order("name").limit(500);
-    if (error) throw error;
-    if (loginSessionId !== session || currentUser?.id !== uid) return;
-    foodCatalogCandidates = data || [];
-    foodCatalogLoaded = true;
-    foodCatalogError = false;
-    renderFoodList();
-  } catch(e) {
-    if (loginSessionId !== session || currentUser?.id !== uid) return;
-    console.warn("官方商品庫載入失敗",e);
-    foodCatalogLoaded = true;
-    foodCatalogError = true;
-    renderFoodList();
+async function loadFoodCandidates(session,uid){
+  try{
+    const all=[];
+    for(let offset=0;offset<3000;offset+=500){
+      const {data,error}=await sbClient.from("food_catalog_candidates")
+        .select("id,brand,name,category,sub_category,kcal,protein,fat,carbs,basis,source_name,source_url,nutrition_status,source_quality,market_status")
+        .order("id",{ascending:true}).range(offset,offset+499);
+      if(error)throw error;
+      if(loginSessionId!==session||currentUser?.id!==uid)return;
+      all.push(...(data||[]));
+      if(!data||data.length<500)break;
+    }
+    foodCatalogCandidates=all;foodCatalogLoaded=true;foodCatalogError=false;renderFoodList();
+  }catch(e){
+    if(loginSessionId!==session||currentUser?.id!==uid)return;
+    console.warn("外食商品載入失敗",e);foodCatalogLoaded=true;foodCatalogError=true;renderFoodList();
   }
 }
 function getCombinedFoodList() {
@@ -1355,158 +1360,144 @@ function renderSubCategoryBar() {
 }
 
 
-function normalizeStoreFoodName(name) {
-  return String(name || "").toLowerCase()
-    .replace(/^(7[- ]?11|7[- ]?eleven|全家)\s*/i, "")
-    .replace(/[\s　\-_－]/g, "");
+
+const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","夜市小吃","連鎖餐飲"];
+const BRAND_NAMES=["麥當勞","肯德基","丹丹漢堡","漢堡王","摩斯漢堡","SUBWAY","八方雲集","吉野家"];
+function normalizedFoodName(x){return String(x||"").toLowerCase().replace(/[\s　_\-－]/g,"")}
+function detectFoodBrand(food){
+  const sub=food.subCat||"";
+  if(sub.includes("7-11"))return "7-ELEVEN";
+  if(sub.includes("全家"))return "全家";
+  if(sub.includes("萊爾富"))return "萊爾富";
+  if(sub.includes("OK超商"))return "OK超商";
+  return BRAND_NAMES.find(b=>food.name.toLowerCase().startsWith(b.toLowerCase()))||"";
 }
-function candidateHasCompleteDuplicate(x, foods) {
-  return foods.some(food =>
-    food.subCat === (x.brand === "全家" ? "全家鮮食" : "7-11鮮食") &&
-    normalizeStoreFoodName(food.name) === normalizeStoreFoodName(x.name)
-  );
+function stripBrand(name,brand){
+  const n=String(name||"").trim();
+  const p=brand==="7-ELEVEN"?["7-ELEVEN","7-11"]:brand==="OK超商"?["OK超商","OKmart"]:[brand];
+  for(const prefix of p)if(n.toLowerCase().startsWith(prefix.toLowerCase()))return n.slice(prefix.length).trim();
+  return n;
 }
-function candidateMatchesSearch(x, keyword) {
-  return !keyword || (x.brand + " " + x.name).toLowerCase().includes(keyword) ||
-    x.name.toLowerCase().includes(keyword);
+function candidateHasCompleteDuplicate(x,foods){
+  return foods.some(f=>x.brand==="夜市通用"?
+    f.cat==="夜市小吃"&&normalizedFoodName(f.name)===normalizedFoodName(x.name):
+    detectFoodBrand(f)===x.brand&&normalizedFoodName(stripBrand(f.name,x.brand))===normalizedFoodName(x.name));
 }
-function prefillOfficialFood(x) {
-  // 僅預填官方有提供的營養值；其餘保持空白，避免把未知當成 0。
+function candidateMatchesSearch(x,keyword){
+  return !keyword||[x.brand,x.name,x.sub_category].join(" ").toLowerCase().includes(keyword);
+}
+function candidateDisplayName(x){
+  return x.brand==="夜市通用"?x.name:(x.brand==="7-ELEVEN"?"7-11":x.brand)+" "+stripBrand(x.name,x.brand);
+}
+function prefillOfficialFood(x){
   switchListMode("manual");
-  $("mCat").value = "超商鮮食";
-  $("mSubCat").value = x.brand === "全家" ? "全家鮮食" : "7-11鮮食";
-  $("mName").value = (x.brand === "全家" ? "全家 " : "7-11 ") + x.name;
-  $("mBasisType").value = /100g|100ml/.test(x.basis || "") ? "100g" : "serving";
-  $("mServingWeight").value = "";
-  for (const [id,val] of [["mK",x.kcal],["mP",x.protein],["mF",x.fat],["mC",x.carbs]]) {
-    $(id).value = val == null ? "" : String(val);
+  $("mCat").value=x.category==="蛋白健康"?"超商鮮食":x.category;
+  $("mSubCat").value=x.sub_category||x.brand;
+  $("mName").value=candidateDisplayName(x);
+  $("mBasisType").value=/100g|100ml/i.test(x.basis||"")?"100g":"serving";
+  const weight=String(x.basis||"").match(/(\d+(?:\.\d+)?)\s*g\b/i);
+  $("mServingWeight").value=weight&&$("mBasisType").value==="serving"?weight[1]:"";
+  for(const [id,val] of [["mK",x.kcal],["mP",x.protein],["mF",x.fat],["mC",x.carbs]]){
+    $(id).value=val==null?"":String(val);
   }
-  $("mSaveFavorite").checked = true;
-  const message = $("officialFoodReminder");
-  if (message) message.textContent = "已預填官方可查到的資訊。請對照手上包裝補齊熱量、蛋白質、脂肪、碳水四項後再儲存；沒有數值的欄位不能當作 0。";
+  $("mSaveFavorite").checked=true;
+  const msg=$("officialFoodReminder");
+  if(msg)msg.textContent=x.source_quality==="third_party_nutrition"?
+    "以下為第三方彙整／夜市份量估算，非官方檢驗資料。請依實際餐點核對份量與數值後再存入。":
+    "來源只有商品名稱或部分營養值，請依包裝補齊熱量、蛋白質、脂肪和碳水；未知不能填成 0。";
   $("boxManualFood").scrollIntoView({block:"start",behavior:"smooth"});
 }
-function buildOfficialCandidateCard(x) {
-  const row = document.createElement("div");
-  row.className = "food-card";
-  row.style.display = "block";
-  const title = document.createElement("div");
-  title.className = "food-title";
-  title.textContent = x.brand + " " + x.name;
-  const tag = document.createElement("div");
-  tag.className = "mute";
-  tag.style.margin = "6px 0";
-  tag.textContent = "官方商品｜營養標示待補齊" + (x.basis ? "｜" + x.basis : "");
-  const details = document.createElement("div");
-  details.className = "macro-pills";
-  for (const [label, val, cls, unit] of [
-    ["熱量",x.kcal,"pill-kcal"," kcal"],["蛋白質",x.protein,"pill-pro"," g"],
-    ["脂肪",x.fat,"pill-fat"," g"],["碳水",x.carbs,"pill-carb"," g"]
-  ]) {
-    const span = document.createElement("span");
-    span.className = "pill " + cls;
-    span.textContent = label + " " + (val == null ? "待補" : val + unit);
-    details.append(span);
+function buildOfficialCandidateCard(x){
+  const card=document.createElement("div");card.className="food-card";card.style.display="block";
+  const h=document.createElement("div");h.className="food-title";h.textContent=candidateDisplayName(x);
+  const note=document.createElement("div");note.className="mute";note.style.margin="6px 0";
+  const complete=["kcal","protein","fat","carbs"].every(k=>x[k]!=null);
+  note.textContent=(x.source_quality==="third_party_nutrition"?"第三方估算／彙整":complete?"數值待確認":"營養資料待補")+
+    (x.market_status==="seasonal"?"｜季節／限時商品":x.market_status==="discontinued"?"｜已下架（歷史保留）":"")+
+    (x.basis?"｜"+x.basis:"");
+  const pills=document.createElement("div");pills.className="macro-pills";
+  for(const [label,key,cls,unit] of [["熱量","kcal","pill-kcal"," kcal"],["蛋白質","protein","pill-pro"," g"],
+  ["脂肪","fat","pill-fat"," g"],["碳水","carbs","pill-carb"," g"]]){
+    const span=document.createElement("span");span.className="pill "+cls;
+    span.textContent=label+" "+(x[key]==null?"待補":x[key]+unit);pills.append(span);
   }
-  const actions = document.createElement("div");
-  actions.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px";
-  const source = document.createElement("a");
-  source.textContent = "官方來源";
-  if (/^https:\/\//.test(x.source_url || "")) {
-    source.href = x.source_url;
-    source.target = "_blank";
-    source.rel = "noopener noreferrer";
+  const actions=document.createElement("div");actions.style.cssText="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px";
+  const button=document.createElement("button");button.type="button";button.className="sm ghost";
+  button.textContent=complete?"使用參考數值並核對":"補齊數值後記錄";button.onclick=()=>prefillOfficialFood(x);
+  actions.append(button);
+  if(/^https:\/\//i.test(x.source_url||"")){
+    const a=document.createElement("a");a.href=x.source_url;a.target="_blank";a.rel="noopener noreferrer";
+    a.textContent="查看資料來源";actions.append(a);
   }
-  const fill = document.createElement("button");
-  fill.type = "button";
-  fill.className = "sm ghost";
-  fill.textContent = "依包裝補齊並記錄";
-  fill.onclick = () => prefillOfficialFood(x);
-  actions.append(fill,source);
-  row.append(title,tag,details,actions);
-  return row;
+  card.append(h,note,pills,actions);return card;
 }
-function renderProteinCatalog(container,keyword,allFoods) {
-  container.textContent = "";
-  $("selectedFoodInfo").classList.add("hide");
-  const intro = document.createElement("p");
-  intro.className = "mute";
-  intro.textContent = "已確認四大營養素的食品可直接記錄；官方新品如缺少營養標示，請按「依包裝補齊並記錄」。";
+function catalogMatch(item,cat){
+  const brand=detectFoodBrand(item);
+  if(cat==="蛋白健康")return item.cat==="超商鮮食"&&(item.p>=20||/雞胸|蛋白|健身|舒肥|蔬滿/.test(item.name));
+  if(cat==="超商鮮食")return item.cat==="超商鮮食"||["7-ELEVEN","全家","萊爾富","OK超商"].includes(brand);
+  if(cat==="夜市小吃")return item.cat==="夜市小吃"||(item.cat==="外食餐飲"&&item.subCat==="台式小吃");
+  if(cat==="連鎖餐飲")return item.cat==="連鎖餐飲"||BRAND_NAMES.includes(brand);
+  return false;
+}
+function catalogSubMatch(brand,sub,cat){
+  if(currentSubCat==="all")return true;
+  if(cat==="蛋白健康"||cat==="連鎖餐飲")return brand===currentSubCat;
+  if(cat==="夜市小吃")return sub===currentSubCat;
+  if(cat==="超商鮮食"){
+    const map={"7-11鮮食":"7-ELEVEN","全家鮮食":"全家","萊爾富鮮食":"萊爾富","OK超商鮮食":"OK超商"};
+    return sub===currentSubCat||brand===map[currentSubCat];
+  }
+  return true;
+}
+function renderCatalogSection(container,keyword,foods){
+  const cat=currentMainCat;container.textContent="";
+  const intro=document.createElement("p");intro.className="mute";
+  intro.textContent="有完整數值的既有食品可直接記錄；商品候選與估算值需核對。收錄不保證門市目前販售。";
   container.append(intro);
-  if (!foodCatalogLoaded) {
-    const status = document.createElement("p");
-    status.textContent = "正在讀取官方商品清單…";
-    container.append(status);
-  } else if (foodCatalogError) {
-    const status = document.createElement("p");
-    status.className = "msg";
-    status.textContent = "官方商品清單讀取失敗，請確認網路後重開食物清單。";
-    container.append(status);
+  if(!foodCatalogLoaded||foodCatalogError){
+    const st=document.createElement("p");st.className=foodCatalogError?"msg":"mute";
+    st.textContent=foodCatalogError?"外食清單讀取失敗，請重新開啟食物清單。":"讀取商品資料中…";
+    container.append(st);
   }
-  const filterBrand = itemBrand => currentSubCat === "all" || currentSubCat === itemBrand;
-  const available = allFoods.filter(food => {
-    const isStore = food.cat === "超商鮮食";
-    const qualifies = food.p >= 20 || /蛋白|雞胸|健身|雞肉沙拉|鮮蔬餐盒|蔬滿|舒肥/.test(food.name);
-    const brand = food.subCat === "全家鮮食" || /^全家/.test(food.name) ? "全家" : "7-ELEVEN";
-    return isStore && qualifies && filterBrand(brand) &&
-      (!keyword || (food.name + " " + food.subCat).toLowerCase().includes(keyword));
+  const known=foods.filter(f=>catalogMatch(f,cat)&&catalogSubMatch(detectFoodBrand(f),f.subCat||"",cat)&&
+    (!keyword||[f.name,f.subCat].join(" ").toLowerCase().includes(keyword)));
+  const candidates=foodCatalogCandidates.filter(x=>{
+    const match=cat==="蛋白健康"?x.category==="蛋白健康":
+      cat==="超商鮮食"?["超商鮮食","蛋白健康"].includes(x.category):x.category===cat;
+    return match&&(x.market_status!=="discontinued"||!!keyword)&&
+      catalogSubMatch(x.brand,x.sub_category||"",cat)&&candidateMatchesSearch(x,keyword)&&
+      !candidateHasCompleteDuplicate(x,foods);
   });
-  const candidates = foodCatalogCandidates.filter(x =>
-    x.category === "蛋白健康" && filterBrand(x.brand) &&
-    candidateMatchesSearch(x,keyword) &&
-    !candidateHasCompleteDuplicate(x,allFoods)
-  );
-  const allRows = [...candidates.map(item => ({type:"candidate",item})),
-                   ...available.map(item => ({type:"complete",item}))];
-  const counter = document.createElement("p");
-  counter.className = "mute";
-  counter.textContent = "共 " + allRows.length + " 筆（官方待補 " + candidates.length +
-    " 筆；可直接記錄 " + available.length + " 筆）";
-  container.append(counter);
-  for (const row of allRows.slice(0,foodListLimit)) {
-    if (row.type === "candidate") {
-      container.append(buildOfficialCandidateCard(row.item));
-    } else {
-      const item = row.item;
-      const el = document.createElement("div");
-      el.className = "food-card";
-      const name = document.createElement("div");
-      name.className = "food-title";
-      name.textContent = item.name;
-      const detail = document.createElement("div");
-      detail.className = "food-subinfo";
-      detail.textContent = item.k + " kcal｜蛋白質 " + item.p + " g｜脂肪 " + item.f + " g｜碳水 " + item.c + " g";
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "sm ghost";
-      button.textContent = "選取記錄";
-      button.onclick = () => selectFoodItem(item);
-      el.append(name,detail,button);
-      container.append(el);
-    }
+  const rows=[...known.map(item=>({type:"known",item})),...candidates.map(item=>({type:"candidate",item}))];
+  const counter=document.createElement("p");counter.className="mute";
+  counter.textContent="共 "+rows.length+" 筆｜可直接記錄 "+known.length+"｜待核對 "+candidates.length;container.append(counter);
+  for(const r of rows.slice(0,foodListLimit)){
+    if(r.type==="candidate"){container.append(buildOfficialCandidateCard(r.item));continue}
+    const item=r.item,card=document.createElement("div");card.className="food-card";card.style.display="block";
+    const h=document.createElement("div");h.className="food-title";h.textContent=item.name;
+    const sub=document.createElement("div");sub.className="food-subinfo";
+    sub.textContent=item.basis+"｜"+item.k+" kcal｜P "+item.p+"g｜F "+item.f+"g｜C "+item.c+"g";
+    const button=document.createElement("button");button.type="button";button.className="sm ghost";button.textContent="選取記錄";
+    button.onclick=()=>{selectFoodItem(item);$("selectedFoodInfo").scrollIntoView({block:"center",behavior:"smooth"})};
+    card.append(h,sub,button);container.append(card);
   }
-  if (allRows.length > foodListLimit) {
-    const more = document.createElement("button");
-    more.className = "ghost";
-    more.textContent = "載入更多（" + Math.min(foodListLimit,allRows.length) + " / " + allRows.length + "）";
-    more.onclick = () => { foodListLimit += 50; renderFoodList(); };
-    container.append(more);
+  if(rows.length>foodListLimit){
+    const more=document.createElement("button");more.className="ghost";
+    more.textContent="載入更多（"+Math.min(foodListLimit,rows.length)+" / "+rows.length+"）";
+    more.onclick=()=>{foodListLimit+=50;renderFoodList()};container.append(more);
   }
-  if (!allRows.length && foodCatalogLoaded && !foodCatalogError) {
-    const empty = document.createElement("p");
-    empty.textContent = "目前沒有符合條件的商品，試試其他關鍵字。";
-    container.append(empty);
+  if(!rows.length&&foodCatalogLoaded&&!foodCatalogError){
+    const empty=document.createElement("p");empty.textContent="沒有符合的商品，請選別的分類或搜尋關鍵字。";container.append(empty);
   }
 }
-
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
 
   const keyword = $("foodSearch").value.trim().toLowerCase();
   const allFoods = getCombinedFoodList();
-  if (currentMainCat === "蛋白健康") {
-    renderProteinCatalog(container,keyword,allFoods);
+  if (CATALOG_CATEGORIES.includes(currentMainCat)) {
+    renderCatalogSection(container,keyword,allFoods);
     return;
   }
 
@@ -1571,7 +1562,7 @@ function renderFoodList() {
       .filter(x => !candidateHasCompleteDuplicate(x,allFoods));
     if (matches.length) {
       const heading = document.createElement("h3");
-      heading.textContent = "官方商品資訊（部分營養待補）";
+      heading.textContent = "外食資料（營養待補與估算）";
       container.append(heading);
       for (const x of matches.slice(0,20)) container.append(buildOfficialCandidateCard(x));
     }
@@ -1715,6 +1706,8 @@ $("mainCatBar").onclick = e => {
   document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentMainCat = btn.dataset.cat;
+  chosenFood = null;
+  $("selectedFoodInfo").classList.add("hide");
   foodListLimit = 50;
   currentSubCat = "all";
   renderSubCategoryBar();
@@ -1727,6 +1720,8 @@ $("subCatBar").onclick = e => {
   document.querySelectorAll(".sub-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentSubCat = btn.dataset.sub.replace(/\s+/g, "");
+  chosenFood = null;
+  $("selectedFoodInfo").classList.add("hide");
   foodListLimit = 50;
   renderFoodList();
 };
