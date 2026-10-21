@@ -15,3 +15,4 @@ jobs:
         with:
           node-version: "22"
       - run: node tests/barcode-v2.test.cjs
+      - run: node tests/ui-scale.test.cjs
