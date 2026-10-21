@@ -54,7 +54,7 @@ const js=[
   'const sub=card.querySelector(".food-subinfo").getBoundingClientRect();',
   'const pills=card.querySelector(".macro-pills").getBoundingClientRect();',
   'if(next && next.top < rect.bottom-1)result.bad.push("overlap-cards-"+i);',
-  'if(rect.height < 105)result.bad.push("compressed-height-"+i+"="+rect.height);',
+  'if(rect.height < contents.height+10)result.bad.push("compressed-height-"+i+"="+rect.height);',
   'if(contents.right>button.left+2)result.bad.push("content-crosses-button-"+i);',
   'if(button.right>rect.right+1)result.bad.push("button-outside-"+i);',
   'if(title.bottom>sub.top+2)result.bad.push("title-crosses-sub-"+i);',
