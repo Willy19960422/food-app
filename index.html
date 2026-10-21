@@ -612,7 +612,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 
   <div class="card" id="foodPushCard">
     <h2>用餐提醒與每日摘要</h2>
-    <p class="mute">通知預設關閉。iPhone 請先從 Safari 將食養紀錄「加入主畫面」，再於此啟用手機通知。通知依台灣時間發送。</p>
+    <p class="mute">通知依台灣時間發送。iPhone／iPad 請先從 Safari 將食養紀錄加入主畫面；Android 請使用支援通知的瀏覽器，並允許網站通知。</p>
     <div id="foodPushStatus" class="food-push-status" role="status" aria-live="polite">正在確認通知狀態…</div>
     <div class="food-push-line">
       <label class="check-inline" for="foodPushBreakfast"><input id="foodPushBreakfast" type="checkbox" checked><span>早餐提醒</span></label>
@@ -3450,7 +3450,7 @@ window.addEventListener("DOMContentLoaded", () => {
   renderSync(); checkDraft();
 })();
 </script>
-<script defer src="./push-settings.js?v=20261021-3"></script>
+<script defer src="./push-settings.js?v=20261021-3"></script>\n<script defer src="./settings-menu.js?v=20261021-1"></script>
 
 </body>
 </html>
