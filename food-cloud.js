@@ -36,8 +36,15 @@ window.foodV2ReconcileCloud=async()=>{
   if(!valid()||currentUser.id!==uid)return;
   const localTime=Number(S.cloudPrefsUpdatedAt||0);
   const remoteTime=remote?Date.parse(remote.updated_at)||0:0;
-  const fav=combine(S.customFavorites,remote?.favorites);
-  const combos=combine(S.mealCombos,remote?.combos);
+  // After initial migration, honor the newest snapshot so deliberate removals
+  // do not reappear as a side effect of union-merging multiple devices.
+  const initialMigration=localTime===0;
+  const fav=!remote?S.customFavorites||[]:initialMigration?
+    combine(S.customFavorites,remote.favorites):remoteTime>localTime?
+    remote.favorites||[]:S.customFavorites||[];
+  const combos=!remote?S.mealCombos||[]:initialMigration?
+    combine(S.mealCombos,remote.combos):remoteTime>localTime?
+    remote.combos||[]:S.mealCombos||[];
   const targets=remoteTime>localTime?
    {...(S.dailyTargets||{}),...(remote?.daily_targets||{})}:
    {...(remote?.daily_targets||{}),...(S.dailyTargets||{})};
