@@ -377,9 +377,9 @@ async function barcodeV2UploadLabel(file,submissionId,uid) {
   const {blob,mime}=await barcodeV2PreparePhoto(file);
   const ext=({"image/jpeg":"jpg","image/png":"png","image/webp":"webp",
     "image/heic":"heic","image/heif":"heif"})[mime];
-  const path=uid+"/"+submissionId+"/nutrition."+ext;
+  const path=uid+"/"+submissionId+"/nutrition-"+Date.now()+"."+ext;
   const {error}=await sbClient.storage.from("food-product-labels").upload(path,blob,{
-    contentType:mime,upsert:true
+    contentType:mime,upsert:false
   });
   if(error)throw error;
   const {data:{session}}=await sbClient.auth.getSession();
