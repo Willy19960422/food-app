@@ -72,7 +72,7 @@
     const text=name+" "+sub.replace(/7[-\\s]?11鮮食|全家鮮食|萊爾富鮮食|OK超商鮮食/gi,"");
     if(/熱壓|壓烤吐司|熱烤吐司|帕尼尼/i.test(text))return "熱壓吐司";
     if(/三明治|三文治|三角吐司|夾心吐司|總匯吐司/.test(text))return "三明治";
-    if(/米漢堡/.test(text))return "飯糰";
+    if(/米漢堡|烤米堡/.test(text))return "飯糰";
     if(/漢堡|大亨堡|漢堡排堡|(?:起司|雞腿|牛肉|香雞|魚)堡/.test(text))return "漢堡";
     if(/御飯糰|御飯團|新極上|新極大/.test(text))return "御飯糰";
     if(/飯糰|飯團|壽司|手卷|手捲/.test(text))return "飯糰";
