@@ -28,6 +28,7 @@
     var size = Number(localStorage.getItem("food_ui_scale_v1"));
     if ([90, 100, 110, 120].includes(size)) {
       document.documentElement.style.setProperty("--food-ui-scale", String(size / 100));
+      document.documentElement.style.setProperty("--food-ui-control-font", size === 90 ? "18px" : "16px");
     }
   } catch (_) {}
 })();
@@ -233,7 +234,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 .ui-scale-option:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 /* Prevent iPhone input focus from triggering browser text auto-enlargement,
    especially at 90% CSS zoom. Still grow input text with 110-120% settings. */
-input,select,textarea{font-size:max(16px,calc(16px / var(--food-ui-scale,1)))!important}
+input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
 </style>
 </head>
 <body>
