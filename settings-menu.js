@@ -24,7 +24,7 @@
   const groups=[
     {title:"身體資料與目標",detail:"身高、體重、活動量及目標類型",items:cards.slice(0,2)},
     {title:"每日營養目標",detail:"自動計算與自訂營養素",items:cards.slice(2,3)},
-    {title:"外觀設定",detail:"深色、淺色及系統主題",items:cards.slice(3,4)},
+    {title:"外觀設定",detail:"主題與介面大小（90%～120%）",items:cards.slice(3,4)},
     {title:"帳號設定",detail:"登入密碼及登出",items:cards.slice(-1)}
   ];
   let active=null;
