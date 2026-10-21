@@ -1268,6 +1268,7 @@ async function runSyncPipeline() {
           protein: item.p,
           fat: item.f,
           carbs: item.c,
+          nutrition_source: item.source||"legacy",
           logged_at: item.t
         }]);
 
@@ -1283,21 +1284,26 @@ async function runSyncPipeline() {
 
     if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
 
-    const d90Ago = new Date();
-    d90Ago.setDate(d90Ago.getDate() - 90);
-    const dateLimitStr = d90Ago.toLocaleDateString("sv");
-
-    const { data, error } = await sbClient
-      .from('diet_logs')
-      .select('*')
-      .eq('user_id', activeUid)
-      .gte('date', dateLimitStr)
-      .order('date', { ascending: true })
-      .order('logged_at', { ascending: true });
-
-    if (loginSessionId !== currentSession || !currentUser || currentUser.id !== activeUid || S.stateOwnerId !== activeUid) return;
-
-    if (!error && data) {
+    // Paginate complete history; never destructively replace local logs with a
+    // 90-day subset or a partial/failed response.
+    const serverRows=[];
+    let syncFetchError=null;
+    for(let offset=0;offset<100000;offset+=500){
+      const page=await sbClient.from('diet_logs').select('*')
+        .eq('user_id',activeUid).order('date',{ascending:true})
+        .order('logged_at',{ascending:true}).range(offset,offset+499);
+      if(loginSessionId!==currentSession||currentUser?.id!==activeUid||S.stateOwnerId!==activeUid)return;
+      if(page.error){syncFetchError=page.error;break;}
+      serverRows.push(...(page.data||[]));
+      if(!page.data||page.data.length<500)break;
+      if(offset===99500)syncFetchError=new Error("完整歷史超過同步上限");
+    }
+    if(syncFetchError){
+      console.warn("完整同步失敗，保留原紀錄",syncFetchError);
+      window.foodV2SyncStatus?.("failed","雲端資料未完整載入，手機紀錄已保留");
+    }
+    if (!syncFetchError) {
+      const data=serverRows;
       const deletedIds = new Set(S.pendingDeleteQueue);
       const serverLogs = {};
 
@@ -1310,9 +1316,9 @@ async function runSyncPipeline() {
           meal: row.meal,
           name: row.name,
           k: Number(row.kcal) || 0,
-          p: Number(row.protein) || 0,
-          f: Number(row.fat) || 0,
-          c: Number(row.carbs) || 0,
+          p: row.protein==null?null:Number(row.protein),
+          f: row.fat==null?null:Number(row.fat),
+          c: row.carbs==null?null:Number(row.carbs),
           n: Number(row.servings) || 1,
           t: row.logged_at
         });
@@ -1339,9 +1345,15 @@ async function runSyncPipeline() {
     }
 
     await loadCommunityFoods(currentSession, activeUid);
+    if(loginSessionId===currentSession&&currentUser?.id===activeUid){
+      await window.foodV2ReconcileCloud?.();
+      window.foodV2SyncStatus?.(syncFetchError?"failed":"ok",syncFetchError?
+        "雲端讀取失敗，手機紀錄沒有被刪除":"完整飲食歷史已同步");
+    }
 
   } catch(e) {
     console.error("同步管線異常:", e);
+    window.foodV2SyncStatus?.("failed","同步失敗，已保留離線紀錄");
   } finally {
     isSyncing = false;
     if (syncRequested && currentUser) {
@@ -1567,9 +1579,9 @@ async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (c
           name: row.name,
           basis: row.basis || "1份",
           k: Number(row.kcal) || 0,
-          p: Number(row.protein) || 0,
-          f: Number(row.fat) || 0,
-          c: Number(row.carbs) || 0,
+          p: row.protein==null?null:Number(row.protein),
+          f: row.fat==null?null:Number(row.fat),
+          c: row.carbs==null?null:Number(row.carbs),
           cat: cat,
           subCat: subCat,
           barcode: row.barcode,
