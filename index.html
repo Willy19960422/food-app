@@ -2597,7 +2597,7 @@ function showView(v) {
     if (!$("hDate").value) $("hDate").value = today();
     renderHist();
   }
-  if (v === "me") renderMe();
+  if (v === "me") { renderMe(); window.foodAdminCheck?.(); }
   window.scrollTo(0, 0);
   window.foodV2Refresh?.();
 }
