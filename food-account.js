@@ -23,6 +23,24 @@ async function allCloudLogs(uid){
  }
  throw new Error("匯出資料超過分頁上限，請先聯繫管理者");
 }
+async function allCloudWeights(uid){
+ if(!navigator.onLine){
+  const cached=window.foodV2GetWeights?.()||[];
+  if(!cached.length)throw new Error("離線時尚無完整體重資料可供備份，請恢復網路後匯出");
+  return cached;
+ }
+ const result=[];
+ for(let offset=0;offset<10000;offset+=500){
+  const {data,error}=await sbClient.from("food_weight_logs")
+   .select("measured_on,kg").eq("user_id",uid).order("measured_on",{ascending:true})
+   .range(offset,offset+499);
+  if(error)throw error;
+  if(!active()||currentUser.id!==uid)throw new Error("帳號已切換");
+  result.push(...(data||[]));
+  if(!data||data.length<500)return result;
+ }
+ throw new Error("體重資料超過匯出上限");
+}
 function localLogs(){
  return Object.entries(S.log||{}).flatMap(([date,items])=>
   (items||[]).map(item=>({
@@ -53,11 +71,12 @@ async function exportRecords(format){
     logs.map(row=>cols.map(c=>cell(row[c])).join(",")).join("\r\n");
    makeDownload("食養紀錄-飲食明細-"+dt+".csv",csv,"text/csv;charset=utf-8");
   }else{
+   const weightRows=await allCloudWeights(uid);
    const complete={format_version:2,exported_at:new Date().toISOString(),
     note:"null 代表營養素未知，非 0；估算與未審核商品請核對來源。",
     profile:S.me,targets:S.customTargets||null,
     daily_targets:S.dailyTargets||{},favorites:S.customFavorites||[],
-    combos:S.mealCombos||[],weights:window.foodV2GetWeights?.()||[],
+    combos:S.mealCombos||[],weights:weightRows,
     logs,source:cloud?"雲端與手機紀錄合併":"僅離線手機紀錄"};
    makeDownload("食養紀錄-個人完整備份-"+dt+".json",JSON.stringify(complete,null,2),
     "application/json;charset=utf-8");
