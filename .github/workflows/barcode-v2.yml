@@ -4,6 +4,9 @@ on:
     branches: [main]
   push:
     branches: [main]
+concurrency:
+  group: food-app-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
