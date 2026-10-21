@@ -18,20 +18,16 @@
   const owned = (uid,sid) => signedIn() && currentUser.id === uid && loginSessionId === sid;
   const status = message => { if (el(prefix+"Status")) el(prefix+"Status").textContent=message; };
   function refreshButtons(){
-    const enabled = cachedEnabled && signedIn();
-    const on = el(prefix+"Enable"), off = el(prefix+"Disable"), test = el(prefix+"Test");
-    if(on){
-      on.textContent = enabled ? "已啟用通知" : "啟用手機通知";
-      on.classList.toggle("ghost",enabled);
-      on.setAttribute("aria-pressed",String(enabled));
-      on.disabled = busy || enabled;
-    }
-    if(off){
-      off.classList.toggle("ghost",!enabled);
-      off.setAttribute("aria-pressed",String(!enabled));
-      off.disabled = busy || !enabled;
-    }
-    if(test) test.disabled = busy || !enabled;
+    const enabled=cachedEnabled && signedIn();
+    const toggle=el("foodPushMaster");
+    if(toggle){toggle.checked=enabled;toggle.disabled=busy||!signedIn();}
+    const test=el(prefix+"Test");
+    if(test)test.disabled=busy||!enabled;
+    const legacyOn=el(prefix+"Enable"),legacyOff=el(prefix+"Disable");
+    if(legacyOn)legacyOn.hidden=true;
+    if(legacyOff)legacyOff.hidden=true;
+    const settings=el("foodPushControls");
+    if(settings)settings.classList.toggle("push-paused",!enabled);
   }
   const installed = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
   const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -74,8 +70,8 @@
     if(isIOS()&&!installed())return "iPhone 請先使用 Safari「分享 → 加入主畫面」，再從主畫面開啟本 APP。";
     if(!supported())return "此瀏覽器不支援 Web Push，請更新系統或使用支援的瀏覽器。";
     if(Notification.permission==="denied")return "通知權限已遭拒絕，請在 iPhone「設定 → 通知」允許食養紀錄的通知。";
-    if(cachedEnabled && Notification.permission==="granted")return "已啟用手機推播｜依下列台灣時間提醒（背景推播需網路連線）。";
-    return "目前通知未啟用。調整下列時間後，點「啟用手機通知」。";
+    if(cachedEnabled && Notification.permission==="granted")return "通知設定已啟用；請使用測試通知確認裝置是否能接收推播。";
+    return "目前通知未啟用。開啟上方總開關即可申請手機通知權限。";
   }
   async function loadSettings(){
     if(!signedIn()) {status("請先登入以設定通知。");return;}
@@ -186,7 +182,7 @@
     try{
       const {data,error}=await sbClient.functions.invoke("food-push",{body:{action:"test"}});
       if(!owned(uid,sid))return;
-      if(error||!data?.ok)throw Error(data?.error||"未成功發送；請等待一分鐘再試。");
+      if(error||!data?.ok){const details=error?.context?await error.context.clone().text().catch(()=>""):"";throw Error(data?.error||details||error?.message||"後端未確認推播發送成功。");}
       status("測試通知已送往 "+data.delivered+" 台裝置。若沒出現，請檢查 iPhone 通知及專注模式設定。");
     }catch(e){if(owned(uid,sid))status("測試通知失敗："+(e?.message||String(e)));}
     finally{setBusy(false);}
@@ -200,6 +196,67 @@
     }catch(e){console.warn("Could not unsubscribe signed-out device",e);}
     loadedFor=null;cachedEnabled=false;
     refreshButtons();
+  }
+  // Separate settings screen: preserve existing input IDs and backend integration.
+  const card=el("foodPushCard");
+  if(card){
+    const parent=card.parentElement;
+    const entry=document.createElement("button");
+    entry.type="button";entry.id="foodPushOpen";entry.className="food-push-entry";
+    entry.innerHTML='<span>🔔　通知設定<small>用餐提醒、每日營養摘要</small></span><span aria-hidden="true">›</span>';
+    const entryCard=document.createElement("div");entryCard.className="card";entryCard.id="foodPushEntryCard";entryCard.append(entry);
+    parent.insertBefore(entryCard,card);
+    card.classList.add("hide");
+    card.setAttribute("aria-label","通知設定");
+    const heading=card.querySelector("h2");if(heading)heading.textContent="通知設定";
+    const back=document.createElement("button");back.type="button";back.className="ghost food-push-back";back.textContent="‹ 返回設定";
+    card.insertBefore(back,card.firstChild);
+    const master=document.createElement("label");master.className="food-push-master";
+    master.innerHTML='<span><strong>推播通知</strong><small>啟用或暫停所有提醒</small></span><input id="foodPushMaster" type="checkbox" role="switch" aria-label="推播通知總開關"><span class="food-push-switch" aria-hidden="true"></span>';
+    card.insertBefore(master,heading.nextSibling);
+    const controls=document.createElement("div");controls.id="foodPushControls";
+    const firstLine=card.querySelector(".food-push-line");
+    const note=card.querySelector(".food-push-note");
+    if(firstLine&&note){let n=firstLine;while(n&&n!==note){const next=n.nextSibling;controls.append(n);n=next;}card.insertBefore(controls,note);}
+    const legacy=card.querySelectorAll("#foodPushEnable,#foodPushDisable,#foodPushSave");
+    legacy.forEach(x=>{x.hidden=true;x.style.display="none";});
+    const test=el("foodPushTest");if(test)test.textContent="傳送測試通知";
+    const style=document.createElement("style");
+    style.textContent=`
+      .food-push-entry{width:100%;display:flex;align-items:center;justify-content:space-between;background:transparent;color:var(--ink);border:0;text-align:left;padding:12px 4px;font-size:17px;font-weight:700;cursor:pointer}
+      .food-push-entry small,.food-push-master small{display:block;font-size:12px;color:var(--mute);font-weight:400;margin-top:5px}
+      .food-push-entry>span:last-child{font-size:26px;color:var(--mute)}
+      .food-push-back{width:auto;margin:0 0 16px;padding:8px 12px}
+      .food-push-master{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 0;cursor:pointer;color:var(--ink)}
+      .food-push-master input{position:absolute;opacity:0;width:1px;height:1px}
+      .food-push-switch{position:relative;flex:0 0 52px;height:30px;border-radius:20px;background:#bbc5c1;transition:background .2s}
+      .food-push-switch:after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s}
+      .food-push-master input:checked+.food-push-switch{background:var(--brand)}
+      .food-push-master input:checked+.food-push-switch:after{transform:translateX(22px)}
+      .food-push-master input:focus-visible+.food-push-switch{outline:3px solid var(--brand);outline-offset:3px}
+      .push-paused{opacity:.65}
+      #foodPushCard .food-push-line input[type=checkbox]{accent-color:var(--brand)}
+      #foodPushCard .row:has(#foodPushEnable){display:none}
+      #foodPushCard #foodPushSave{display:none}
+    `;
+    document.head.append(style);
+    const open=()=>{entryCard.classList.add("hide");card.classList.remove("hide");void loadSettings();window.scrollTo(0,0);};
+    const close=()=>{card.classList.add("hide");entryCard.classList.remove("hide");window.scrollTo(0,0);};
+    entry.addEventListener("click",open);back.addEventListener("click",close);
+    document.querySelectorAll("#bottomNav button").forEach(btn=>btn.addEventListener("click",close));
+    el("foodPushMaster").addEventListener("change",e=>{
+      if(busy){refreshButtons();return;}
+      if(e.target.checked)void enable();else void disable();
+    });
+  }
+  let autoSaveTimer;
+  const queueSave=()=>{
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer=setTimeout(()=>{if(!busy&&signedIn())void save();},450);
+  };
+  for(const [n] of fields){
+    el(prefix+n)?.addEventListener("change",queueSave);
+    el(prefix+n+"Time")?.addEventListener("change",queueSave);
   }
   for(const [id,fn] of [["Enable",enable],["Disable",disable],["Save",save],["Test",sendTest]]){
     const button=el(prefix+id);
