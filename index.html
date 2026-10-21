@@ -1371,8 +1371,7 @@ function renderFoodList() {
   });
 
   if (!filtered.length) {
-    container.innerHTML = `<div class="empty-meal" style="text-align:center;padding:32px 0">查無對應食物，可切換分類或至「手動自訂」建立！</div>`;
-    return;
+    container.innerHTML = `<div class="empty-meal" style="text-align:center;padding:18px 0">目前主資料庫沒有符合的完整營養品項，可查看下方官方商品線索或手動新增。</div>`;
   }
 
   const shown = filtered.slice(0, foodListLimit);
@@ -2479,7 +2478,18 @@ async function lookup(code) {
     try {
       const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', barcodeToLook).maybeSingle();
       if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-      if (data) {
+      let resolvedData = data;
+      if (!resolvedData) {
+        const {data: aliasRow} = await sbClient.from("food_barcode_aliases")
+          .select("canonical_barcode").eq("alias_barcode",barcodeToLook).maybeSingle();
+        if (aliasRow?.canonical_barcode) {
+          const {data: canonicalFood} = await sbClient.from("custom_foods")
+            .select("*").eq("barcode",aliasRow.canonical_barcode).maybeSingle();
+          resolvedData = canonicalFood;
+        }
+      }
+      if (resolvedData) {
+        const data = resolvedData;
         it = {
           name: data.name,
           basis: data.basis,
