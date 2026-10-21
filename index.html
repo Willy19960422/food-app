@@ -1862,6 +1862,13 @@ const VIEWS = ["today", "add", "cam", "list", "hist", "me"];
 function showView(v) {
   if (!currentUser || !S.me) return handleAuthFlow();
 
+  // 已登入使用者進入主畫面時也必須結束啟動畫面；
+  // showOnlySection() 只用在登入/初始設定路徑，不能只在那裡隱藏。
+  const boot = $("p-boot");
+  const firstRender = boot && !boot.classList.contains("hide");
+  if (boot) boot.classList.add("hide");
+  if (firstRender) window.scrollTo(0, 0);
+
   currentActiveView = v;
 
   VIEWS.forEach(p => {
