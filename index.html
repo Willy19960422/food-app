@@ -159,8 +159,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 </head>
 <body>
 <main>
+<section id="p-boot" style="text-align:center;padding:22vh 18px 40px" aria-live="polite"><img src="./icon-192.png" alt="食養紀錄" width="72"><h2>食養紀錄</h2><p class="mute" id="boot-status">正在載入…</p></section>
 <!-- 1. 登入/註冊頁面 -->
-<section id="p-auth">
+<section id="p-auth" class="hide">
   <div class="auth-hero">
     <img src="icon-192.png" alt="食養紀錄 LOGO" class="auth-logo">
     <h1>食養紀錄</h1>
@@ -723,6 +724,8 @@ let currentMainCat = "all";
 let currentSubCat = "all";
 let chosenFood = null;
 let communityFoodsCache = [];
+let foodListLimit = 50;
+let foodCatalogCandidates = [];
 
 const SUB_CAT_MAP = {
   "all": ["全部子類"],
@@ -759,9 +762,14 @@ function initSupabase() {
     if (window.supabase && typeof window.supabase.createClient === "function") {
       sbClient = window.supabase.createClient(SB_URL, SB_KEY);
 
-      sbClient.auth.getSession().then(({ data: { session } }) => {
+      sbClient.auth.getSession().then(({ data: { session }, error }) => {
+        if (error) throw error;
         currentUser = session ? session.user : null;
         handleAuthFlow();
+      }).catch(err => {
+        console.error("恢復登入失敗",err);
+        showOnlySection("p-auth");
+        $("authErrMsg").textContent = "登入狀態載入失敗，請重新登入。";
       });
 
       sbClient.auth.onAuthStateChange((event, session) => {
@@ -843,7 +851,7 @@ async function handleAuthFlow() {
       $("userEmailTag").textContent = `目前登入信箱：${currentUser.email}`;
       applyTheme(S.theme || "system");
 
-      await runSyncPipeline();
+      runSyncPipeline().catch(e => console.warn("背景同步失敗",e));
       if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
 
       {
@@ -1082,7 +1090,7 @@ window.addEventListener("focus", () => {
 });
 
 function showOnlySection(secId) {
-  const allSecs = ["p-auth", "p-onboarding", "p-today", "p-add", "p-cam", "p-list", "p-hist", "p-me"];
+  const allSecs = ["p-boot", "p-auth", "p-onboarding", "p-today", "p-add", "p-cam", "p-list", "p-hist", "p-me"];
   allSecs.forEach(id => {
     const el = $(id);
     if (el) el.classList.toggle("hide", id !== secId);
@@ -1249,7 +1257,7 @@ $("signOutBtn").onclick = async () => {
 async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (currentUser ? currentUser.id : null)) {
   if (!sbClient || !currentUser || S.stateOwnerId !== targetUid) return;
   try {
-    const { data, error } = await sbClient.from('custom_foods').select('*').or(`is_verified.eq.true,created_by.eq.${targetUid}`);
+    const { data, error } = await sbClient.from('custom_foods').select('*').or(`is_verified.eq.true,created_by.eq.${targetUid}`).limit(2000);
     if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid || S.stateOwnerId !== targetUid) return;
 
     if (!error && data) {
@@ -1277,12 +1285,22 @@ async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (c
         };
       });
       renderFoodList();
+      loadFoodCandidates(targetSession,targetUid);
     }
   } catch(e) {
     console.error("社群食物庫載入失敗:", e);
   }
 }
 
+async function loadFoodCandidates(session, uid) {
+  try {
+    const {data,error} = await sbClient.from("food_catalog_candidates")
+      .select("brand,name,kcal,source_name,source_url").order("name").limit(500);
+    if (error) throw error;
+    if (loginSessionId !== session || currentUser?.id !== uid) return;
+    foodCatalogCandidates = data || []; renderFoodList();
+  } catch(e) { console.warn("候選商品載入失敗",e); }
+}
 function getCombinedFoodList() {
   const result = [];
   const addedNames = new Set();
@@ -1357,7 +1375,7 @@ function renderFoodList() {
     return;
   }
 
-  const shown = filtered.slice(0, 50);
+  const shown = filtered.slice(0, foodListLimit);
   container.innerHTML = shown.map((item, idx) => `
     <div class="food-card ${chosenFood && chosenFood.name === item.name ? 'selected' : ''}" data-idx="${idx}">
       <div style="flex:1">
@@ -1377,6 +1395,28 @@ function renderFoodList() {
     </div>
   `).join("");
 
+  if (shown.length < filtered.length) {
+    const more = document.createElement("button"); more.className = "ghost";
+    more.textContent = "載入更多（" + shown.length + " / " + filtered.length + "）";
+    more.onclick = () => { foodListLimit += 50; renderFoodList(); };
+    container.append(more);
+  }
+  if (keyword && currentMainCat === "all") {
+    const matches = foodCatalogCandidates.filter(x => (x.brand+" "+x.name).toLowerCase().includes(keyword))
+      .filter(x => !allFoods.some(f => f.name.replace(/\s/g,"") === (x.brand+" "+x.name).replace(/\s/g,"")));
+    if (matches.length) {
+      const panel = document.createElement("div"); panel.className = "card";
+      const h = document.createElement("h3"); h.textContent = "官方新品（待補完整營養）"; panel.append(h);
+      for (const x of matches.slice(0,20)) {
+        const item = document.createElement("div"); item.className = "item";
+        const span = document.createElement("span"); span.textContent = x.brand+" "+x.name+(x.kcal==null?" · 熱量待查":" · "+x.kcal+" kcal");
+        const link = document.createElement("a"); link.href=x.source_url; link.target="_blank"; link.rel="noopener noreferrer"; link.textContent="官方來源";
+        item.append(span,link); panel.append(item);
+      }
+      const note=document.createElement("p");note.className="mute";note.textContent="未確認蛋白質、脂肪與碳水，暫不提供加入紀錄。";panel.append(note);
+      container.append(panel);
+    }
+  }
   container.querySelectorAll(".food-card").forEach(el => {
     el.onclick = (e) => {
       const idx = e.currentTarget.dataset.idx;
@@ -1516,6 +1556,7 @@ $("mainCatBar").onclick = e => {
   document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentMainCat = btn.dataset.cat;
+  foodListLimit = 50;
   currentSubCat = "all";
   renderSubCategoryBar();
   renderFoodList();
@@ -1527,11 +1568,13 @@ $("subCatBar").onclick = e => {
   document.querySelectorAll(".sub-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentSubCat = btn.dataset.sub.replace(/\s+/g, "");
+  foodListLimit = 50;
   renderFoodList();
 };
 
 $("foodSearch").oninput = () => {
   clearTimeout(searchDebounceTimer);
+  foodListLimit = 50;
   searchDebounceTimer = setTimeout(renderFoodList, 200);
 };
 
