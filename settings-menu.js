@@ -2,7 +2,8 @@
   const page=document.getElementById("p-me");
   if(!page)return;
   const heading=page.querySelector("h1");
-  const cards=[...page.querySelectorAll(":scope > .card")];
+  const cards=[...page.querySelectorAll(":scope > .card")].filter(card=>card.id!=="foodPushEntryCard");
+  const notificationEntry=document.getElementById("foodPushEntryCard");
   const menu=document.createElement("div");
   menu.id="settingsMenu";
   menu.className="settings-menu";
@@ -14,6 +15,10 @@
   .settings-menu-item small{display:block;font-size:.83em;font-weight:400;color:var(--muted,#74817d);margin-top:4px}
   .settings-subpage.hide,.settings-menu.hide{display:none!important}
   .settings-back{margin:0 0 16px;width:auto}
+  #settingsMenu #foodPushEntryCard{margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+  #settingsMenu #foodPushOpen{width:100%;margin:0;padding:17px 18px;border:1px solid var(--line);border-radius:15px;background:var(--card,#fff);color:var(--ink);text-align:left;font-weight:700}
+  #settingsMenu #foodPushOpen small{display:block;font-size:.83em;font-weight:400;color:var(--muted,#74817d);margin-top:4px}
+  #settingsMenu #foodPushOpen span[aria-hidden]{display:none}
   `;
   document.head.append(style);
   const groups=[
@@ -42,12 +47,13 @@
     const label=document.createElement("span");
     const strong=document.createElement("span");strong.textContent=group.title;
     const small=document.createElement("small");small.textContent=group.detail;
-    label.append(strong,small);btn.append(label,document.createTextNode("›"));
+    label.append(strong,small);btn.append(label);
     btn.addEventListener("click",()=>{
       close();menu.classList.add("hide");heading.classList.add("hide");
       screen.classList.remove("hide");active=screen;window.scrollTo(0,0);
     });
     menu.append(btn);
   }
+  if(notificationEntry)menu.append(notificationEntry);
   document.querySelectorAll("#bottomNav button").forEach(b=>b.addEventListener("click",close));
 })();
