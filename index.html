@@ -1090,7 +1090,9 @@ window.addEventListener("focus", () => {
 });
 
 function showOnlySection(secId) {
-  const allSecs = ["p-boot", "p-auth", "p-onboarding", "p-today", "p-add", "p-cam", "p-list", "p-hist", "p-me"];
+  const allSecs = ["p-auth", "p-onboarding", "p-today", "p-add", "p-cam", "p-list", "p-hist", "p-me"];
+  const boot = $("p-boot");
+  if (boot) boot.classList.add("hide");
   allSecs.forEach(id => {
     const el = $(id);
     if (el) el.classList.toggle("hide", id !== secId);
