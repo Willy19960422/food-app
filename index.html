@@ -198,6 +198,14 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 #boxSelectFood .food-card{min-height:60px;padding:14px;touch-action:manipulation}
 #boxSelectFood button:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 @media(min-width:540px){#boxSelectFood #mainCatBar,#boxSelectFood #subCatBar,#boxSelectFood #dumplingKindBar{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* Barcode v2: mobile-sized tap targets and readable input fields */
+#camBarcodeBox button,#camBarcodeBox select,#camBarcodeBox input {min-height:46px}
+#camBarcodeBox .card {overflow-wrap:anywhere}
+#camBarcodeBox input[type="number"],#camBarcodeBox input[type="text"] {font-size:16px}
+#camBarcodeBox #scanMsg {min-height:20px;line-height:1.5}
+#camBarcodeBox #newForm .row>* {min-width:0}
+#camBarcodeBox #newForm .row>select {width:100%}
+#camBarcodeBox #submitProductStatus:not(:empty) {margin-top:10px;padding:10px;border-radius:9px;background:var(--bg)}
 </style>
 </head>
 <body>
@@ -343,10 +351,10 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button class="ghost" id="shotBtn">拍照掃條碼（相機打不開時用）</button>
       <input id="shot" type="file" accept="image/*" capture="environment" class="hide">
       <label>或手動輸入條碼</label>
-      <input id="manual" inputmode="numeric" placeholder="例如 4710088410009">
+      <input id="manual" type="text" inputmode="numeric" autocomplete="off" maxlength="14" aria-label="食品條碼" placeholder="8、12、13 或 14 位商品條碼">
       <button class="ghost" id="lookBtn"><span>查詢條碼</span></button>
       <div class="loading-box hide" id="scanLoading"><div class="spinner"></div></div>
-      <div class="msg" id="scanMsg"></div>
+      <div class="msg" id="scanMsg" role="status" aria-live="polite"></div>
     </div>
     <div class="card hide" id="found">
       <div class="badge" id="fSrc">資料來源</div>
@@ -377,10 +385,11 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 
       <div class="tag" id="fTag"></div>
       <button id="addBtn">加入紀錄</button>
+      <button id="reportBarcodeBtn" class="ghost">商品資訊有誤？回報修正</button>
     </div>
     <div class="card hide" id="newForm">
       <h2>社群資料庫尚無此商品</h2>
-      <div class="mute">可手動輸入，或拍攝包裝營養標示自動填入。</div>
+      <div class="mute">自行輸入或拍攝包裝營養標示。商品先供本人使用，通過審核後才會加入共用資料。</div>
       <button class="ghost" id="photoBtn">拍營養標示，自動填寫</button>
       <input id="photo" type="file" accept="image/*" capture="environment" class="hide">
       <div id="photoLoading" class="loading-box hide"><div class="spinner"></div></div>
@@ -393,7 +402,10 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       </select>
       <label>細部子分類</label>
       <input id="nSubCat" placeholder="例如：7-11鮮食、高蛋白乳品">
-      <label>標示基準</label><select id="nB"><option>每份</option><option>每100g</option></select>
+      <label>標示基準</label><select id="nB"><option>每份</option><option>每100g</option><option>每100ml</option></select>
+      <label>品牌（選填）</label><input id="nBrand" maxlength="120" placeholder="例如 義美、光泉">
+      <label>每份重量／容量（選填，按每份時使用）</label>
+      <div class="row"><input id="nServingQty" type="number" inputmode="decimal" min="0" step="0.1" placeholder="例如 250" aria-label="每份重量或容量"><select id="nServingUnit" aria-label="重量容量單位"><option value="g">g</option><option value="ml">ml</option></select></div>
       <label>商品名稱</label><input id="nName">
       <div class="row">
         <div><label>熱量 (大卡)</label><input id="nK" type="number"></div>
@@ -403,7 +415,9 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
         <div><label>脂肪 (g)</label><input id="nF" type="number"></div>
         <div><label>碳水 (g)</label><input id="nC" type="number"></div>
       </div>
-      <button id="saveNew">存進社群庫並加入紀錄</button>
+      <button id="saveNew">記錄這次飲食並送交審核</button>
+      <button class="ghost" id="submitProductBtn">只送交審核（資料未齊也可以）</button>
+      <div class="mute" id="submitProductStatus" role="status" aria-live="polite"></div>
     </div>
   </div>
 
@@ -2848,184 +2862,6 @@ $("shot").onchange = async e => {
   }
 };
 
-$("lookBtn").onclick = () => {
-  const c = cleanBarcode($("manual").value);
-  if (c) lookup(c);
-};
-
-async function fetchOpenFoodFacts(barcode) {
-  try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.status !== 1 || !data.product) return null;
-    const p = data.product, nut = p.nutriments || {};
-    const isServing = nut["energy-kcal_serving"] !== undefined;
-    const kcal = Number(isServing ? nut["energy-kcal_serving"] : nut["energy-kcal_100g"]);
-    if (!kcal || kcal <= 0) return null;
-
-    const servingWeight = Number(p.serving_quantity) || Number(nut["serving_size"]) || 0;
-    return {
-      name: p.product_name_zh || p.product_name || `商品 (${barcode})`,
-      basis: isServing ? "每份" : "每100g",
-      k: Math.round(kcal),
-      p: Math.round(Number(isServing ? nut["proteins_serving"] : nut["proteins_100g"]) * 10) / 10 || 0,
-      f: Math.round(Number(isServing ? nut["fat_serving"] : nut["fat_100g"]) * 10) / 10 || 0,
-      c: Math.round(Number(isServing ? nut["carbohydrates_serving"] : nut["carbohydrates_100g"]) * 10) / 10 || 0,
-      basisType: isServing ? "serving" : "100g",
-      servingWeight: servingWeight,
-      source: "Open Food Facts"
-    };
-  } catch(e) { return null; }
-}
-
-async function lookup(code) {
-  const seq = ++lookupSequenceId;
-  const targetUid = currentUser ? currentUser.id : null;
-  const targetSession = loginSessionId;
-  const barcodeToLook = cleanBarcode(code);
-
-  $("scanLoading").classList.remove("hide");
-  $("scanMsg").textContent = "";
-  let it = null, source = "";
-
-  if (sbClient) {
-    try {
-      const { data } = await sbClient.from('custom_foods').select('*').eq('barcode', barcodeToLook).maybeSingle();
-      if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-      let resolvedData = data;
-      if (!resolvedData) {
-        const {data: aliasRow} = await sbClient.from("food_barcode_aliases")
-          .select("canonical_barcode").eq("alias_barcode",barcodeToLook).maybeSingle();
-        if (aliasRow?.canonical_barcode) {
-          const {data: canonicalFood} = await sbClient.from("custom_foods")
-            .select("*").eq("barcode",aliasRow.canonical_barcode).maybeSingle();
-          resolvedData = canonicalFood;
-        }
-      }
-      if (resolvedData) {
-        const data = resolvedData;
-        it = {
-          name: data.name,
-          basis: data.basis,
-          k: Number(data.kcal),
-          p: Number(data.protein),
-          f: Number(data.fat),
-          c: Number(data.carbs),
-          basisType: data.basis_type || "serving",
-          servingWeight: Number(data.serving_weight) || 0
-        };
-        source = data.is_verified ? "社群資料庫（已驗證）" : "社群資料庫（未驗證，請對照包裝）";
-      }
-    } catch(e){}
-  }
-
-  if (!it) {
-    it = await fetchOpenFoodFacts(barcodeToLook);
-    if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-    if (it) source = "Open Food Facts 公共庫";
-  }
-
-  if (seq !== lookupSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-  $("scanLoading").classList.add("hide");
-  curBarcode = barcodeToLook;
-  curItem = it;
-  $("found").classList.toggle("hide", !it);
-  $("newForm").classList.toggle("hide", !!it);
-
-  if (!it) {
-    $("nName").value = ""; $("nK").value = ""; $("nP").value = ""; $("nF").value = ""; $("nC").value = "";
-    return;
-  }
-
-  $("fSrc").textContent = source;
-  $("fName").textContent = it.name;
-  $("fInfo").textContent = `${it.basis || "每份"} ${it.k} 大卡・蛋白質 ${it.p} g・脂肪 ${it.f} g・碳水 ${it.c} g ${it.servingWeight ? `(每份 ${it.servingWeight}g)` : ''}`;
-  $("fTag").textContent = `條碼：${curBarcode}`;
-
-  const is100g = it.basisType === "100g";
-  const hasWeight = it.servingWeight && it.servingWeight > 0;
-
-  if (is100g || hasWeight) {
-    $("calcModeWeight").classList.remove("hide");
-    $("weightInputLabel").textContent = is100g ? "實際食用重量 (g/ml，每 100g 基準)" : `實際食用重量 (g/ml，每份基準 ${it.servingWeight}g)`;
-  } else {
-    $("calcModeWeight").classList.add("hide");
-  }
-
-  $("serv").value = 1;
-  $("actualWeightInput").value = is100g ? 100 : (hasWeight ? it.servingWeight : "");
-  setScanCalcMode("serv");
-  document.querySelectorAll("#servChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
-}
-
-$("addBtn").onclick = async () => {
-  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
-  if (!curItem) return;
-
-  const itemToSave = { ...curItem };
-  const barcodeToSave = curBarcode;
-  const targetUid = currentUser.id;
-  const targetSession = loginSessionId;
-
-  let finalServings = 1;
-  let logName = itemToSave.name + "（" + itemToSave.basis + "）";
-  let multiplier = 1;
-
-  if (scanCalcMode === "serv") {
-    finalServings = +$("serv").value || 1;
-    multiplier = finalServings;
-  } else {
-    const w = +$("actualWeightInput").value || 0;
-    if (w <= 0) return alert("請輸入有效的食用重量！");
-    if (itemToSave.basisType === "100g") {
-      multiplier = w / 100;
-    } else if (itemToSave.servingWeight && itemToSave.servingWeight > 0) {
-      multiplier = w / itemToSave.servingWeight;
-    } else {
-      return alert("此商品未提供每份重量基準，無法進行重量換算。");
-    }
-    logName = `${itemToSave.name} (${w}g)`;
-    finalServings = multiplier;
-  }
-
-  addLog({ name: logName, k: itemToSave.k, p: itemToSave.p, f: itemToSave.f, c: itemToSave.c }, finalServings);
-
-  $("found").classList.add("hide");
-
-  if (sbClient && barcodeToSave) {
-    try {
-      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
-      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-      if (!existing) {
-        const { error } = await sbClient.from('custom_foods').insert([{
-          barcode: barcodeToSave,
-          name: itemToSave.name,
-          basis: itemToSave.basis || "每份",
-          kcal: itemToSave.k,
-          protein: itemToSave.p,
-          fat: itemToSave.f,
-          carbs: itemToSave.c,
-          category: "超商鮮食",
-          basis_type: itemToSave.basisType || "serving",
-          serving_weight: itemToSave.servingWeight || 0,
-          is_verified: false,
-          created_by: targetUid
-        }]);
-        if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
-        if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-        loadCommunityFoods();
-      }
-    } catch(err) {
-      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
-    }
-  }
-
-  showView("today");
-};
-
 async function addLog(it, n) {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   const mealKey = getSelectedMeal();
@@ -3046,95 +2882,6 @@ async function addLog(it, n) {
     runSyncPipeline();
   }
 }
-
-$("photoBtn").onclick = () => $("photo").click();
-
-$("photo").onchange = async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const seq = ++photoSequenceId;
-  const targetUid = currentUser ? currentUser.id : null;
-  const targetSession = loginSessionId;
-
-  $("photoLoading").classList.remove("hide");
-  $("photoBtn").disabled = true;
-  $("scanMsg").textContent = "";
-
-  try {
-    const r = await callGeminiVision("你是營養標籤讀取助理。請從照片讀出商品名、基準（\"每份\"或\"每100g\"）、熱量(kcal)、蛋白質(g)、脂肪(g)、碳水(g)。回傳 JSON：{\"name\":\"\",\"basis\":\"每份\",\"k\":0,\"p\":0,\"f\":0,\"c\":0}", f);
-
-    if (seq !== photoSequenceId || loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-    if (r.name) $("nName").value = r.name;
-    $("nB").value = r.basis === "每100g" ? "每100g" : "每份";
-    $("nK").value = r.k || 0;
-    $("nP").value = r.p || 0;
-    $("nF").value = r.f || 0;
-    $("nC").value = r.c || 0;
-  } catch(err) {
-    if (seq === photoSequenceId && loginSessionId === targetSession) {
-      $("scanMsg").textContent = "AI 辨識失敗：" + err.message;
-    }
-  } finally {
-    if (seq === photoSequenceId) {
-      $("photoLoading").classList.add("hide");
-      $("photoBtn").disabled = false;
-      e.target.value = "";
-    }
-  }
-};
-
-$("saveNew").onclick = async () => {
-  if (!currentUser || S.stateOwnerId !== currentUser.id) return;
-  const n = $("nName").value.trim();
-  const k = +$("nK").value;
-  const p = +$("nP").value || 0;
-  const f = +$("nF").value || 0;
-  const c = +$("nC").value || 0;
-  const cat = $("nCat").value || "超商鮮食";
-  const subCat = $("nSubCat").value.trim().replace(/\s+/g, "") || "";
-
-  const errMsg = validateNutrition(n, k, p, f, c);
-  if (errMsg) return alert(errMsg);
-
-  const targetUid = currentUser.id;
-  const targetSession = loginSessionId;
-  const barcodeToSave = curBarcode;
-
-  const it = { name: n, basis: $("nB").value, k, p, f, c, category: cat, subCat };
-  addLog(it, 1);
-
-  if (sbClient && barcodeToSave) {
-    try {
-      const { data: existing } = await sbClient.from('custom_foods').select('barcode').eq('barcode', barcodeToSave).maybeSingle();
-      if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-
-      if (!existing) {
-        const { error } = await sbClient.from('custom_foods').insert([{
-          barcode: barcodeToSave,
-          name: it.name,
-          basis: it.basis,
-          kcal: it.k,
-          protein: it.p,
-          fat: it.f,
-          carbs: it.c,
-          category: it.category,
-          sub_category: it.subCat,
-          is_verified: false,
-          created_by: targetUid
-        }]);
-        if (error) alert("⚠️ 飲食已記錄，但自訂商品分享至社群庫失敗：" + error.message);
-        if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
-        loadCommunityFoods();
-      }
-    } catch(e) {
-      alert("⚠️ 網路異常，商品分享至社群庫失敗。");
-    }
-  }
-
-  $("newForm").classList.add("hide");
-  showView("today");
-};
 
 function setMealBusy(busy) {
   mealBusy = busy;
@@ -3466,6 +3213,7 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 <script defer src="./push-settings.js?v=20261021-4"></script>
 <script defer src="./settings-menu.js?v=20261021-3"></script>
+<script defer src="./barcode-v2.js?v=20261021-1"></script>
 
 </body>
 </html>
