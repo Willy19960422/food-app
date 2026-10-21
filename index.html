@@ -621,7 +621,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <option value="snack">點心</option>
     </select>
 
-    <label>份數 / 比例</label>
+    <label id="editLogServingsLabel">份數 / 比例</label>
     <input id="editLogServings" type="number" step="0.1" min="0.1" value="1">
 
     <div class="row" style="margin-top:14px">
@@ -1637,6 +1637,15 @@ let selCalcMode = "serv";
 
 function selectFoodItem(item) {
   chosenFood = item;
+  const pieces=isPieceFood(item);
+  $("cfQuantityLabel").textContent=pieces?"顆數":"份數";
+  $("selModeServ").textContent=pieces?"按顆數":"按份數";
+  $("cfN").min=pieces?"1":"0.5";
+  $("cfN").step=pieces?"1":"0.5";
+  const presets=pieces?[[1,"1 顆"],[5,"5 顆"],[8,"8 顆"],[10,"10 顆"]]:
+    [[0.5,"0.5 份"],[1,"1 份"],[1.5,"1.5 份"],[2,"2 份"]];
+  $("cfChips").innerHTML=presets.map(([num,label])=>
+    '<div class="serving-chip'+(num===1?' active':'')+'" data-v="'+num+'">'+label+'</div>').join("");
   $("selectedFoodInfo").classList.remove("hide");
   $("selFoodName").textContent = item.name;
 
@@ -1649,8 +1658,6 @@ function selectFoodItem(item) {
   } else {
     $("selModeWeight").classList.add("hide");
   }
-
-  updateSelFoodDetailDisplay();
 
   $("cfN").value = 1;
   $("selWeightInput").value = is100g ? 100 : (hasWeight ? item.servingWeight : "");
@@ -1677,7 +1684,9 @@ function updateSelFoodDetailDisplay() {
   const item = chosenFood;
   if (selCalcMode === "serv") {
     const n = +$("cfN").value || 1;
-    $("selFoodDetail").textContent = `每 ${item.basis}：${Math.round(item.k * n)} 大卡・蛋白質 ${Math.round(item.p * n * 10)/10}g・脂肪 ${Math.round(item.f * n * 10)/10}g・碳水 ${Math.round(item.c * n * 10)/10}g (${Math.round(n*100)/100} 份)`;
+    $("selFoodDetail").textContent = (isPieceFood(item)?n+" 顆":"每 "+item.basis+"（"+Math.round(n*100)/100+" 份）")+
+      "："+Math.round(item.k*n)+" 大卡・蛋白質 "+Math.round(item.p*n*10)/10+"g・脂肪 "+
+      Math.round(item.f*n*10)/10+"g・碳水 "+Math.round(item.c*n*10)/10+"g";
   } else {
     const w = +$("selWeightInput").value || 0;
     let ratio = 1;
@@ -1809,8 +1818,12 @@ $("cfAdd").onclick = () => {
   let multiplier = 1;
 
   if (selCalcMode === "serv") {
-    finalServings = +$("cfN").value || 1;
+    finalServings = Number($("cfN").value);
+    if(!Number.isFinite(finalServings)||finalServings<=0)return alert("請輸入有效的食用數量。");
+    if(isPieceFood(chosenFood)&&(!Number.isInteger(finalServings)||finalServings>200))
+      return alert("顆數請輸入 1 至 200 的整數。");
     multiplier = finalServings;
+    if(isPieceFood(chosenFood))logName=chosenFood.name+"（每顆）";
   } else {
     const w = +$("selWeightInput").value || 0;
     if (w <= 0) return alert("請輸入有效的食用重量！");
@@ -2221,7 +2234,7 @@ function renderMealSection(dateKey, isEditable = true) {
       <div class="item">
         <div>
           ${e.t ? `<span class="mute">${e.t}</span> ` : ""}${esc(e.name)}
-          <div class="mute">${Math.round(e.n * 100) / 100} 份・${Math.round(e.k * e.n)} 大卡・P ${Math.round(e.p * e.n)}g / F ${Math.round(e.f * e.n)}g / C ${Math.round(e.c * e.n)}g</div>
+          <div class="mute">${Math.round(e.n * 100) / 100} ${/（每顆）|（1顆）/.test(e.name)?"顆":"份"}・${Math.round(e.k * e.n)} 大卡・P ${Math.round(e.p * e.n)}g / F ${Math.round(e.f * e.n)}g / C ${Math.round(e.c * e.n)}g</div>
         </div>
         ${isEditable ? `
           <div style="display:flex;gap:6px">
@@ -2294,6 +2307,10 @@ $("logByMeal").onclick = async e => {
     $("editLogName").value = item.name;
     $("editLogMeal").value = item.meal || "snack";
     $("editLogServings").value = item.n || 1;
+    const perPiece=/（每顆）|（1顆）/.test(item.name);
+    $("editLogServingsLabel").textContent=perPiece?"顆數":"份數 / 比例";
+    $("editLogServings").step=perPiece?"1":"0.1";
+    $("editLogServings").min=perPiece?"1":"0.1";
     $("editLogModal").classList.remove("hide");
   }
 };
