@@ -39,11 +39,18 @@
     }
     return prefs;
   }
+  function refreshVisibleTimes(){
+    for(const [n] of fields){
+      const label=el(prefix+n+"TimeDisplay");
+      if(label)label.textContent=displayTime(el(prefix+n+"Time").value)||"--:--";
+    }
+  }
   function applyForm(prefs){
     for(const [n,active,time] of fields){
       if(prefs[active]!==undefined)el(prefix+n).checked=!!prefs[active];
       if(prefs[time])el(prefix+n+"Time").value=displayTime(prefs[time]);
     }
+    refreshVisibleTimes();
   }
   function humanStatus(){
     if(!signedIn())return "請先登入以設定通知。";
@@ -178,6 +185,14 @@
     const button=el(prefix+id);
     if(button)button.addEventListener("click",fn);
   }
+  for(const [n] of fields){
+    const picker=el(prefix+n+"Time");
+    if(picker){
+      picker.addEventListener("input",refreshVisibleTimes);
+      picker.addEventListener("change",refreshVisibleTimes);
+    }
+  }
+  refreshVisibleTimes();
   // showView('me') invokes renderMe(). Preserve original rendering and refresh
   // preferences on each visit, including after a sign-in or account change.
   const originalRenderMe=renderMe;
