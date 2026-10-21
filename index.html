@@ -405,6 +405,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button class="main-cat-btn" data-cat="超商鮮食">超商鮮食</button>
       <button class="main-cat-btn" data-cat="蛋白健康">蛋白健康新品</button>
       <button class="main-cat-btn" data-cat="夜市小吃">夜市小吃</button>
+      <button class="main-cat-btn" data-cat="餃類點心">水餃・鍋貼・小籠包</button>
       <button class="main-cat-btn" data-cat="連鎖餐飲">連鎖餐飲</button>
       <button class="main-cat-btn" data-cat="好市多">好市多</button>
       <button class="main-cat-btn" data-cat="外食餐飲">外食餐飲</button>
@@ -417,6 +418,14 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button class="sub-cat-btn active" data-sub="all">全部子類</button>
     </div>
 
+    <div id="dumplingKindBar" class="main-cat-scroll hide" style="margin:10px 0 12px" aria-label="餃類種類">
+      <button class="main-cat-btn active" data-kind="all">全部種類</button>
+      <button class="main-cat-btn" data-kind="水餃">水餃</button>
+      <button class="main-cat-btn" data-kind="煎餃／鍋貼">煎餃／鍋貼</button>
+      <button class="main-cat-btn" data-kind="小籠包">小籠包</button>
+      <button class="main-cat-btn" data-kind="蒸餃">蒸餃</button>
+      <button class="main-cat-btn" data-kind="湯包／湯餃">湯餃</button>
+    </div>
     <div class="food-list" id="foodContainer"></div>
 
     <div id="selectedFoodInfo" class="hide" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
@@ -430,7 +439,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
           <button id="selModeWeight">按重量 (g/ml)</button>
         </div>
         <div id="selBoxModeServ">
-          <label>份數</label>
+          <label id="cfQuantityLabel">份數</label>
           <input id="cfN" type="number" step="0.5" min="0.5" value="1">
           <div class="serving-chips" id="cfChips" style="margin-top:6px">
             <div class="serving-chip" data-v="0.5">0.5 份</div>
@@ -459,6 +468,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <option value="超商鮮食">超商鮮食</option>
       <option value="好市多">好市多</option>
       <option value="夜市小吃">夜市小吃</option>
+      <option value="餃類點心">餃類點心（每顆）</option>
       <option value="連鎖餐飲">連鎖餐飲</option>
       <option value="外食餐飲">外食餐飲</option>
       <option value="基礎食材">基礎食材</option>
@@ -473,7 +483,13 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 
     <div class="row">
       <div><label>標示基準</label><select id="mBasisType"><option value="serving">每份</option><option value="100g">每100g/ml</option></select></div>
-      <div><label>每份重量 (g/ml，選填)</label><input id="mServingWeight" type="number" placeholder="例如 105"></div>
+      <div><label id="mServingWeightLabel">每份重量 (g/ml，選填)</label><input id="mServingWeight" type="number" placeholder="例如 105"></div>
+    </div>
+
+    <div id="mPieceCountWrap" class="hide" style="margin:12px 0">
+      <label for="mPieceCount">這次實際吃幾顆？</label>
+      <input id="mPieceCount" type="number" inputmode="numeric" step="1" min="1" max="200" value="1">
+      <div class="mute">下方營養值請填「每顆」；紀錄將依顆數乘算。</div>
     </div>
 
     <div class="row">
@@ -605,7 +621,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <option value="snack">點心</option>
     </select>
 
-    <label>份數 / 比例</label>
+    <label id="editLogServingsLabel">份數 / 比例</label>
     <input id="editLogServings" type="number" step="0.1" min="0.1" value="1">
 
     <div class="row" style="margin-top:14px">
@@ -730,6 +746,7 @@ const MEALS = [
 let currentActiveView = "today";
 let currentMainCat = "all";
 let currentSubCat = "all";
+let currentDumplingKind = "all";
 let chosenFood = null;
 let communityFoodsCache = [];
 let foodListLimit = 50;
@@ -742,6 +759,7 @@ const SUB_CAT_MAP = {
   "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "萊爾富鮮食", "OK超商鮮食"],
   "蛋白健康": ["全部", "7-ELEVEN", "全家"],
   "夜市小吃": ["全部", "主食", "炸物", "燒烤滷味", "甜品飲品", "參考估算"],
+  "餃類點心": ["全部", "八方雲集", "四海遊龍", "及第", "灣仔碼頭", "奇美", "義美", "鼎泰豐", "桂冠", "台糖", "龍鳳", "禎祥", "大阪王將", "王品嚴選", "水餃嫂", "好市多"],
   "連鎖餐飲": ["全部", "麥當勞", "肯德基", "丹丹漢堡", "漢堡王", "摩斯漢堡", "SUBWAY", "八方雲集", "吉野家"],
   "好市多": ["全部", "賣場熟食", "麵包烘焙", "冷凍調理", "冷凍食品", "冷藏食品", "餐飲部"],
   "外食餐飲": ["全部", "便當小吃", "麵食湯水", "速食連鎖"],
@@ -1297,7 +1315,8 @@ async function loadCommunityFoods(targetSession = loginSessionId, targetUid = (c
           barcode: row.barcode,
           createdBy: row.created_by,
           basisType: row.basis_type || "serving",
-          servingWeight: Number(row.serving_weight) || 0
+          servingWeight: Number(row.serving_weight) || 0,
+          dataQuality: row.data_quality || ""
         };
       });
       renderFoodList();
@@ -1313,7 +1332,7 @@ async function loadFoodCandidates(session,uid){
     const all=[];
     for(let offset=0;offset<3000;offset+=500){
       const {data,error}=await sbClient.from("food_catalog_candidates")
-        .select("id,brand,name,category,sub_category,kcal,protein,fat,carbs,basis,source_name,source_url,nutrition_status,source_quality,market_status")
+        .select("id,brand,name,category,sub_category,kcal,protein,fat,carbs,basis,source_name,source_url,nutrition_status,source_quality,market_status,unit_type,food_kind,piece_weight_g,pieces_per_pack,nutrition_derivation")
         .order("id",{ascending:true}).range(offset,offset+499);
       if(error)throw error;
       if(loginSessionId!==session||currentUser?.id!==uid)return;
@@ -1331,7 +1350,12 @@ function getCombinedFoodList() {
   const addedNames = new Set();
 
   (S.customFavorites || []).forEach(f => {
-    result.push({ ...f, cat: "我的常用", isFav: true });
+    // 常用清單中舊版同名餃類，優先引用更新後的「每顆」正式資料；
+    // 避免常用食品遮蔽主食品庫已校正的單顆基準。
+    const matchedDumpling=(communityFoodsCache || []).find(v =>
+      v.cat === "餃類點心" && v.name === f.name);
+    result.push(matchedDumpling ? { ...matchedDumpling, isFav: true } :
+      { ...f, cat: "我的常用", isFav: true });
     addedNames.add(f.name);
   });
 
@@ -1364,8 +1388,8 @@ function renderSubCategoryBar() {
 
 
 
-const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","夜市小吃","連鎖餐飲","好市多"];
-const BRAND_NAMES=["麥當勞","肯德基","丹丹漢堡","漢堡王","摩斯漢堡","SUBWAY","八方雲集","吉野家"];
+const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","夜市小吃","連鎖餐飲","好市多","餃類點心"];
+const BRAND_NAMES=["麥當勞","肯德基","丹丹漢堡","漢堡王","摩斯漢堡","SUBWAY","八方雲集","吉野家","四海遊龍","及第","灣仔碼頭","奇美","義美","鼎泰豐","桂冠","台糖","龍鳳","禎祥","大阪王將","王品嚴選","水餃嫂"];
 function normalizedFoodName(x){return String(x||"").toLowerCase().replace(/[\s　_\-－]/g,"")}
 function detectFoodBrand(food){
   const sub=food.subCat||"";
@@ -1387,6 +1411,21 @@ function candidateHasCompleteDuplicate(x,foods){
     f.cat==="夜市小吃"&&normalizedFoodName(f.name)===normalizedFoodName(x.name):
     detectFoodBrand(f)===x.brand&&normalizedFoodName(stripBrand(f.name,x.brand))===normalizedFoodName(x.name));
 }
+function dumplingKindOf(item){
+  if(item.food_kind)return item.food_kind;
+  const name=String(item.name||"");
+  if(/小籠|湯包/.test(name))return "小籠包";
+  if(/蒸餃/.test(name))return "蒸餃";
+  if(/湯餃/.test(name))return "湯包／湯餃";
+  if(/鍋貼|煎餃/.test(name))return "煎餃／鍋貼";
+  return "水餃";
+}
+function matchesDumplingKind(item){
+  return currentDumplingKind==="all"||dumplingKindOf(item)===currentDumplingKind;
+}
+function isPieceFood(item){
+  return !!item&&(item.cat==="餃類點心"||/^1顆/.test(item.basis||"")||item.basis==="每顆");
+}
 function candidateMatchesSearch(x,keyword){
   const aliases=x.brand==="好市多"?"costco kirkland": "";
   return !keyword||[x.brand,x.name,x.sub_category,aliases].join(" ").toLowerCase().includes(keyword);
@@ -1396,22 +1435,28 @@ function candidateDisplayName(x){
 }
 function prefillOfficialFood(x){
   switchListMode("manual");
-  $("mCat").value=x.category==="蛋白健康"?"超商鮮食":x.category;
-  $("mSubCat").value=x.sub_category||x.brand;
+  const byPiece=x.unit_type==="piece"||x.category==="餃類點心";
+  $("mCat").value=byPiece?"餃類點心":x.category==="蛋白健康"?"超商鮮食":x.category;
+  $("mSubCat").value=byPiece?(x.brand==="好市多"?"奇美":x.brand):(x.sub_category||x.brand);
   $("mName").value=candidateDisplayName(x);
-  $("mBasisType").value=/100g|100ml/i.test(x.basis||"")?"100g":"serving";
+  $("mBasisType").value=byPiece?"serving":/100g|100ml/i.test(x.basis||"")?"100g":"serving";
   const weight=String(x.basis||"").match(/(\d+(?:\.\d+)?)\s*g\b/i);
-  $("mServingWeight").value=weight&&$("mBasisType").value==="serving"?weight[1]:"";
+  $("mServingWeight").value=x.piece_weight_g!=null?String(x.piece_weight_g):
+    weight&&$("mBasisType").value==="serving"?weight[1]:"";
+  if(byPiece)$("mPieceCount").value="1";
+  updateManualPieceMode();
   for(const [id,val] of [["mK",x.kcal],["mP",x.protein],["mF",x.fat],["mC",x.carbs]]){
     $(id).value=val==null?"":String(val);
   }
   $("mSaveFavorite").checked=true;
   const msg=$("officialFoodReminder");
-  if(msg)msg.textContent=x.brand==="好市多"?
-    "好市多常見大包裝或秤重商品：請先確定營養標示的每份重量，再輸入實際食用量。來源只代表確認品名；未知營養數值不能填 0。":
+  if(msg && byPiece)msg.textContent=(x.nutrition_derivation?x.nutrition_derivation+"。":"")+
+    "目前以每顆計算；若包裝是每100g營養值，請切換標示基準並填入每顆重量後換算。未確認數值請補齊；煎餃額外用油請另外記錄。";
+  else if(msg)msg.textContent=x.brand==="好市多"?
+    "好市多常見大包裝或秤重商品：請先確認營養標示每份重量，再輸入食用量。未知營養數值不能填0。":
     x.source_quality==="third_party_nutrition"?
-    "以下為第三方彙整／夜市份量估算，非官方檢驗資料。請依實際餐點核對份量與數值後再存入。":
-    "來源只有商品名稱或部分營養值，請依包裝補齊熱量、蛋白質、脂肪和碳水；未知不能填成 0。";
+    "資料為第三方整理或份量估算，請自行核對後記錄。":
+    "只有部分營養數值，請依包裝補齊熱量、蛋白質、脂肪和碳水，未知值不可填0。";
   $("boxManualFood").scrollIntoView({block:"start",behavior:"smooth"});
 }
 function buildOfficialCandidateCard(x){
@@ -1421,7 +1466,7 @@ function buildOfficialCandidateCard(x){
   const complete=["kcal","protein","fat","carbs"].every(k=>x[k]!=null);
   note.textContent=(x.source_quality==="third_party_nutrition"?"第三方估算／彙整":complete?"數值待確認":"營養資料待補")+
     (x.market_status==="seasonal"?"｜季節／限時商品":x.market_status==="discontinued"?"｜已下架（歷史保留）":"")+
-    (x.basis?"｜"+x.basis:"");
+    (x.unit_type==="piece"?"｜每顆計算"+(x.piece_weight_g?"・約"+x.piece_weight_g+"g":""):(x.basis?"｜"+x.basis:""));
   const pills=document.createElement("div");pills.className="macro-pills";
   for(const [label,key,cls,unit] of [["熱量","kcal","pill-kcal"," kcal"],["蛋白質","protein","pill-pro"," g"],
   ["脂肪","fat","pill-fat"," g"],["碳水","carbs","pill-carb"," g"]]){
@@ -1430,7 +1475,7 @@ function buildOfficialCandidateCard(x){
   }
   const actions=document.createElement("div");actions.style.cssText="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px";
   const button=document.createElement("button");button.type="button";button.className="sm ghost";
-  button.textContent=complete?"使用參考數值並核對":"補齊數值後記錄";button.onclick=()=>prefillOfficialFood(x);
+  button.textContent=complete?"核對營養並記錄":x.unit_type==="piece"?"補齊每顆營養":"補齊數值後記錄";button.onclick=()=>prefillOfficialFood(x);
   actions.append(button);
   if(/^https:\/\//i.test(x.source_url||"")){
     const a=document.createElement("a");a.href=x.source_url;a.target="_blank";a.rel="noopener noreferrer";
@@ -1441,6 +1486,7 @@ function buildOfficialCandidateCard(x){
 function catalogMatch(item,cat){
   const brand=detectFoodBrand(item);
   if(cat==="好市多")return item.cat==="好市多"||brand==="好市多";
+  if(cat==="餃類點心")return item.cat==="餃類點心";
   if(cat==="蛋白健康")return item.cat==="超商鮮食"&&(item.p>=20||/雞胸|蛋白|健身|舒肥|蔬滿/.test(item.name));
   if(cat==="超商鮮食")return item.cat==="超商鮮食"||["7-ELEVEN","全家","萊爾富","OK超商"].includes(brand);
   if(cat==="夜市小吃")return item.cat==="夜市小吃"||(item.cat==="外食餐飲"&&item.subCat==="台式小吃");
@@ -1449,7 +1495,7 @@ function catalogMatch(item,cat){
 }
 function catalogSubMatch(brand,sub,cat){
   if(currentSubCat==="all")return true;
-  if(cat==="蛋白健康"||cat==="連鎖餐飲")return brand===currentSubCat;
+  if(cat==="蛋白健康"||cat==="連鎖餐飲"||cat==="餃類點心")return brand===currentSubCat;
   if(cat==="夜市小吃"||cat==="好市多")return sub===currentSubCat;
   if(cat==="超商鮮食"){
     const map={"7-11鮮食":"7-ELEVEN","全家鮮食":"全家","萊爾富鮮食":"萊爾富","OK超商鮮食":"OK超商"};
@@ -1460,7 +1506,9 @@ function catalogSubMatch(brand,sub,cat){
 function renderCatalogSection(container,keyword,foods){
   const cat=currentMainCat;container.textContent="";
   const intro=document.createElement("p");intro.className="mute";
-  intro.textContent=cat==="好市多"?
+  intro.textContent=cat==="餃類點心"?
+    "依品牌與口味選取，以顆計算。舊版估算及未具備完整營養標示的商品會顯示待核對；煎餃額外用油與沾醬請另外記錄。":
+    cat==="好市多"?
     "好市多商品包含熟食、烘焙、冷凍冷藏及餐飲部。大包裝、秤重品項須依實際食用份量換算；營養待補品項請核對包裝。各店供應可能不同。":
     "有完整數值的既有食品可直接記錄；商品候選與估算值需核對。收錄不保證門市目前販售。";
   container.append(intro);
@@ -1470,11 +1518,13 @@ function renderCatalogSection(container,keyword,foods){
     container.append(st);
   }
   const known=foods.filter(f=>catalogMatch(f,cat)&&catalogSubMatch(detectFoodBrand(f),f.subCat||"",cat)&&
+    (cat!=="餃類點心"||matchesDumplingKind(f))&&
     (!keyword||[f.name,f.subCat].join(" ").toLowerCase().includes(keyword)));
   const candidates=foodCatalogCandidates.filter(x=>{
-    const match=cat==="蛋白健康"?x.category==="蛋白健康":
+    const match=cat==="餃類點心" ? (x.category==="餃類點心" || (x.category==="好市多" && x.unit_type==="piece" && !!x.food_kind)) :
+      cat==="蛋白健康"?x.category==="蛋白健康":
       cat==="超商鮮食"?["超商鮮食","蛋白健康"].includes(x.category):x.category===cat;
-    return match&&(x.market_status!=="discontinued"||!!keyword)&&
+    return match&&(cat!=="餃類點心"||matchesDumplingKind(x))&&(x.market_status!=="discontinued"||!!keyword)&&
       catalogSubMatch(x.brand,x.sub_category||"",cat)&&candidateMatchesSearch(x,keyword)&&
       !candidateHasCompleteDuplicate(x,foods);
   });
@@ -1486,8 +1536,9 @@ function renderCatalogSection(container,keyword,foods){
     const item=r.item,card=document.createElement("div");card.className="food-card";card.style.display="block";
     const h=document.createElement("div");h.className="food-title";h.textContent=item.name;
     const sub=document.createElement("div");sub.className="food-subinfo";
-    sub.textContent=item.basis+"｜"+item.k+" kcal｜P "+item.p+"g｜F "+item.f+"g｜C "+item.c+"g";
-    const button=document.createElement("button");button.type="button";button.className="sm ghost";button.textContent="選取記錄";
+    sub.textContent=item.basis+"｜"+item.k+" kcal｜P "+item.p+"g｜F "+item.f+"g｜C "+item.c+"g"+
+      (item.dataQuality==="legacy_10pieces_scaled_unreviewed"?"｜舊版10顆換算・未核對":"");
+    const button=document.createElement("button");button.type="button";button.className="sm ghost";button.textContent=isPieceFood(item)?"按顆數記錄":"選取記錄";
     button.onclick=()=>{selectFoodItem(item);$("selectedFoodInfo").scrollIntoView({block:"center",behavior:"smooth"})};
     card.append(h,sub,button);container.append(card);
   }
@@ -1591,6 +1642,15 @@ let selCalcMode = "serv";
 
 function selectFoodItem(item) {
   chosenFood = item;
+  const pieces=isPieceFood(item);
+  $("cfQuantityLabel").textContent=pieces?"顆數":"份數";
+  $("selModeServ").textContent=pieces?"按顆數":"按份數";
+  $("cfN").min=pieces?"1":"0.5";
+  $("cfN").step=pieces?"1":"0.5";
+  const presets=pieces?[[1,"1 顆"],[5,"5 顆"],[8,"8 顆"],[10,"10 顆"]]:
+    [[0.5,"0.5 份"],[1,"1 份"],[1.5,"1.5 份"],[2,"2 份"]];
+  $("cfChips").innerHTML=presets.map(([num,label])=>
+    '<div class="serving-chip'+(num===1?' active':'')+'" data-v="'+num+'">'+label+'</div>').join("");
   $("selectedFoodInfo").classList.remove("hide");
   $("selFoodName").textContent = item.name;
 
@@ -1603,8 +1663,6 @@ function selectFoodItem(item) {
   } else {
     $("selModeWeight").classList.add("hide");
   }
-
-  updateSelFoodDetailDisplay();
 
   $("cfN").value = 1;
   $("selWeightInput").value = is100g ? 100 : (hasWeight ? item.servingWeight : "");
@@ -1631,7 +1689,9 @@ function updateSelFoodDetailDisplay() {
   const item = chosenFood;
   if (selCalcMode === "serv") {
     const n = +$("cfN").value || 1;
-    $("selFoodDetail").textContent = `每 ${item.basis}：${Math.round(item.k * n)} 大卡・蛋白質 ${Math.round(item.p * n * 10)/10}g・脂肪 ${Math.round(item.f * n * 10)/10}g・碳水 ${Math.round(item.c * n * 10)/10}g (${Math.round(n*100)/100} 份)`;
+    $("selFoodDetail").textContent = (isPieceFood(item)?n+" 顆":"每 "+item.basis+"（"+Math.round(n*100)/100+" 份）")+
+      "："+Math.round(item.k*n)+" 大卡・蛋白質 "+Math.round(item.p*n*10)/10+"g・脂肪 "+
+      Math.round(item.f*n*10)/10+"g・碳水 "+Math.round(item.c*n*10)/10+"g";
   } else {
     const w = +$("selWeightInput").value || 0;
     let ratio = 1;
@@ -1716,6 +1776,10 @@ $("mainCatBar").onclick = e => {
   document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentMainCat = btn.dataset.cat;
+  const dumplingView=currentMainCat==="餃類點心";
+  $("dumplingKindBar").classList.toggle("hide",!dumplingView);
+  currentDumplingKind="all";
+  $("dumplingKindBar").querySelectorAll("[data-kind]").forEach(b=>b.classList.toggle("active",b.dataset.kind==="all"));
   chosenFood = null;
   $("selectedFoodInfo").classList.add("hide");
   foodListLimit = 50;
@@ -1736,6 +1800,16 @@ $("subCatBar").onclick = e => {
   renderFoodList();
 };
 
+$("dumplingKindBar").onclick = event => {
+  const btn=event.target.closest("[data-kind]");
+  if(!btn)return;
+  currentDumplingKind=btn.dataset.kind;
+  $("dumplingKindBar").querySelectorAll("[data-kind]").forEach(b=>b.classList.toggle("active",b===btn));
+  chosenFood=null;
+  $("selectedFoodInfo").classList.add("hide");
+  foodListLimit=50;
+  renderFoodList();
+};
 $("foodSearch").oninput = () => {
   clearTimeout(searchDebounceTimer);
   foodListLimit = 50;
@@ -1749,8 +1823,12 @@ $("cfAdd").onclick = () => {
   let multiplier = 1;
 
   if (selCalcMode === "serv") {
-    finalServings = +$("cfN").value || 1;
+    finalServings = Number($("cfN").value);
+    if(!Number.isFinite(finalServings)||finalServings<=0)return alert("請輸入有效的食用數量。");
+    if(isPieceFood(chosenFood)&&(!Number.isInteger(finalServings)||finalServings>200))
+      return alert("顆數請輸入 1 至 200 的整數。");
     multiplier = finalServings;
+    if(isPieceFood(chosenFood))logName=chosenFood.name+"（每顆）";
   } else {
     const w = +$("selWeightInput").value || 0;
     if (w <= 0) return alert("請輸入有效的食用重量！");
@@ -1795,27 +1873,53 @@ function validateNutrition(name, k, p, f, c) {
 
 const cleanBarcode = bc => String(bc || "").replace(/[^0-9a-zA-Z_-]/g, "").trim();
 
+function updateManualPieceMode(){
+  const piece=$("mCat").value==="餃類點心";
+  $("mPieceCountWrap").classList.toggle("hide",!piece);
+  $("mServingWeightLabel").textContent=piece?"每顆重量 (g，若由每100g換算則必填)":"每份重量 (g/ml，選填)";
+  const option=$("mBasisType").querySelector('option[value="serving"]');
+  if(option)option.textContent=piece?"每顆":"每份";
+}
+$("mCat").addEventListener("change",updateManualPieceMode);
+updateManualPieceMode();
+
 $("mAdd").onclick = async () => {
   if (!["mK","mP","mF","mC"].every(id => $(id).value.trim() !== "")) {
     return alert("熱量、蛋白質、脂肪與碳水四項都必須填寫；未知數值不能用 0 代替。");
   }
-  const k = +$("mK").value, n = $("mName").value.trim();
+  let k = +$("mK").value, n = $("mName").value.trim();
   const cat = $("mCat").value;
   const subCat = $("mSubCat").value.trim().replace(/\s+/g, "") || "";
-  const p = +$("mP").value || 0;
-  const f = +$("mF").value || 0;
-  const c = +$("mC").value || 0;
+  let p = +$("mP").value || 0;
+  let f = +$("mF").value || 0;
+  let c = +$("mC").value || 0;
   const basisType = $("mBasisType").value;
   const servingWeight = +$("mServingWeight").value || 0;
-
+  const byPiece=cat==="餃類點心";
+  const countRaw=$("mPieceCount").value.trim();
+  const pieceCount=byPiece?Number(countRaw):1;
+  if(byPiece&&(!/^\d+$/.test(countRaw)||!Number.isInteger(pieceCount)||pieceCount<1||pieceCount>200)){
+    return alert("餃類顆數必須是 1 至 200 的整數。");
+  }
+  if(byPiece&&basisType==="100g"&&!(servingWeight>0)){
+    return alert("以每100g營養標示換算時，請先填寫每顆重量（g）。");
+  }
   const errMsg = validateNutrition(n, k, p, f, c);
   if (errMsg) return alert(errMsg);
+  if(byPiece&&basisType==="100g"){
+    // 手上包裝是每100g，但正式儲存必須是每1顆，以免計數時重複放大100倍。
+    const ratio=servingWeight/100;
+    const round4=n=>Math.round(n*ratio*10000)/10000;
+    k=round4(k);p=round4(p);f=round4(f);c=round4(c);
+  }
+  const savedBasis=byPiece?"1顆":basisType==="100g"?"每100g":"每份";
+  const savedBasisType=byPiece?"serving":basisType;
 
-  addLog({ name: n, k, p, f, c }, 1);
+  addLog({ name: byPiece?n+"（每顆）":n, k, p, f, c }, pieceCount);
 
   if ($("mSaveFavorite").checked) {
     if (!S.customFavorites.some(item => item.name === n)) {
-      S.customFavorites.unshift({ name: n, basis: basisType === "100g" ? "每100g" : "每份", k, p, f, c, cat, subCat, basisType, servingWeight });
+      S.customFavorites.unshift({ name: n, basis:savedBasis, k, p, f, c, cat, subCat, basisType:savedBasisType, servingWeight });
       save();
     }
   }
@@ -1829,14 +1933,14 @@ $("mAdd").onclick = async () => {
       const { error } = await sbClient.from('custom_foods').insert([{
         barcode: "custom_" + Date.now(),
         name: n,
-        basis: basisType === "100g" ? "每100g" : "每份",
+        basis: savedBasis,
         kcal: k,
         protein: p,
         fat: f,
         carbs: c,
         category: cat,
         sub_category: subCat,
-        basis_type: basisType,
+        basis_type: savedBasisType,
         serving_weight: servingWeight,
         is_verified: false,
         created_by: targetUid
@@ -1855,6 +1959,7 @@ $("mAdd").onclick = async () => {
     if (el) el.value = "";
   });
 
+  $("mPieceCount").value="1";
   renderFoodList();
   showView("today");
 };
@@ -2161,7 +2266,7 @@ function renderMealSection(dateKey, isEditable = true) {
       <div class="item">
         <div>
           ${e.t ? `<span class="mute">${e.t}</span> ` : ""}${esc(e.name)}
-          <div class="mute">${Math.round(e.n * 100) / 100} 份・${Math.round(e.k * e.n)} 大卡・P ${Math.round(e.p * e.n)}g / F ${Math.round(e.f * e.n)}g / C ${Math.round(e.c * e.n)}g</div>
+          <div class="mute">${Math.round(e.n * 100) / 100} ${/（每顆）|（1顆）/.test(e.name)?"顆":"份"}・${Math.round(e.k * e.n)} 大卡・P ${Math.round(e.p * e.n)}g / F ${Math.round(e.f * e.n)}g / C ${Math.round(e.c * e.n)}g</div>
         </div>
         ${isEditable ? `
           <div style="display:flex;gap:6px">
@@ -2234,6 +2339,10 @@ $("logByMeal").onclick = async e => {
     $("editLogName").value = item.name;
     $("editLogMeal").value = item.meal || "snack";
     $("editLogServings").value = item.n || 1;
+    const perPiece=/（每顆）|（1顆）/.test(item.name);
+    $("editLogServingsLabel").textContent=perPiece?"顆數":"份數 / 比例";
+    $("editLogServings").step=perPiece?"1":"0.1";
+    $("editLogServings").min=perPiece?"1":"0.1";
     $("editLogModal").classList.remove("hide");
   }
 };
@@ -2247,13 +2356,19 @@ $("editLogSaveBtn").onclick = async () => {
   const logId = $("editLogId").value;
   const logDate = $("editLogDate").value;
   const newMeal = $("editLogMeal").value;
-  const newServings = +$("editLogServings").value || 1;
+  const newServings = Number($("editLogServings").value);
 
   const dayLogs = S.log[logDate] || [];
   const targetItem = dayLogs.find(x => x.id === logId);
   if (!targetItem) {
     $("editLogModal").classList.add("hide");
     return alert("找不到該筆紀錄。");
+  }
+  if(!Number.isFinite(newServings)||newServings<=0){
+    return alert("請輸入正確數量。");
+  }
+  if(/（每顆）|（1顆）/.test(targetItem.name)&&(!Number.isInteger(newServings)||newServings>200)){
+    return alert("餃類顆數請輸入 1 至 200 的整數。");
   }
 
   targetItem.meal = newMeal;
