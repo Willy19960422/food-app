@@ -1,6 +1,41 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.0";
 import { send } from "jsr:@daaku/webpush@0.2.0";
 
+// Supabase Edge Runtime (Deno 2.1.x) lacks Uint8Array.fromBase64, required by
+// @daaku/webpush 0.2.0. Install the standard-compatible decode shim before send().
+if (typeof Uint8Array.fromBase64 !== "function") {
+  Object.defineProperty(Uint8Array, "fromBase64", {
+    configurable: true,
+    value: (input: string, options?: { alphabet?: "base64" | "base64url"; lastChunkHandling?: string }) => {
+      if (typeof input !== "string") throw new TypeError("Base64 input must be a string");
+      const clean = input.replace(/\\s+/g, "");
+      const alphabet = options?.alphabet || "base64";
+      if (alphabet !== "base64" && alphabet !== "base64url") throw new TypeError("Invalid base64 alphabet");
+      if (alphabet === "base64" && /[-_]/.test(clean)) throw new SyntaxError("Invalid base64 character");
+      const normalized = alphabet === "base64url" ? clean.replace(/-/g, "+").replace(/_/g, "/") : clean;
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized) || normalized.length % 4 === 1)
+        throw new SyntaxError("Invalid base64");
+      const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+      return Uint8Array.from(binary, c => c.charCodeAt(0));
+    }
+  });
+}
+if (typeof Uint8Array.prototype.toBase64 !== "function") {
+  Object.defineProperty(Uint8Array.prototype, "toBase64", {
+    configurable: true,
+    value: function(options?: { alphabet?: "base64" | "base64url"; omitPadding?: boolean }) {
+      const bytes = this as Uint8Array;
+      let result = "";
+      for (let i=0; i<bytes.length; i+=8192)
+        result += String.fromCharCode(...bytes.subarray(i,i+8192));
+      let encoded = btoa(result);
+      if (options?.alphabet === "base64url") encoded = encoded.replace(/\\+/g,"-").replace(/\\//g,"_");
+      if (options?.omitPadding) encoded = encoded.replace(/=+$/g,"");
+      return encoded;
+    }
+  });
+}
+
 // Web Push sender: credentials stay in Supabase Vault, accessed only via a service-role RPC.
 // This endpoint deliberately disables gateway JWT checks to allow a signed Cron webhook;
 // every request is authenticated here (Cron secret or verified Supabase user token).
