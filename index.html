@@ -57,7 +57,14 @@ input,select{width:100%;padding:11px 12px;font:inherit;color:var(--ink);backgrou
 /* Notification settings: keep native iPhone time inputs within their fixed flex cell. */
 .food-push-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;min-width:0}
 .food-push-line .check-inline{flex:1 1 auto;min-width:0;margin:0}
-.food-push-line input[type="time"]{width:132px;max-width:50%;min-width:0;flex:0 1 132px;padding:9px 6px;font-size:14px}
+.food-push-time-control{position:relative;flex:0 0 112px;width:112px;max-width:50%;min-width:0;min-height:44px;
+  display:flex;align-items:center;justify-content:center;border:1px solid var(--line);
+  border-radius:10px;background:var(--bg);overflow:hidden;isolation:isolate}
+.food-push-time-text{font:inherit;font-size:14px;pointer-events:none}
+.food-push-time-control input[type="time"]{position:absolute;inset:0;display:block;
+  width:100%;max-width:100%;min-width:0;height:100%;margin:0;padding:0;
+  opacity:0;border:0;cursor:pointer;-webkit-appearance:none;appearance:none}
+.food-push-time-control:focus-within{outline:2px solid var(--brand);outline-offset:2px}
 .food-push-note{font-size:12px;color:var(--mute);margin-top:8px}
 .food-push-status{font-size:13px;color:var(--mute);background:var(--bg);border:1px solid var(--line);padding:10px 12px;border-radius:10px;margin:10px 0}
 
@@ -609,19 +616,19 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <div id="foodPushStatus" class="food-push-status" role="status" aria-live="polite">正在確認通知狀態…</div>
     <div class="food-push-line">
       <label class="check-inline" for="foodPushBreakfast"><input id="foodPushBreakfast" type="checkbox" checked><span>早餐提醒</span></label>
-      <input id="foodPushBreakfastTime" type="time" value="09:00" aria-label="早餐提醒時間">
+      <div class="food-push-time-control"><span class="food-push-time-text" id="foodPushBreakfastTimeDisplay" aria-hidden="true">09:00</span><input id="foodPushBreakfastTime" type="time" value="09:00" aria-label="早餐提醒時間"></div>
     </div>
     <div class="food-push-line">
       <label class="check-inline" for="foodPushLunch"><input id="foodPushLunch" type="checkbox" checked><span>午餐提醒</span></label>
-      <input id="foodPushLunchTime" type="time" value="13:00" aria-label="午餐提醒時間">
+      <div class="food-push-time-control"><span class="food-push-time-text" id="foodPushLunchTimeDisplay" aria-hidden="true">13:00</span><input id="foodPushLunchTime" type="time" value="13:00" aria-label="午餐提醒時間"></div>
     </div>
     <div class="food-push-line">
       <label class="check-inline" for="foodPushDinner"><input id="foodPushDinner" type="checkbox" checked><span>晚餐提醒</span></label>
-      <input id="foodPushDinnerTime" type="time" value="19:00" aria-label="晚餐提醒時間">
+      <div class="food-push-time-control"><span class="food-push-time-text" id="foodPushDinnerTimeDisplay" aria-hidden="true">19:00</span><input id="foodPushDinnerTime" type="time" value="19:00" aria-label="晚餐提醒時間"></div>
     </div>
     <div class="food-push-line">
       <label class="check-inline" for="foodPushSummary"><input id="foodPushSummary" type="checkbox" checked><span>每日營養摘要</span></label>
-      <input id="foodPushSummaryTime" type="time" value="21:00" aria-label="營養摘要時間">
+      <div class="food-push-time-control"><span class="food-push-time-text" id="foodPushSummaryTimeDisplay" aria-hidden="true">21:00</span><input id="foodPushSummaryTime" type="time" value="21:00" aria-label="營養摘要時間"></div>
     </div>
     <div class="row" style="margin-top:12px">
       <button id="foodPushEnable" type="button">啟用手機通知</button>
