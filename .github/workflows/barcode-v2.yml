@@ -21,3 +21,4 @@ jobs:
       - run: node tests/ui-scale.test.cjs
       - run: node tests/food-browser.test.cjs
       - run: node tests/food-layout.browser.test.cjs
+      - run: node tests/full-v2.test.cjs
