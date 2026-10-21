@@ -139,9 +139,16 @@ async function lookup(code) {
       }
       if (!active()) return;
       if (matched) {
+        // Imported older catalog rows may say "每100g" / "每100ml" while basis_type
+        // still contains the default "serving". Trust the explicit label for those rows.
+        const originalBasis = String(matched.basis || "");
+        const inferredBasis = /^每?\s*100\s*ml/i.test(originalBasis) ? "100ml" :
+          /^每?\s*100\s*g/i.test(originalBasis) ? "100g" : "serving";
+        const resolvedBasis = ["100g","100ml"].includes(matched.basis_type) ?
+          matched.basis_type : inferredBasis;
         food = {
-          name:matched.name,basis:matched.basis || "每份",basisType:matched.basis_type || "serving",
-          servingWeight:Number(matched.serving_weight) || 0,weightUnit:"g",
+          name:matched.name,basis:matched.basis || "每份",basisType:resolvedBasis,
+          servingWeight:Number(matched.serving_weight) || 0,weightUnit:resolvedBasis === "100ml" ? "ml" : "g",
           k:Number(matched.kcal),p:Number(matched.protein),
           f:Number(matched.fat),c:Number(matched.carbs)
         };
