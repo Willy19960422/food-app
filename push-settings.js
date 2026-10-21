@@ -203,7 +203,7 @@
     const parent=card.parentElement;
     const entry=document.createElement("button");
     entry.type="button";entry.id="foodPushOpen";entry.className="food-push-entry";
-    entry.innerHTML='<span>🔔　通知設定<small>用餐提醒、每日營養摘要</small></span><span aria-hidden="true">›</span>';
+    entry.innerHTML='<span>通知設定<small>用餐提醒、每日營養摘要</small></span><span aria-hidden="true">›</span>';
     const entryCard=document.createElement("div");entryCard.className="card";entryCard.id="foodPushEntryCard";entryCard.append(entry);
     parent.insertBefore(entryCard,card);
     card.classList.add("hide");
@@ -246,12 +246,12 @@
     screen.id="foodPushScreen";
     screen.className="hide food-push-screen";
     screen.appendChild(card);
-    settingsPage.parentElement.insertBefore(screen,settingsPage.nextSibling);
+    settingsPage.appendChild(screen);
     const screenStyle=document.createElement("style");
-    screenStyle.textContent="#foodPushScreen{padding:16px 16px 100px;max-width:760px;margin:0 auto}#foodPushScreen.hide{display:none!important}#foodPushScreen #foodPushCard{margin:0}#foodPushScreen .food-push-back{margin-bottom:16px}";
+    screenStyle.textContent="#p-me.push-subpage-open > :not(#foodPushScreen){display:none!important}#foodPushScreen{padding:16px 16px 100px;max-width:760px;margin:0 auto}#foodPushScreen.hide{display:none!important}#foodPushScreen #foodPushCard{margin:0}#foodPushScreen .food-push-back{margin-bottom:16px}";
     document.head.append(screenStyle);
-    const open=()=>{settingsPage.classList.add("hide");screen.classList.remove("hide");card.classList.remove("hide");void loadSettings();window.scrollTo(0,0);};
-    const close=()=>{screen.classList.add("hide");card.classList.add("hide");settingsPage.classList.remove("hide");entryCard.classList.remove("hide");window.scrollTo(0,0);};
+    const open=()=>{settingsPage.classList.add("push-subpage-open");screen.classList.remove("hide");card.classList.remove("hide");void loadSettings();window.scrollTo(0,0);};
+    const close=()=>{screen.classList.add("hide");card.classList.add("hide");settingsPage.classList.remove("push-subpage-open");entryCard.classList.remove("hide");window.scrollTo(0,0);};
     entry.addEventListener("click",open);back.addEventListener("click",close);
     document.querySelectorAll("#bottomNav button").forEach(btn=>btn.addEventListener("click",close));
     el("foodPushMaster").addEventListener("change",e=>{
