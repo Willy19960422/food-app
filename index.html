@@ -1150,7 +1150,11 @@ async function handleAuthFlow() {
       {
         // 讀取失敗（網路或權限問題）時停下來，絕不當成新使用者
         let profileFailed = false;
-        try {
+        // Offline PWA startup: trust only previously stored profile belonging to
+        // this same authenticated account; do not query an unavailable network.
+        if(!navigator.onLine && S.me){
+          window.foodV2SyncStatus?.("offline","離線模式：先使用本機紀錄，連線後自動同步");
+        }else try {
           const { data, error } = await sbClient.from('user_profiles').select('*').eq('user_id', targetUid).maybeSingle();
           if (loginSessionId !== currentSession || !currentUser || currentUser.id !== targetUid) continue;
 
@@ -1205,7 +1209,7 @@ save();
         }
       }
 
-      subscribeRealtime(targetUid);
+      if(navigator.onLine)subscribeRealtime(targetUid);
 
       if (pendingAuthTarget === targetUid) {
         break;
