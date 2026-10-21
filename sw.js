@@ -1,18 +1,54 @@
-const CACHE_NAME = 'nutri-v1';
-
-self.addEventListener('install', (e) => {
-  self.skipWaiting();
+const CACHE_NAME = "food-shell-20261022-v2";
+const APP_SHELL = [
+  "./","./index.html","./manifest.json","./icon-192.png","./icon-512.png",
+  "./food-taxonomy.js","./barcode-v2.js","./ui-scale.js",
+  "./push-settings.js","./settings-menu.js",
+  "./food-cloud.js","./food-trends.js","./food-account.js",
+  "./food-admin-ui.js","./food-candidate-admin.js","./food-sheet.js"
+];
+const STATIC_VENDOR=[
+ "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js",
+ "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"
+];
+const vendorFiles=new Set(STATIC_VENDOR);
+const staticFiles = new Set(APP_SHELL.map(p=>new URL(p,self.registration.scope).pathname));
+self.addEventListener("install",event=>{
+ event.waitUntil((async()=>{
+  const cache=await caches.open(CACHE_NAME);
+  // One missing optional asset should not disable every offline resource.
+  await Promise.allSettled([...APP_SHELL,...STATIC_VENDOR].map(async path=>{
+   const request=new Request(new URL(path,self.registration.scope),{cache:"reload",mode:STATIC_VENDOR.includes(path)?"no-cors":"same-origin"});
+   const response=await fetch(request);
+   if(response.ok||response.type==="opaque")await cache.put(request,response);
+  }));
+  await self.skipWaiting();
+ })());
 });
-
-self.addEventListener('activate', (e) => {
-  e.waitUntil(clients.claim());
+self.addEventListener("activate",event=>{
+ event.waitUntil((async()=>{
+  const keys=await caches.keys();
+  await Promise.all(keys.filter(name=>name.startsWith("food-shell-")&&name!==CACHE_NAME)
+    .map(name=>caches.delete(name)));
+  await clients.claim();
+ })());
 });
-
-self.addEventListener('fetch', (e) => {
-  // 保持即時連線優先
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  );
+self.addEventListener("fetch",event=>{
+ const req=event.request;
+ if(req.method!=="GET")return;
+ const url=new URL(req.url);
+ // Do not cache Supabase/auth/AI responses or any third-party user data.
+ if((url.origin!==self.location.origin||!staticFiles.has(url.pathname)) && !vendorFiles.has(url.href))return;
+ event.respondWith((async()=>{
+  const cache=await caches.open(CACHE_NAME);
+  try{
+   const response=await fetch(req);
+   if(response.ok||response.type==="opaque")event.waitUntil(cache.put(req,response.clone()).catch(()=>{}));
+   return response;
+  }catch(_){
+   return await cache.match(req,{ignoreSearch:true}) ||
+     await cache.match(new URL("./index.html",self.registration.scope));
+  }
+ })());
 });
 
 // Background Web Push: works on installed iOS Home Screen PWAs (iOS 16.4+) and compatible browsers.

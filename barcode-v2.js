@@ -3,6 +3,7 @@
  */
 let barcodeV2SourceUrl = null;
 let barcodeV2PhotoUsed = false;
+let barcodeV2PhotoFile = null;
 let barcodeV2SubmissionId = null;
 let barcodeV2Correction = false;
 let barcodeV2Submitting = false;
@@ -108,6 +109,7 @@ async function lookup(code) {
   curItem = null;
   barcodeV2SourceUrl = null;
   barcodeV2PhotoUsed = false;
+  barcodeV2PhotoFile = null;
   barcodeV2SubmissionId = null;
   barcodeV2Correction = false;
   $("manual").value = barcode;
@@ -291,6 +293,7 @@ $("photoBtn").onclick = () => $("photo").click();
 $("photo").onchange = async event => {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
+  barcodeV2PhotoFile=file;
   const seq = ++photoSequenceId;
   const userId = currentUser ? currentUser.id : null;
   const sessionId = loginSessionId;
@@ -354,6 +357,42 @@ function barcodeV2ValidateSubmission(row) {
   }
   return "";
 }
+async function barcodeV2PreparePhoto(file) {
+  const allowed=["image/jpeg","image/png","image/webp","image/heic","image/heif"];
+  if(!allowed.includes(file.type))throw new Error("請選擇 JPEG、PNG、WebP 或 HEIC 營養標示");
+  if(file.size<=5*1024*1024)return {blob:file,mime:file.type};
+  // Resize large mobile captures locally; raw photos are never made public.
+  const image=await createImageBitmap(file);
+  const ratio=Math.min(1,1600/Math.max(image.width,image.height));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.round(image.width*ratio);
+  canvas.height=Math.round(image.height*ratio);
+  canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
+  image.close?.();
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.78));
+  if(!blob||blob.size>5*1024*1024)throw new Error("照片超過5MB，請重新裁切營養標示");
+  return {blob,mime:"image/jpeg"};
+}
+async function barcodeV2UploadLabel(file,submissionId,uid) {
+  const {blob,mime}=await barcodeV2PreparePhoto(file);
+  const ext=({"image/jpeg":"jpg","image/png":"png","image/webp":"webp",
+    "image/heic":"heic","image/heif":"heif"})[mime];
+  const path=uid+"/"+submissionId+"/nutrition-"+Date.now()+"."+ext;
+  const {error}=await sbClient.storage.from("food-product-labels").upload(path,blob,{
+    contentType:mime,upsert:false
+  });
+  if(error)throw error;
+  const {data:{session}}=await sbClient.auth.getSession();
+  if(!session)throw new Error("登入狀態已失效");
+  const response=await fetch(SB_URL+"/functions/v1/food-admin",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token},
+    body:JSON.stringify({action:"link_photo",id:submissionId,path})
+  });
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||!result.ok)throw new Error(result.error||"照片關聯失敗");
+}
+
 async function barcodeV2Submit(row) {
   if (barcodeV2Submitting) return {ok:false,message:"正在提交，請勿重複點擊。"};
   const problem = barcodeV2ValidateSubmission(row);
@@ -385,7 +424,17 @@ async function barcodeV2Submit(row) {
       throw response.error;
     }
     barcodeV2SubmissionId = response.data.id;
-    $("submitProductStatus").textContent = "已送交待審核清單；審核通過前不會加入所有人的共用食品庫。";
+    let photoMessage="";
+    if(barcodeV2PhotoFile){
+      try{
+        await barcodeV2UploadLabel(barcodeV2PhotoFile,barcodeV2SubmissionId,userId);
+        photoMessage="營養標示照片已安全附上。";
+      }catch(photoError){
+        console.warn("nutrition label upload failed",photoError);
+        photoMessage="照片未成功上傳："+photoError.message+"。可重新查詢補傳。";
+      }
+    }
+    $("submitProductStatus").textContent = "商品已送交待審核清單。"+photoMessage;
     return {ok:true};
   } catch(error) {
     console.warn("Barcode submission failed",error);

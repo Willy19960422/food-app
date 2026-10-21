@@ -21,11 +21,18 @@
   #settingsMenu #foodPushOpen span[aria-hidden]{display:none}
   `;
   document.head.append(style);
+  // Route by stable IDs/headings, never by positional card slices. New settings
+  // cards or notifications must not move other settings into the wrong screen.
+  const byTitle = prefix => cards.find(c=>c.querySelector("h2")?.textContent?.startsWith(prefix));
   const groups=[
-    {title:"身體資料與目標",detail:"身高、體重、活動量及目標類型",items:cards.slice(0,2)},
-    {title:"每日營養目標",detail:"自動計算與自訂營養素",items:cards.slice(2,3)},
-    {title:"外觀設定",detail:"主題與介面大小（90%～120%）",items:cards.slice(3,4)},
-    {title:"帳號設定",detail:"登入密碼及登出",items:cards.slice(-1)}
+    {title:"身體資料與目標",detail:"身高、體重、活動量及目標類型",
+      items:[byTitle("身體資料"),page.querySelector("#result")].filter(Boolean)},
+    {title:"每日營養目標",detail:"自動計算與自訂營養素",
+      items:[page.querySelector("#cardTargets")].filter(Boolean)},
+    {title:"外觀設定",detail:"主題與介面大小（90%～120%）",
+      items:[byTitle("外觀主題")].filter(Boolean)},
+    {title:"帳號設定",detail:"登入密碼、備份及資料刪除",
+      items:[byTitle("帳號")].filter(Boolean)}
   ];
   let active=null;
   function close(){
