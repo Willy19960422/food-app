@@ -398,12 +398,13 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
   </div>
 
   <div id="boxSelectFood" class="card">
-    <input id="foodSearch" placeholder="搜尋食品、夜市小吃與連鎖品牌" style="margin-bottom:12px">
+    <input id="foodSearch" placeholder="搜尋食品、星巴克輕食、夜市小吃與連鎖品牌" style="margin-bottom:12px">
 
     <div class="main-cat-scroll" id="mainCatBar">
       <button class="main-cat-btn active" data-cat="all">全部食物</button>
       <button class="main-cat-btn" data-cat="超商鮮食">超商鮮食</button>
       <button class="main-cat-btn" data-cat="蛋白健康">蛋白健康新品</button>
+      <button class="main-cat-btn" data-cat="咖啡輕食">咖啡與輕食</button>
       <button class="main-cat-btn" data-cat="夜市小吃">夜市小吃</button>
       <button class="main-cat-btn" data-cat="餃類點心">水餃・鍋貼・小籠包</button>
       <button class="main-cat-btn" data-cat="連鎖餐飲">連鎖餐飲</button>
@@ -467,6 +468,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <select id="mCat">
       <option value="超商鮮食">超商鮮食</option>
       <option value="好市多">好市多</option>
+      <option value="咖啡輕食">咖啡與輕食</option>
       <option value="夜市小吃">夜市小吃</option>
       <option value="餃類點心">餃類點心（每顆）</option>
       <option value="連鎖餐飲">連鎖餐飲</option>
@@ -758,6 +760,7 @@ const SUB_CAT_MAP = {
   "all": ["全部子類"],
   "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "萊爾富鮮食", "OK超商鮮食"],
   "蛋白健康": ["全部", "7-ELEVEN", "全家"],
+  "咖啡輕食": ["全部", "星巴克"],
   "夜市小吃": ["全部", "主食", "炸物", "燒烤滷味", "甜品飲品", "參考估算"],
   "餃類點心": ["全部", "八方雲集", "四海遊龍", "及第", "灣仔碼頭", "奇美", "義美", "鼎泰豐", "桂冠", "台糖", "龍鳳", "禎祥", "大阪王將", "王品嚴選", "水餃嫂", "好市多"],
   "連鎖餐飲": ["全部", "麥當勞", "肯德基", "丹丹漢堡", "漢堡王", "摩斯漢堡", "SUBWAY", "八方雲集", "吉野家"],
@@ -1388,8 +1391,8 @@ function renderSubCategoryBar() {
 
 
 
-const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","夜市小吃","連鎖餐飲","好市多","餃類點心"];
-const BRAND_NAMES=["麥當勞","肯德基","丹丹漢堡","漢堡王","摩斯漢堡","SUBWAY","八方雲集","吉野家","四海遊龍","及第","灣仔碼頭","奇美","義美","鼎泰豐","桂冠","台糖","龍鳳","禎祥","大阪王將","王品嚴選","水餃嫂"];
+const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","咖啡輕食","夜市小吃","連鎖餐飲","好市多","餃類點心"];
+const BRAND_NAMES=["麥當勞","肯德基","丹丹漢堡","漢堡王","摩斯漢堡","SUBWAY","星巴克","路易莎","八方雲集","吉野家","四海遊龍","及第","灣仔碼頭","奇美","義美","鼎泰豐","桂冠","台糖","龍鳳","禎祥","大阪王將","王品嚴選","水餃嫂"];
 function normalizedFoodName(x){return String(x||"").toLowerCase().replace(/[\s　_\-－]/g,"")}
 function detectFoodBrand(food){
   const sub=food.subCat||"";
@@ -1529,6 +1532,7 @@ function buildOfficialCandidateCard(x){
 function catalogMatch(item,cat){
   const brand=detectFoodBrand(item);
   if(cat==="好市多")return item.cat==="好市多"||brand==="好市多";
+  if(cat==="咖啡輕食")return item.cat==="咖啡輕食";
   if(cat==="餃類點心")return item.cat==="餃類點心";
   if(cat==="蛋白健康")return item.cat==="超商鮮食"&&(item.p>=20||/雞胸|蛋白|健身|舒肥|蔬滿/.test(item.name));
   if(cat==="超商鮮食")return item.cat==="超商鮮食"||["7-ELEVEN","全家","萊爾富","OK超商"].includes(brand);
@@ -1538,7 +1542,7 @@ function catalogMatch(item,cat){
 }
 function catalogSubMatch(brand,sub,cat){
   if(currentSubCat==="all")return true;
-  if(cat==="蛋白健康"||cat==="連鎖餐飲"||cat==="餃類點心")return brand===currentSubCat;
+  if(cat==="蛋白健康"||cat==="連鎖餐飲"||cat==="餃類點心"||cat==="咖啡輕食")return brand===currentSubCat;
   if(cat==="夜市小吃"||cat==="好市多")return sub===currentSubCat;
   if(cat==="超商鮮食"){
     const map={"7-11鮮食":"7-ELEVEN","全家鮮食":"全家","萊爾富鮮食":"萊爾富","OK超商鮮食":"OK超商"};
@@ -1549,7 +1553,9 @@ function catalogSubMatch(brand,sub,cat){
 function renderCatalogSection(container,keyword,foods){
   const cat=currentMainCat;container.textContent="";
   const intro=document.createElement("p");intro.className="mute";
-  intro.textContent=cat==="餃類點心"?
+  intro.textContent=cat==="咖啡輕食"?
+    "星巴克優先收錄台灣官方四項營養完整的三明治、麵包與糕點；飲品目前多僅有熱量、糖與咖啡因，未補齊四項營養前不會顯示為官方完整數值。各店商品供應以現場為準。":
+    cat==="餃類點心"?
     "依品牌與口味選取，以顆計算。舊版估算及未具備完整營養標示的商品會顯示待核對；煎餃額外用油與沾醬請另外記錄。":
     cat==="好市多"?
     "好市多商品包含熟食、烘焙、冷凍冷藏及餐飲部。大包裝、秤重品項須依實際食用份量換算；營養待補品項請核對包裝。各店供應可能不同。":
