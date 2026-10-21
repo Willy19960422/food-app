@@ -54,8 +54,8 @@
   }
   function humanStatus(){
     if(!signedIn())return "請先登入以設定通知。";
-    if(!supported())return "此瀏覽器不支援 Web Push，請更新系統或使用支援的瀏覽器。";
     if(isIOS()&&!installed())return "iPhone 請先使用 Safari「分享 → 加入主畫面」，再從主畫面開啟本 APP。";
+    if(!supported())return "此瀏覽器不支援 Web Push，請更新系統或使用支援的瀏覽器。";
     if(Notification.permission==="denied")return "通知權限已遭拒絕，請在 iPhone「設定 → 通知」允許食養紀錄的通知。";
     if(cachedEnabled && Notification.permission==="granted")return "已啟用手機推播｜依下列台灣時間提醒（背景推播需網路連線）。";
     return "目前通知未啟用。調整下列時間後，點「啟用手機通知」。";
@@ -93,8 +93,8 @@
   }
   async function enable(){
     if(busy||!signedIn())return;
-    if(!supported()){status(humanStatus());return;}
     if(isIOS()&&!installed()){status(humanStatus());return;}
+    if(!supported()){status(humanStatus());return;}
     if(Notification.permission==="denied"){status(humanStatus());return;}
     // iOS requires requestPermission() to run directly from a deliberate user click.
     const permissionPromise=Notification.permission==="granted"?Promise.resolve("granted"):Notification.requestPermission();
