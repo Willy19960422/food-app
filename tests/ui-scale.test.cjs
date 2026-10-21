@@ -28,7 +28,7 @@ check("Appearance screen contains four fixed size options and no added menu card
     assert.equal((appearance.match(new RegExp('data-scale="'+size+'"','g'))||[]).length,1);
   }
   assert.ok(menu.includes('detail:"主題與介面大小（90%～120%）"'));
-  assert.ok(menu.includes("cards.slice(3,4)"));
+  assert.ok(menu.includes('byTitle("外觀主題")'));
 });
 check("Size controller and initial boot preference are included and syntactically valid",()=>{
   assert.equal((html.match(/src="\.\/ui-scale\.js\?v=20261021-1"/g)||[]).length,1);
