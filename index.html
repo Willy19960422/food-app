@@ -406,6 +406,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <button class="main-cat-btn" data-cat="蛋白健康">蛋白健康新品</button>
       <button class="main-cat-btn" data-cat="夜市小吃">夜市小吃</button>
       <button class="main-cat-btn" data-cat="連鎖餐飲">連鎖餐飲</button>
+      <button class="main-cat-btn" data-cat="好市多">好市多</button>
       <button class="main-cat-btn" data-cat="外食餐飲">外食餐飲</button>
       <button class="main-cat-btn" data-cat="基礎食材">基礎食材</button>
       <button class="main-cat-btn" data-cat="飲品點心">飲品點心</button>
@@ -456,6 +457,7 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
     <label>所屬情境分類</label>
     <select id="mCat">
       <option value="超商鮮食">超商鮮食</option>
+      <option value="好市多">好市多</option>
       <option value="夜市小吃">夜市小吃</option>
       <option value="連鎖餐飲">連鎖餐飲</option>
       <option value="外食餐飲">外食餐飲</option>
@@ -741,6 +743,7 @@ const SUB_CAT_MAP = {
   "蛋白健康": ["全部", "7-ELEVEN", "全家"],
   "夜市小吃": ["全部", "主食", "炸物", "燒烤滷味", "甜品飲品", "參考估算"],
   "連鎖餐飲": ["全部", "麥當勞", "肯德基", "丹丹漢堡", "漢堡王", "摩斯漢堡", "SUBWAY", "八方雲集", "吉野家"],
+  "好市多": ["全部", "賣場熟食", "麵包烘焙", "冷凍調理", "冷凍食品", "冷藏食品", "餐飲部"],
   "外食餐飲": ["全部", "便當小吃", "麵食湯水", "速食連鎖"],
   "基礎食材": ["全部", "蛋豆肉", "主食澱粉", "蔬菜水果"],
   "飲品點心": ["全部", "高蛋白乳品", "無糖茶飲", "手搖飲品"],
@@ -1361,11 +1364,12 @@ function renderSubCategoryBar() {
 
 
 
-const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","夜市小吃","連鎖餐飲"];
+const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","夜市小吃","連鎖餐飲","好市多"];
 const BRAND_NAMES=["麥當勞","肯德基","丹丹漢堡","漢堡王","摩斯漢堡","SUBWAY","八方雲集","吉野家"];
 function normalizedFoodName(x){return String(x||"").toLowerCase().replace(/[\s　_\-－]/g,"")}
 function detectFoodBrand(food){
   const sub=food.subCat||"";
+  if(food.cat==="好市多" || /^好市多[\s　]/.test(food.name||""))return "好市多";
   if(sub.includes("7-11"))return "7-ELEVEN";
   if(sub.includes("全家"))return "全家";
   if(sub.includes("萊爾富"))return "萊爾富";
@@ -1384,7 +1388,8 @@ function candidateHasCompleteDuplicate(x,foods){
     detectFoodBrand(f)===x.brand&&normalizedFoodName(stripBrand(f.name,x.brand))===normalizedFoodName(x.name));
 }
 function candidateMatchesSearch(x,keyword){
-  return !keyword||[x.brand,x.name,x.sub_category].join(" ").toLowerCase().includes(keyword);
+  const aliases=x.brand==="好市多"?"costco kirkland": "";
+  return !keyword||[x.brand,x.name,x.sub_category,aliases].join(" ").toLowerCase().includes(keyword);
 }
 function candidateDisplayName(x){
   return x.brand==="夜市通用"?x.name:(x.brand==="7-ELEVEN"?"7-11":x.brand)+" "+stripBrand(x.name,x.brand);
@@ -1402,7 +1407,9 @@ function prefillOfficialFood(x){
   }
   $("mSaveFavorite").checked=true;
   const msg=$("officialFoodReminder");
-  if(msg)msg.textContent=x.source_quality==="third_party_nutrition"?
+  if(msg)msg.textContent=x.brand==="好市多"?
+    "好市多常見大包裝或秤重商品：請先確定營養標示的每份重量，再輸入實際食用量。來源只代表確認品名；未知營養數值不能填 0。":
+    x.source_quality==="third_party_nutrition"?
     "以下為第三方彙整／夜市份量估算，非官方檢驗資料。請依實際餐點核對份量與數值後再存入。":
     "來源只有商品名稱或部分營養值，請依包裝補齊熱量、蛋白質、脂肪和碳水；未知不能填成 0。";
   $("boxManualFood").scrollIntoView({block:"start",behavior:"smooth"});
@@ -1433,6 +1440,7 @@ function buildOfficialCandidateCard(x){
 }
 function catalogMatch(item,cat){
   const brand=detectFoodBrand(item);
+  if(cat==="好市多")return item.cat==="好市多"||brand==="好市多";
   if(cat==="蛋白健康")return item.cat==="超商鮮食"&&(item.p>=20||/雞胸|蛋白|健身|舒肥|蔬滿/.test(item.name));
   if(cat==="超商鮮食")return item.cat==="超商鮮食"||["7-ELEVEN","全家","萊爾富","OK超商"].includes(brand);
   if(cat==="夜市小吃")return item.cat==="夜市小吃"||(item.cat==="外食餐飲"&&item.subCat==="台式小吃");
@@ -1442,7 +1450,7 @@ function catalogMatch(item,cat){
 function catalogSubMatch(brand,sub,cat){
   if(currentSubCat==="all")return true;
   if(cat==="蛋白健康"||cat==="連鎖餐飲")return brand===currentSubCat;
-  if(cat==="夜市小吃")return sub===currentSubCat;
+  if(cat==="夜市小吃"||cat==="好市多")return sub===currentSubCat;
   if(cat==="超商鮮食"){
     const map={"7-11鮮食":"7-ELEVEN","全家鮮食":"全家","萊爾富鮮食":"萊爾富","OK超商鮮食":"OK超商"};
     return sub===currentSubCat||brand===map[currentSubCat];
@@ -1452,7 +1460,9 @@ function catalogSubMatch(brand,sub,cat){
 function renderCatalogSection(container,keyword,foods){
   const cat=currentMainCat;container.textContent="";
   const intro=document.createElement("p");intro.className="mute";
-  intro.textContent="有完整數值的既有食品可直接記錄；商品候選與估算值需核對。收錄不保證門市目前販售。";
+  intro.textContent=cat==="好市多"?
+    "好市多商品包含熟食、烘焙、冷凍冷藏及餐飲部。大包裝、秤重品項須依實際食用份量換算；營養待補品項請核對包裝。各店供應可能不同。":
+    "有完整數值的既有食品可直接記錄；商品候選與估算值需核對。收錄不保證門市目前販售。";
   container.append(intro);
   if(!foodCatalogLoaded||foodCatalogError){
     const st=document.createElement("p");st.className=foodCatalogError?"msg":"mute";
