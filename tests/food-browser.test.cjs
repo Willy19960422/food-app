@@ -33,8 +33,8 @@ check("Brand-to-type filters have a dedicated area and use complete lookup data"
   for(const id of ["convenienceTypePanel","convenienceTypeBar","convenienceTypeHint","foodContainer","subCatBar"]){
     assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
   }
-  assert.ok(html.includes('FoodTaxonomy.typeOf(f)===currentConvenienceKind'));
-  assert.ok(html.includes('FoodTaxonomy.typeOf(x)===currentConvenienceKind'));
+  assert.ok(html.includes('FoodTaxonomy.matchesKind(f,currentConvenienceKind)'));
+  assert.ok(html.includes('FoodTaxonomy.matchesKind(x,currentConvenienceKind)'));
   assert.ok(html.includes('renderConvenienceTypeBar(foods);'));
 });
 check("The product list shows at most 20 rows initially without losing Load more",()=>{
@@ -71,7 +71,7 @@ check("7-ELEVEN product classifier distinguishes the requested food types",()=>{
     ["7-11原味舒肥即食沙拉胸","沙拉／健康餐"],
     ["全家大納言紅豆麵包","麵包／甜點"],
     ["全家無加糖高蛋白豆奶","飲品"],
-    ["7-11關東煮炙燒雞胸肉","沙拉／健康餐"],
+    ["7-11關東煮炙燒雞胸肉","熱食小吃"],
     ["7-11某新品無分類線索","其他鮮食"]
   ];
   for(const [name,kind] of cases)assert.equal(taxonomy.typeOf({name}),kind,name);
@@ -129,6 +129,69 @@ check("Dynamic store-type UI counts items by brand and changes the selected kind
   assert.equal(family.all,1);
   assert.equal(family["飯糰"],1);
   assert.equal(family["御飯糰"],0);
+});
+
+
+check("Protein-health categories remain inside store brands and are not top-level",()=>{
+  const picker=html.slice(html.indexOf('<select id="foodMainSelect"'),html.indexOf("</select>",html.indexOf('<select id="foodMainSelect"')));
+  assert.ok(!picker.includes('value="蛋白健康"'));
+  assert.ok(picker.includes('value="brand:7-11鮮食"'));
+  assert.ok(picker.includes('value="brand:全家鮮食"'));
+  assert.ok(html.includes('makeButton("protein","蛋白健康系列"'));
+  assert.ok(html.includes('dietary_tags'));
+  assert.ok(html.includes('product_type'));
+});
+check("Protein-health is a facet, so protein meals are searchable inside microwave type too",()=>{
+  const food={brand:"7-ELEVEN",category:"超商鮮食",name:"21Plus主廚烤雞時蔬餐",
+    product_type:"微波餐盒",dietary_tags:["蛋白健康"],protein:null};
+  assert.equal(taxonomy.brandOf(food),"7-ELEVEN");
+  assert.equal(taxonomy.typeOf(food),"微波餐盒");
+  assert.equal(taxonomy.matchesKind(food,"protein"),true);
+  assert.equal(taxonomy.matchesKind(food,"微波餐盒"),true);
+  assert.equal(taxonomy.matchesKind(food,"三明治"),false);
+  const family={brand:"全家",category:"超商鮮食",name:"義美無加糖6.0高蛋白豆奶",
+    product_type:"飲品",dietary_tags:["蛋白健康"]};
+  assert.equal(taxonomy.brandOf(family),"全家");
+  assert.equal(taxonomy.typeOf(family),"飲品");
+  assert.equal(taxonomy.matchesKind(family,"protein"),true);
+});
+check("Legacy categories map to selectable parent groups without rewriting nutrition",()=>{
+  for(const [legacy,canonical] of [
+    ["蛋白健康","超商鮮食"],
+    ["飲品","飲品點心"],["點心零食","飲品點心"],
+    ["蛋豆肉","基礎食材"],
+    ["即食食品","即食／冷凍食品"],["冷凍食品","即食／冷凍食品"],
+    ["營養補充","營養補充"]]){
+      assert.equal(taxonomy.canonicalCategory(legacy),canonical,legacy);
+      assert.ok(html.includes('value="'+canonical+'"'),canonical);
+  }
+  assert.ok(html.includes('FoodTaxonomy.canonicalCategory(item.cat)===currentMainCat'));
+});
+check("Favorites retain original group when food is both favorite and a store item",()=>{
+  assert.ok(html.includes('cat:f.cat || "我的常用"'));
+  assert.ok(html.includes('const existing=(communityFoodsCache || []).find(v => v.name===f.name)'));
+});
+check("Official microwave names and curated food type are not falsely called verified nutrition",()=>{
+  const sql=fs.readFileSync(path.join(root,"db/convenience_20261021_reclassify_and_meals.sql"),"utf8");
+  assert.ok(sql.includes("n.kcal,NULL,NULL,NULL"));
+  assert.ok(sql.includes("'awaiting_full_label'"));
+  assert.ok(sql.includes("'unreviewed'"));
+  assert.ok(sql.includes("'official_menu'"));
+  assert.ok(sql.includes("NOT EXISTS"));
+  assert.ok(sql.includes("dietary_tags"));
+  assert.ok(sql.includes("product_type"));
+  for(const name of ["雙拼起司紅醬焗飯","極饗-滑蛋牛肉燴飯","義式蒜香鮮蝦義大利麵",
+    "黑胡椒鐵板雞腿排飯","菌菇雞湯粥"]){
+    assert.ok(sql.includes(name),name);
+  }
+  for(const [name,kind] of [
+    ["21Plus主廚烤雞時蔬餐","微波餐盒"],
+    ["一鍋燒-滑蛋嫩雞親子丼","微波餐盒"],
+    ["香鮭蛋炒飯","微波餐盒"],
+    ["菌菇雞湯粥","微波餐盒"],
+    ["燒肉烤米堡","飯糰"],
+    ["炙燒雞胸肉（關東煮）","熱食小吃"]
+  ])assert.equal(taxonomy.typeOf({name}),kind,name);
 });
 
 console.log("Food browser regression tests passed:",passed);

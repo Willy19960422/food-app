@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
-<script src="./food-taxonomy.js?v=20261021-1"></script>
+<script src="./food-taxonomy.js?v=20261021-2"></script>
 <script>
 // Apply the saved interface size before the first paint to avoid a resize flash.
 (function () {
@@ -592,7 +592,6 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
         <option value="brand:全家鮮食">全家鮮食</option>
         <option value="brand:萊爾富鮮食">萊爾富鮮食</option>
         <option value="brand:OK超商鮮食">OK 超商鮮食</option>
-        <option value="蛋白健康">蛋白健康新品</option>
         <option value="咖啡輕食">咖啡與輕食</option>
         <option value="夜市小吃">夜市小吃</option>
         <option value="餃類點心">水餃・鍋貼・小籠包</option>
@@ -600,14 +599,15 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
         <option value="好市多">好市多</option>
         <option value="外食餐飲">外食餐飲</option>
         <option value="基礎食材">基礎食材</option>
-        <option value="飲品點心">飲品點心</option>
+        <option value="飲品點心">飲品／點心</option>
+        <option value="即食／冷凍食品">即食／冷凍食品</option>
+        <option value="營養補充">營養補充</option>
         <option value="我的常用">我的常用</option>
       </select>
     </div>
     <div class="main-cat-scroll" id="mainCatBar" aria-hidden="true">
       <button class="main-cat-btn active" data-cat="all">全部食物</button>
       <button class="main-cat-btn" data-cat="超商鮮食">超商鮮食</button>
-      <button class="main-cat-btn" data-cat="蛋白健康">蛋白健康新品</button>
       <button class="main-cat-btn" data-cat="咖啡輕食">咖啡與輕食</button>
       <button class="main-cat-btn" data-cat="夜市小吃">夜市小吃</button>
       <button class="main-cat-btn" data-cat="餃類點心">水餃・鍋貼・小籠包</button>
@@ -615,7 +615,9 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
       <button class="main-cat-btn" data-cat="好市多">好市多</button>
       <button class="main-cat-btn" data-cat="外食餐飲">外食餐飲</button>
       <button class="main-cat-btn" data-cat="基礎食材">基礎食材</button>
-      <button class="main-cat-btn" data-cat="飲品點心">飲品點心</button>
+      <button class="main-cat-btn" data-cat="飲品點心">飲品／點心</button>
+      <button class="main-cat-btn" data-cat="即食／冷凍食品">即食／冷凍食品</button>
+      <button class="main-cat-btn" data-cat="營養補充">營養補充</button>
       <button class="main-cat-btn" data-cat="我的常用">我的常用</button>
     </div>
 
@@ -624,9 +626,9 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
       <button class="sub-cat-btn active" data-sub="all">全部子類</button>
     </div>
     <div id="convenienceTypePanel" class="convenience-type-panel hide">
-      <div class="food-filter-heading">商品種類</div>
+      <div class="food-filter-heading">商品種類與特色</div>
       <div id="convenienceTypeBar" class="convenience-type-grid" role="group" aria-label="超商食品種類"></div>
-      <p class="mute" id="convenienceTypeHint">依現有商品名稱分類，未辨識的食品放在其他鮮食。</p>
+      <p class="mute" id="convenienceTypeHint">先選品牌，再依商品形式或蛋白健康系列篩選；營養數值仍須核對包裝。</p>
     </div>
 
     <div id="dumplingKindBar" class="main-cat-scroll hide" style="margin:10px 0 12px" aria-label="餃類種類">
@@ -685,6 +687,8 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
       <option value="外食餐飲">外食餐飲</option>
       <option value="基礎食材">基礎食材</option>
       <option value="飲品點心">飲品點心</option>
+      <option value="即食／冷凍食品">即食／冷凍食品</option>
+      <option value="營養補充">營養補充</option>
     </select>
 
     <label>細部子分類標籤</label>
@@ -1011,15 +1015,16 @@ let foodCatalogError = false;
 const SUB_CAT_MAP = {
   "all": ["全部子類"],
   "超商鮮食": ["全部", "7-11鮮食", "全家鮮食", "萊爾富鮮食", "OK超商鮮食"],
-  "蛋白健康": ["全部", "7-ELEVEN", "全家"],
   "咖啡輕食": ["全部", "星巴克"],
   "夜市小吃": ["全部", "主食", "炸物", "燒烤滷味", "甜品飲品", "參考估算"],
   "餃類點心": ["全部", "八方雲集", "四海遊龍", "及第", "灣仔碼頭", "奇美", "義美", "鼎泰豐", "桂冠", "台糖", "龍鳳", "禎祥", "大阪王將", "王品嚴選", "水餃嫂", "好市多"],
   "連鎖餐飲": ["全部", "麥當勞", "肯德基", "丹丹漢堡", "漢堡王", "摩斯漢堡", "SUBWAY", "八方雲集", "吉野家"],
   "好市多": ["全部", "賣場熟食", "麵包烘焙", "冷凍調理", "冷凍食品", "冷藏食品", "餐飲部"],
   "外食餐飲": ["全部", "便當小吃", "麵食湯水", "速食連鎖"],
-  "基礎食材": ["全部", "蛋豆肉", "主食澱粉", "蔬菜水果"],
-  "飲品點心": ["全部", "高蛋白乳品", "無糖茶飲", "手搖飲品"],
+  "基礎食材": ["全部", "蛋豆肉", "蛋豆魚肉", "即食雞胸", "主食澱粉", "蔬菜水果"],
+  "飲品點心": ["全部", "高蛋白乳品", "高蛋白飲", "高蛋白優酪", "無糖茶飲", "無糖茶", "鮮乳", "高鈣乳品", "希臘式優格", "手搖飲品", "運動飲料", "含糖茶", "無糖汽水", "布丁", "飲用水"],
+  "即食／冷凍食品": ["全部", "泡麵", "湯圓"],
+  "營養補充": ["全部", "乳清蛋白", "蛋白營養品"],
   "我的常用": ["全部"]
 };
 
@@ -1587,7 +1592,7 @@ async function loadFoodCandidates(session,uid){
     const all=[];
     for(let offset=0;offset<3000;offset+=500){
       const {data,error}=await sbClient.from("food_catalog_candidates")
-        .select("id,brand,name,category,sub_category,kcal,protein,fat,carbs,basis,source_name,source_url,nutrition_status,source_quality,market_status,unit_type,food_kind,piece_weight_g,pieces_per_pack,nutrition_derivation")
+        .select("id,brand,name,category,sub_category,kcal,protein,fat,carbs,basis,source_name,source_url,nutrition_status,source_quality,market_status,unit_type,food_kind,piece_weight_g,pieces_per_pack,nutrition_derivation,product_type,dietary_tags")
         .order("id",{ascending:true}).range(offset,offset+499);
       if(error)throw error;
       if(loginSessionId!==session||currentUser?.id!==uid)return;
@@ -1607,10 +1612,11 @@ function getCombinedFoodList() {
   (S.customFavorites || []).forEach(f => {
     // 常用清單中舊版同名餃類，優先引用更新後的「每顆」正式資料；
     // 避免常用食品遮蔽主食品庫已校正的單顆基準。
-    const matchedDumpling=(communityFoodsCache || []).find(v =>
-      v.cat === "餃類點心" && v.name === f.name);
-    result.push(matchedDumpling ? { ...matchedDumpling, isFav: true } :
-      { ...f, cat: "我的常用", isFav: true });
+    // Keep the original category even when the food was added to Favorites.
+    // A favorite does not cease to be a FamilyMart meal or a drink.
+    const existing=(communityFoodsCache || []).find(v => v.name===f.name);
+    result.push(existing ? { ...existing, isFav:true } :
+      { ...f, cat:f.cat || "我的常用", isFav:true });
     addedNames.add(f.name);
   });
 
@@ -1657,10 +1663,12 @@ function renderSubCategoryBar() {
 }
 
 
-const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","咖啡輕食","夜市小吃","連鎖餐飲","好市多","餃類點心"];
+const CATALOG_CATEGORIES=["超商鮮食","咖啡輕食","夜市小吃","連鎖餐飲","好市多","餃類點心"];
 const BRAND_NAMES=["麥當勞","肯德基","丹丹漢堡","漢堡王","摩斯漢堡","SUBWAY","星巴克","路易莎","八方雲集","吉野家","四海遊龍","及第","灣仔碼頭","奇美","義美","鼎泰豐","桂冠","台糖","龍鳳","禎祥","大阪王將","王品嚴選","水餃嫂"];
 function normalizedFoodName(x){return String(x||"").toLowerCase().replace(/[\s　_\-－]/g,"")}
 function detectFoodBrand(food){
+  const storeBrand=window.FoodTaxonomy?.brandOf(food)||"";
+  if(storeBrand && FoodTaxonomy.canonicalCategory(food.cat)==="超商鮮食")return storeBrand;
   const sub=food.subCat||"";
   if(food.cat==="好市多" || /^好市多[\s　]/.test(food.name||""))return "好市多";
   if(sub.includes("7-11"))return "7-ELEVEN";
@@ -1697,7 +1705,8 @@ function isPieceFood(item){
 }
 function candidateMatchesSearch(x,keyword){
   const aliases=x.brand==="好市多"?"costco kirkland": "";
-  return !keyword||[x.brand,x.name,x.sub_category,aliases].join(" ").toLowerCase().includes(keyword);
+  return !keyword||[x.brand,x.name,x.category,x.sub_category,x.product_type,
+    ...(Array.isArray(x.dietary_tags)?x.dietary_tags:[]),aliases].join(" ").toLowerCase().includes(keyword);
 }
 function candidateDisplayName(x){
   return x.brand==="夜市通用"?x.name:(x.brand==="7-ELEVEN"?"7-11":x.brand)+" "+stripBrand(x.name,x.brand);
@@ -1705,7 +1714,7 @@ function candidateDisplayName(x){
 function prefillOfficialFood(x){
   switchListMode("manual");
   const byPiece=x.unit_type==="piece"||x.category==="餃類點心";
-  $("mCat").value=byPiece?"餃類點心":x.category==="蛋白健康"?"超商鮮食":x.category;
+  $("mCat").value=byPiece?"餃類點心":FoodTaxonomy.canonicalCategory(x.category);
   $("mSubCat").value=byPiece?(x.brand==="好市多"?"奇美":x.brand):(x.sub_category||x.brand);
   $("mName").value=candidateDisplayName(x);
   $("mBasisType").value=byPiece?"serving":/100g|100ml/i.test(x.basis||"")?"100g":"serving";
@@ -1751,7 +1760,8 @@ function buildOfficialCandidateCard(x){
   const official=canQuickRecordOfficial(x);
   note.textContent=(official?"台灣品牌官方營養資訊":x.source_quality==="third_party_nutrition"?"第三方估算／彙整":complete?"數值待確認":"營養資料待補")+
     (x.market_status==="seasonal"?"｜季節／限時商品":x.market_status==="discontinued"?"｜已下架（歷史保留）":"")+
-    (x.unit_type==="piece"?"｜每顆計算"+(x.piece_weight_g?"・約"+x.piece_weight_g+"g":""):(x.basis?"｜"+x.basis:""));
+    (x.unit_type==="piece"?"｜每顆計算"+(x.piece_weight_g?"・約"+x.piece_weight_g+"g":""):(x.basis?"｜"+x.basis:""))+
+    (FoodTaxonomy.isProteinHealth(x)?"｜蛋白健康系列":"");
   const pills=document.createElement("div");pills.className="macro-pills";
   for(const [label,key,cls,unit] of [["熱量","kcal","pill-kcal"," kcal"],["蛋白質","protein","pill-pro"," g"],
   ["脂肪","fat","pill-fat"," g"],["碳水","carbs","pill-carb"," g"]]){
@@ -1800,8 +1810,7 @@ function catalogMatch(item,cat){
   if(cat==="好市多")return item.cat==="好市多"||brand==="好市多";
   if(cat==="咖啡輕食")return item.cat==="咖啡輕食";
   if(cat==="餃類點心")return item.cat==="餃類點心";
-  if(cat==="蛋白健康")return item.cat==="超商鮮食"&&(item.p>=20||/雞胸|蛋白|健身|舒肥|蔬滿/.test(item.name));
-  if(cat==="超商鮮食")return item.cat==="超商鮮食"||["7-ELEVEN","全家","萊爾富","OK超商"].includes(brand);
+  if(cat==="超商鮮食")return FoodTaxonomy.canonicalCategory(item.cat)==="超商鮮食";
   if(cat==="夜市小吃")return item.cat==="夜市小吃"||(item.cat==="外食餐飲"&&item.subCat==="台式小吃");
   if(cat==="連鎖餐飲")return item.cat==="連鎖餐飲"||BRAND_NAMES.includes(brand);
   return false;
@@ -1835,9 +1844,11 @@ function renderConvenienceTypeBar(foods) {
   );
   const candidates = [...existing,...additions];
   const counts = new Map(FoodTaxonomy.types.map(kind=>[kind,0]));
+  counts.set("protein",0);
   for(const x of candidates){
     const kind = FoodTaxonomy.typeOf(x);
     counts.set(kind,(counts.get(kind)||0)+1);
+    if(FoodTaxonomy.isProteinHealth(x))counts.set("protein",counts.get("protein")+1);
   }
   if(currentConvenienceKind !== "all" && !counts.get(currentConvenienceKind)){
     currentConvenienceKind="all";
@@ -1867,6 +1878,7 @@ function renderConvenienceTypeBar(foods) {
     bar.append(button);
   };
   makeButton("all","全部品項",candidates.length);
+  if(counts.get("protein"))makeButton("protein","蛋白健康系列",counts.get("protein"));
   const recommended=["御飯糰","飯糰","微波餐盒","三明治","漢堡","熱壓吐司"];
   for(const kind of FoodTaxonomy.types){
     const count=counts.get(kind)||0;
@@ -1895,14 +1907,13 @@ function renderCatalogSection(container,keyword,foods){
     container.append(st);
   }
   const known=foods.filter(f=>catalogMatch(f,cat)&&catalogSubMatch(detectFoodBrand(f),f.subCat||"",cat)&&
-    (cat!=="超商鮮食"||currentConvenienceKind==="all"||FoodTaxonomy.typeOf(f)===currentConvenienceKind)&&
+    (cat!=="超商鮮食"||FoodTaxonomy.matchesKind(f,currentConvenienceKind))&&
     (cat!=="餃類點心"||matchesDumplingKind(f))&&
     (!keyword||[f.name,f.subCat].join(" ").toLowerCase().includes(keyword)));
   const candidates=foodCatalogCandidates.filter(x=>{
     const match=cat==="餃類點心" ? (x.category==="餃類點心" || (x.category==="好市多" && x.unit_type==="piece" && !!x.food_kind)) :
-      cat==="蛋白健康"?x.category==="蛋白健康":
-      cat==="超商鮮食"?["超商鮮食","蛋白健康"].includes(x.category):x.category===cat;
-    return match&&(cat!=="超商鮮食"||currentConvenienceKind==="all"||FoodTaxonomy.typeOf(x)===currentConvenienceKind)&&
+      cat==="超商鮮食"?FoodTaxonomy.canonicalCategory(x.category)==="超商鮮食":x.category===cat;
+    return match&&(cat!=="超商鮮食"||FoodTaxonomy.matchesKind(x,currentConvenienceKind))&&
       (cat!=="餃類點心"||matchesDumplingKind(x))&&(x.market_status!=="discontinued"||!!keyword)&&
       catalogSubMatch(x.brand,x.sub_category||"",cat)&&candidateMatchesSearch(x,keyword)&&
       !candidateHasCompleteDuplicate(x,foods);
@@ -1945,9 +1956,9 @@ function renderFoodList() {
   }
 
   const filtered = allFoods.filter(item => {
-    const matchMain = (currentMainCat === "all")
-      ? true
-      : (currentMainCat === "我的常用" ? item.isFav : (item.cat === currentMainCat || (currentMainCat === "超商鮮食" && (item.name.includes("7-11") || item.name.includes("全家") || item.name.includes("萊爾富") || item.name.includes("OK")))));
+    const matchMain = currentMainCat==="all" ? true :
+      currentMainCat==="我的常用" ? item.isFav :
+      FoodTaxonomy.canonicalCategory(item.cat)===currentMainCat;
 
     let matchSub = true;
     if (currentSubCat !== "all") {
