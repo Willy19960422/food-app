@@ -12,10 +12,18 @@ function close(){
  if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
  previousFocus=null;
 }
+function fitToViewport(node){
+ const computed=getComputedStyle(document.documentElement);
+ const scale=Number(computed.zoom)||1;
+ const deviceWidth=document.documentElement.clientWidth||window.innerWidth;
+ const maxCss=Math.max(160,deviceWidth/scale-30);
+ node.style.width=Math.min(480,maxCss)+"px";
+}
 function open(){
  const node=sheet();
  if(!node||node.classList.contains("hide"))return;
  previousFocus=document.activeElement;
+ fitToViewport(node);
  node.classList.add("food-v2-open");node.setAttribute("role","dialog");
  node.setAttribute("aria-modal","true");node.setAttribute("aria-label","選取食品與食用份量");
  backdrop()?.classList.remove("hide");
@@ -23,6 +31,7 @@ function open(){
  node.querySelector(".food-v2-close")?.focus({preventScroll:true});
 }
 window.foodV2OpenSheet=open;window.foodV2CloseSheet=close;
+window.addEventListener("resize",()=>{if(sheet()?.classList.contains("food-v2-open"))fitToViewport(sheet());});
 document.addEventListener("keydown",event=>{
  if(event.key==="Escape"&&sheet()?.classList.contains("food-v2-open")){
   event.preventDefault();close();
