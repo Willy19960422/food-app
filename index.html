@@ -1350,7 +1350,12 @@ function getCombinedFoodList() {
   const addedNames = new Set();
 
   (S.customFavorites || []).forEach(f => {
-    result.push({ ...f, cat: "我的常用", isFav: true });
+    // 常用清單中舊版同名餃類，優先引用更新後的「每顆」正式資料；
+    // 避免常用食品遮蔽主食品庫已校正的單顆基準。
+    const matchedDumpling=(communityFoodsCache || []).find(v =>
+      v.cat === "餃類點心" && v.name === f.name);
+    result.push(matchedDumpling ? { ...matchedDumpling, isFav: true } :
+      { ...f, cat: "我的常用", isFav: true });
     addedNames.add(f.name);
   });
 
