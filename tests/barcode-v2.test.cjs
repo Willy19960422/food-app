@@ -84,7 +84,7 @@ check("No automatic shared-food publication from scans",()=>{
   assert.ok(backend.includes('food_barcode_cache'));
 });
 
-async function simulateLookup(result){
+async function simulateLookup(result,existing=null){
   const nodes = Object.create(null);
   const $ = id => {
     if (!nodes[id]) {
@@ -97,10 +97,10 @@ async function simulateLookup(result){
     return nodes[id];
   };
   const chain = {select(){return this;},eq(){return this;},
-    async maybeSingle(){return {data:null,error:null};}};
+    async maybeSingle(){return {data:this.table==="custom_foods"?existing:null,error:null};}};
   const context = vm.createContext({console,Number,String,Math,Date,
     setTimeout,clearTimeout,AbortController,
-    $: $, sbClient:{from:()=>Object.create(chain),
+    $: $, sbClient:{from:table=>Object.assign(Object.create(chain),{table}),
       auth:{getSession:async()=>({data:{session:{access_token:"unit-jwt"}}})}},
     currentUser:{id:"unit-user"},loginSessionId:10,lookupSequenceId:0,photoSequenceId:0,
     curBarcode:null,curItem:null,stopScan:()=>{},setScanCalcMode:()=>{},
@@ -130,6 +130,15 @@ async function simulateLookup(result){
   assert.equal(full.nodes.fName.textContent,"測試飲品");
   assert.equal(full.food.k,0);
   console.log("PASS End-to-end mocked complete barcode lookup supports real zero values");
-  console.log("Barcode v2 all tests passed:",passed+2);
+  const legacy=await simulateLookup(null,{
+    barcode:"4006381333931",name:"舊版飲品",basis:"每100ml",basis_type:"serving",
+    serving_weight:0,kcal:10,protein:0,fat:0,carbs:2,
+    is_verified:true,data_quality:"legacy_unreviewed"
+  });
+  assert.equal(legacy.food.basisType,"100ml");
+  assert.equal(legacy.nodes.actualWeightInput.value,100);
+  assert.ok(legacy.nodes.weightInputLabel.textContent.includes("每100ml"));
+  console.log("PASS Legacy per-100ml basis overrides incorrect serving default");
+  console.log("Barcode v2 all tests passed:",passed+3);
 })().catch(error=>{console.error("FAIL Barcode flow integration",error);process.exitCode=1;});
 
