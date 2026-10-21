@@ -83,4 +83,52 @@ check("Type choices contain no icons and display category-specific counts",()=>{
   assert.ok(html.includes('button.disabled=kind!=="all" && count===0'));
   assert.ok(!/icon|svg/i.test(taxonomy.types.join("")));
 });
+check("Dynamic store-type UI counts items by brand and changes the selected kind",()=>{
+  const a=html.indexOf("function renderConvenienceTypeBar(foods) {");
+  const b=html.indexOf("function renderCatalogSection(",a);
+  assert.ok(a>=0 && b>a);
+  const panel={hidden:false,classList:{toggle:(_,v)=>panel.hidden=v}};
+  const bar={children:[],replaceChildren(){this.children=[]},append(el){this.children.push(el)}};
+  const context={
+    window:{FoodTaxonomy:taxonomy},FoodTaxonomy:taxonomy,
+    currentMainCat:"超商鮮食",currentSubCat:"7-11鮮食",currentConvenienceKind:"all",
+    chosenFood:null,foodListLimit:20,
+    foodCatalogCandidates:[{brand:"7-ELEVEN",category:"超商鮮食",name:"新極上飯糰-煙燻銀鮭",market_status:"confirmed_active"}],
+    $:key=>({convenienceTypePanel:panel,convenienceTypeBar:bar,selectedFoodInfo:{classList:{add(){}}}})[key],
+    catalogMatch:(item,cat)=>item.cat===cat,
+    candidateHasCompleteDuplicate:()=>false,
+    renderFoodList(){context.renders++},renders:0,
+    document:{createElement(tag){return {tag,dataset:{},attributes:{},children:[],
+      className:"",disabled:false,
+      setAttribute(k,v){this.attributes[k]=String(v)},
+      append(...els){this.children.push(...els)},
+      addEventListener(name,handler){this["on"+name]=handler}
+    }}}
+  };
+  vm.runInNewContext(html.slice(a,b),context);
+  const foods=[
+    {name:"7-11熟成御飯糰",cat:"超商鮮食",subCat:"7-11鮮食"},
+    {name:"7-11雞肉微波便當",cat:"超商鮮食",subCat:"7-11鮮食"},
+    {name:"全家鮪魚飯糰",cat:"超商鮮食",subCat:"全家鮮食"}
+  ];
+  context.renderConvenienceTypeBar(foods);
+  assert.equal(panel.hidden,false);
+  const counts=Object.fromEntries(bar.children.map(el=>[el.dataset.type,Number(el.children[1].textContent)]));
+  assert.equal(counts.all,3);
+  assert.equal(counts["御飯糰"],2);
+  assert.equal(counts["微波餐盒"],1);
+  assert.equal(counts["飯糰"],0);
+  const selected=bar.children.find(x=>x.dataset.type==="御飯糰");
+  selected.onclick();
+  assert.equal(context.currentConvenienceKind,"御飯糰");
+  assert.equal(context.renders,1);
+  context.currentSubCat="全家鮮食";
+  context.currentConvenienceKind="all";
+  context.renderConvenienceTypeBar(foods);
+  const family=Object.fromEntries(bar.children.map(el=>[el.dataset.type,Number(el.children[1].textContent)]));
+  assert.equal(family.all,1);
+  assert.equal(family["飯糰"],1);
+  assert.equal(family["御飯糰"],0);
+});
+
 console.log("Food browser regression tests passed:",passed);
