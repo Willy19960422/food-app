@@ -14,7 +14,7 @@ const json = (body,status=200) => new Response(JSON.stringify(body),{status,head
 
 function validBarcode(barcode) {
   if (!/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(barcode)) return false;
-  let sum=0,weight=3;
+  let sum=0,weight=1;
   for(let i=barcode.length-1;i>=0;i--){sum+=Number(barcode[i])*weight;weight=weight===3?1:3;}
   return sum%10===0;
 }
