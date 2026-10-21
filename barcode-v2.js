@@ -4,6 +4,7 @@
 let barcodeV2SourceUrl = null;
 let barcodeV2PhotoUsed = false;
 let barcodeV2SubmissionId = null;
+let barcodeV2Correction = false;
 let barcodeV2Submitting = false;
 
 function isValidScanBarcode(code) {
@@ -108,6 +109,7 @@ async function lookup(code) {
   barcodeV2SourceUrl = null;
   barcodeV2PhotoUsed = false;
   barcodeV2SubmissionId = null;
+  barcodeV2Correction = false;
   $("manual").value = barcode;
   $("lookBtn").disabled = true;
   $("scanLoading").classList.remove("hide");
@@ -270,6 +272,14 @@ $("addBtn").onclick = async () => {
   // Do not publish external records merely because the user scanned or logged them.
 };
 
+$("reportBarcodeBtn").onclick = () => {
+  if (!curItem || !curBarcode) return;
+  barcodeV2Correction = true;
+  barcodeV2Prefill(curItem);
+  $("found").classList.add("hide");
+  $("newForm").classList.remove("hide");
+  barcodeV2ShowStatus("可拍攝包裝營養標示或修改資料。所有修正先送審，不會立即改動共用食品庫。");
+};
 $("photoBtn").onclick = () => $("photo").click();
 $("photo").onchange = async event => {
   const file = event.target.files && event.target.files[0];
@@ -322,7 +332,7 @@ function barcodeV2ReadSubmission() {
     serving_unit:basisType === "serving" && qty !== null ? $("nServingUnit").value : null,
     kcal:barcodeV2Numeric("nK"),protein:barcodeV2Numeric("nP"),
     fat:barcodeV2Numeric("nF"),carbs:barcodeV2Numeric("nC"),
-    source_type:barcodeV2PhotoUsed ? "label_ocr" : "manual",
+    source_type:barcodeV2PhotoUsed ? "label_ocr" : barcodeV2Correction ? "external_correction" : "manual",
     source_url:barcodeV2SourceUrl
   };
 }
