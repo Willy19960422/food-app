@@ -2374,7 +2374,7 @@ $("mAdd").onclick = async () => {
     try {
       if (loginSessionId !== targetSession || !currentUser || currentUser.id !== targetUid) return;
       const { error } = await sbClient.from('custom_foods').insert([{
-        barcode: "custom_" + Date.now(),
+        barcode: "custom_" + generateUUID(),
         name: n,
         basis: savedBasis,
         kcal: k,
@@ -2838,6 +2838,7 @@ $("editLogSaveBtn").onclick = async () => {
     p: targetItem.p,
     f: targetItem.f,
     c: targetItem.c,
+    source: targetItem.source || "legacy",
     t: targetItem.t || "00:00"
   });
   save();
