@@ -1868,27 +1868,53 @@ function validateNutrition(name, k, p, f, c) {
 
 const cleanBarcode = bc => String(bc || "").replace(/[^0-9a-zA-Z_-]/g, "").trim();
 
+function updateManualPieceMode(){
+  const piece=$("mCat").value==="餃類點心";
+  $("mPieceCountWrap").classList.toggle("hide",!piece);
+  $("mServingWeightLabel").textContent=piece?"每顆重量 (g，若由每100g換算則必填)":"每份重量 (g/ml，選填)";
+  const option=$("mBasisType").querySelector('option[value="serving"]');
+  if(option)option.textContent=piece?"每顆":"每份";
+}
+$("mCat").addEventListener("change",updateManualPieceMode);
+updateManualPieceMode();
+
 $("mAdd").onclick = async () => {
   if (!["mK","mP","mF","mC"].every(id => $(id).value.trim() !== "")) {
     return alert("熱量、蛋白質、脂肪與碳水四項都必須填寫；未知數值不能用 0 代替。");
   }
-  const k = +$("mK").value, n = $("mName").value.trim();
+  let k = +$("mK").value, n = $("mName").value.trim();
   const cat = $("mCat").value;
   const subCat = $("mSubCat").value.trim().replace(/\s+/g, "") || "";
-  const p = +$("mP").value || 0;
-  const f = +$("mF").value || 0;
-  const c = +$("mC").value || 0;
+  let p = +$("mP").value || 0;
+  let f = +$("mF").value || 0;
+  let c = +$("mC").value || 0;
   const basisType = $("mBasisType").value;
   const servingWeight = +$("mServingWeight").value || 0;
-
+  const byPiece=cat==="餃類點心";
+  const countRaw=$("mPieceCount").value.trim();
+  const pieceCount=byPiece?Number(countRaw):1;
+  if(byPiece&&(!/^\d+$/.test(countRaw)||!Number.isInteger(pieceCount)||pieceCount<1||pieceCount>200)){
+    return alert("餃類顆數必須是 1 至 200 的整數。");
+  }
+  if(byPiece&&basisType==="100g"&&!(servingWeight>0)){
+    return alert("以每100g營養標示換算時，請先填寫每顆重量（g）。");
+  }
   const errMsg = validateNutrition(n, k, p, f, c);
   if (errMsg) return alert(errMsg);
+  if(byPiece&&basisType==="100g"){
+    // 手上包裝是每100g，但正式儲存必須是每1顆，以免計數時重複放大100倍。
+    const ratio=servingWeight/100;
+    const round4=n=>Math.round(n*ratio*10000)/10000;
+    k=round4(k);p=round4(p);f=round4(f);c=round4(c);
+  }
+  const savedBasis=byPiece?"1顆":basisType==="100g"?"每100g":"每份";
+  const savedBasisType=byPiece?"serving":basisType;
 
-  addLog({ name: n, k, p, f, c }, 1);
+  addLog({ name: byPiece?n+"（每顆）":n, k, p, f, c }, pieceCount);
 
   if ($("mSaveFavorite").checked) {
     if (!S.customFavorites.some(item => item.name === n)) {
-      S.customFavorites.unshift({ name: n, basis: basisType === "100g" ? "每100g" : "每份", k, p, f, c, cat, subCat, basisType, servingWeight });
+      S.customFavorites.unshift({ name: n, basis:savedBasis, k, p, f, c, cat, subCat, basisType:savedBasisType, servingWeight });
       save();
     }
   }
@@ -1902,14 +1928,14 @@ $("mAdd").onclick = async () => {
       const { error } = await sbClient.from('custom_foods').insert([{
         barcode: "custom_" + Date.now(),
         name: n,
-        basis: basisType === "100g" ? "每100g" : "每份",
+        basis: savedBasis,
         kcal: k,
         protein: p,
         fat: f,
         carbs: c,
         category: cat,
         sub_category: subCat,
-        basis_type: basisType,
+        basis_type: savedBasisType,
         serving_weight: servingWeight,
         is_verified: false,
         created_by: targetUid
@@ -1928,6 +1954,7 @@ $("mAdd").onclick = async () => {
     if (el) el.value = "";
   });
 
+  $("mPieceCount").value="1";
   renderFoodList();
   showView("today");
 };
@@ -2324,13 +2351,19 @@ $("editLogSaveBtn").onclick = async () => {
   const logId = $("editLogId").value;
   const logDate = $("editLogDate").value;
   const newMeal = $("editLogMeal").value;
-  const newServings = +$("editLogServings").value || 1;
+  const newServings = Number($("editLogServings").value);
 
   const dayLogs = S.log[logDate] || [];
   const targetItem = dayLogs.find(x => x.id === logId);
   if (!targetItem) {
     $("editLogModal").classList.add("hide");
     return alert("找不到該筆紀錄。");
+  }
+  if(!Number.isFinite(newServings)||newServings<=0){
+    return alert("請輸入正確數量。");
+  }
+  if(/（每顆）|（1顆）/.test(targetItem.name)&&(!Number.isInteger(newServings)||newServings>200)){
+    return alert("餃類顆數請輸入 1 至 200 的整數。");
   }
 
   targetItem.meal = newMeal;
