@@ -17,6 +17,22 @@
     typeof S !== "undefined" && S.stateOwnerId === currentUser.id && !!sbClient;
   const owned = (uid,sid) => signedIn() && currentUser.id === uid && loginSessionId === sid;
   const status = message => { if (el(prefix+"Status")) el(prefix+"Status").textContent=message; };
+  function refreshButtons(){
+    const enabled = cachedEnabled && signedIn();
+    const on = el(prefix+"Enable"), off = el(prefix+"Disable"), test = el(prefix+"Test");
+    if(on){
+      on.textContent = enabled ? "已啟用通知" : "啟用手機通知";
+      on.classList.toggle("ghost",enabled);
+      on.setAttribute("aria-pressed",String(enabled));
+      on.disabled = busy || enabled;
+    }
+    if(off){
+      off.classList.toggle("ghost",!enabled);
+      off.setAttribute("aria-pressed",String(!enabled));
+      off.disabled = busy || !enabled;
+    }
+    if(test) test.disabled = busy || !enabled;
+  }
   const installed = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
   const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
@@ -29,6 +45,7 @@
       const button=el(prefix+id);
       if(button)button.disabled=value;
     }
+    refreshButtons();
   }
   function readForm(){
     const prefs={timezone:"Asia/Taipei"};
@@ -70,6 +87,7 @@
       if(error)throw error;
       cachedEnabled=!!data?.enabled;
       loadedFor=uid;
+      refreshButtons();
       if(data)applyForm(data);
       status(humanStatus());
     }catch(err){
@@ -85,6 +103,7 @@
     if(!owned(uid,sid))throw Error("帳號已切換，設定狀態待重新確認。");
     cachedEnabled=enabled;
     loadedFor=uid;
+    refreshButtons();
     status(humanStatus());
   }
   function b64ToArray(base64){
@@ -92,7 +111,7 @@
     return Uint8Array.from(atob(padded),c=>c.charCodeAt(0));
   }
   async function enable(){
-    if(busy||!signedIn())return;
+    if(busy||cachedEnabled||!signedIn())return;
     if(isIOS()&&!installed()){status(humanStatus());return;}
     if(!supported()){status(humanStatus());return;}
     if(Notification.permission==="denied"){status(humanStatus());return;}
@@ -130,7 +149,7 @@
     finally{setBusy(false);}
   }
   async function disable(){
-    if(busy||!signedIn())return;
+    if(busy||!cachedEnabled||!signedIn())return;
     setBusy(true);
     const uid=currentUser.id,sid=loginSessionId;
     try{
@@ -180,6 +199,7 @@
       if(sub)await sub.unsubscribe();
     }catch(e){console.warn("Could not unsubscribe signed-out device",e);}
     loadedFor=null;cachedEnabled=false;
+    refreshButtons();
   }
   for(const [id,fn] of [["Enable",enable],["Disable",disable],["Save",save],["Test",sendTest]]){
     const button=el(prefix+id);
@@ -193,6 +213,7 @@
     }
   }
   refreshVisibleTimes();
+  refreshButtons();
   // showView('me') invokes renderMe(). Preserve original rendering and refresh
   // preferences on each visit, including after a sign-in or account change.
   const originalRenderMe=renderMe;
