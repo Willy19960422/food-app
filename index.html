@@ -2601,7 +2601,7 @@ function showView(v) {
     if (!$("hDate").value) $("hDate").value = today();
     renderHist();
   }
-  if (v === "me") { renderMe(); window.foodAdminCheck?.(); }
+  if (v === "me") { renderMe(); window.foodAdminCheck?.(); window.foodCandidateAdminCheck?.(); }
   window.scrollTo(0, 0);
   window.foodV2Refresh?.();
 }
@@ -3530,6 +3530,7 @@ window.addEventListener("DOMContentLoaded", () => {
 <script defer src="./food-trends.js?v=20261022-1"></script>
 <script defer src="./food-account.js?v=20261022-1"></script>
 <script defer src="./food-admin-ui.js?v=20261022-1"></script>
+<script defer src="./food-candidate-admin.js?v=20261022-1"></script>
 <script defer src="./food-sheet.js?v=20261022-1"></script>
 
 </body>
