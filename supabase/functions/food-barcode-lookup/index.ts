@@ -93,6 +93,14 @@ Deno.serve(async(req)=>{
     return json({state:cached.state,item:cached.payload?.item||null,
       source_name:cached.source_name,source_url:cached.source_url,cached:true});
   }
+  // Shared atomic rate budget: limit uncached outbound calls to 10/minute.
+  const {data:budgetAllowed,error:budgetError}=await admin.rpc("food_barcode_take_budget");
+  if(budgetError){console.error("barcode budget",budgetError.message);return json({error:"SOURCE_UNAVAILABLE"},503);}
+  if(!budgetAllowed){
+    if(cached&&cached.state==="complete")return json({state:cached.state,item:cached.payload?.item||null,
+      source_name:cached.source_name,source_url:cached.source_url,cached:true,stale:true});
+    return json({error:"SOURCE_BUSY"},429);
+  }
   let result;
   try{result=await loadOpenFoodFacts(code);}
   catch(e){
