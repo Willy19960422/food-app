@@ -16,3 +16,5 @@ jobs:
           node-version: "22"
       - run: node tests/barcode-v2.test.cjs
       - run: node tests/ui-scale.test.cjs
+      - run: node tests/food-browser.test.cjs
+      - run: node tests/food-layout.browser.test.cjs

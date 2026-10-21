@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
+<script src="./food-taxonomy.js?v=20261021-1"></script>
 <script>
 // Apply the saved interface size before the first paint to avoid a resize flash.
 (function () {
@@ -235,6 +236,102 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 /* Prevent iPhone input focus from triggering browser text auto-enlargement,
    especially at 90% CSS zoom. Still grow input text with 110-120% settings. */
 input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
+
+/* Food browser v2: fixed-height flex container squeezed cards under iPhone zoom.
+   Use page scrolling; let every card grow to its real content height. */
+#boxSelectFood{min-width:0}
+#boxSelectFood .food-list{
+  max-height:none;overflow:visible;height:auto;
+  display:flex;flex-direction:column;align-items:stretch;
+  padding:0;margin:12px 0 18px;gap:12px;
+}
+#boxSelectFood .food-list > .food-card{
+  flex:0 0 auto;flex-shrink:0;min-width:0;height:auto;
+  padding:14px;border-radius:14px;
+}
+#boxSelectFood .food-card:not([style*="display: block"]){
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;
+}
+#boxSelectFood .food-card > div:first-child{min-width:0;overflow-wrap:anywhere}
+#boxSelectFood .food-title{
+  display:flex;flex-wrap:wrap;align-items:flex-start;
+  gap:6px;line-height:1.4;margin:0 0 6px;
+  min-width:0;overflow-wrap:anywhere;word-break:break-word;
+}
+#boxSelectFood .food-title > span:first-child{min-width:0;overflow-wrap:anywhere}
+#boxSelectFood .food-subinfo{line-height:1.55;margin-bottom:8px;overflow-wrap:anywhere}
+#boxSelectFood .macro-pills{
+  display:flex;flex-wrap:wrap;align-items:flex-start;gap:5px;
+  min-width:0;white-space:normal;
+}
+#boxSelectFood .pill{flex:0 0 auto;line-height:1.5;padding:3px 6px;font-size:12px}
+#boxSelectFood .food-card > button{
+  width:auto;min-width:76px;min-height:46px;margin:0!important;
+  padding:8px 12px;white-space:normal;align-self:center;
+}
+#boxSelectFood .food-card:hover{transform:none}
+#boxSelectFood .cat-tag{
+  max-width:100%;white-space:normal;overflow-wrap:anywhere;
+  font-weight:500;line-height:1.4;font-size:11px;
+}
+#boxSelectFood #mainCatBar{display:none!important}
+#boxSelectFood .food-category-picker{margin-bottom:16px}
+#boxSelectFood .food-category-picker label{
+  margin:0 0 7px;font-weight:700;color:var(--ink);font-size:15px
+}
+#boxSelectFood #foodMainSelect{
+  display:block;min-height:54px;width:100%;padding:11px 13px;
+  font-size:17px!important;background:var(--card);border:1.5px solid var(--brand);
+  border-radius:12px;color:var(--ink);font-weight:600
+}
+#boxSelectFood #subCatBar{margin:0 0 14px;gap:8px}
+#boxSelectFood #subCatBar .sub-cat-btn{
+  min-height:48px;line-height:1.4;padding:9px 8px;
+  border:1px solid var(--line);background:var(--card);font-size:15px;
+  border-radius:12px;
+}
+#boxSelectFood #subCatBar .sub-cat-btn.active{
+  background:var(--brand-light);border:2px solid var(--brand);color:var(--brand)
+}
+#boxSelectFood .food-filter-heading{
+  font-size:15px;font-weight:700;margin:0 0 8px;color:var(--ink)
+}
+#boxSelectFood .convenience-type-panel{
+  margin:0 0 16px;padding:12px;
+  border:1px solid var(--line);border-radius:13px;
+  background:var(--bg)
+}
+#boxSelectFood .convenience-type-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+#boxSelectFood .convenience-type-btn{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:4px;min-width:0;width:100%;min-height:48px;margin:0;
+  background:var(--card);border:1px solid var(--line);border-radius:11px;
+  color:var(--ink);font-size:14px;line-height:1.4;font-weight:600;
+  text-align:left;padding:10px;
+}
+#boxSelectFood .convenience-type-btn.active{
+  color:var(--brand);border:2px solid var(--brand);background:var(--brand-light);
+}
+#boxSelectFood .convenience-type-btn:disabled{
+  opacity:.48;cursor:not-allowed;
+}
+#boxSelectFood .convenience-type-count{
+  display:inline-block;font-size:12px;font-weight:500;
+  color:var(--mute);
+}
+#boxSelectFood #convenienceTypeHint{margin:8px 0 0;line-height:1.5}
+#boxSelectFood .food-category-picker:focus-within select,
+#boxSelectFood .convenience-type-btn:focus-visible{
+  outline:2px solid var(--brand);outline-offset:2px;
+}
+@media(max-width:380px){
+  #boxSelectFood .food-card:not([style*="display: block"]){
+    grid-template-columns:minmax(0,1fr) 70px;gap:8px;
+  }
+  #boxSelectFood .food-card > button{min-width:70px;padding:8px}
+}
 </style>
 </head>
 <body>
@@ -486,7 +583,28 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
   <div id="boxSelectFood" class="card">
     <input id="foodSearch" placeholder="搜尋食品、星巴克輕食、夜市小吃與連鎖品牌" style="margin-bottom:12px">
 
-    <div class="main-cat-scroll" id="mainCatBar">
+    <div class="food-category-picker">
+      <label for="foodMainSelect">食品分類</label>
+      <select id="foodMainSelect" aria-label="選擇食品分類">
+        <option value="all">全部食物</option>
+        <option value="超商鮮食">超商鮮食（選擇品牌）</option>
+        <option value="brand:7-11鮮食">7-ELEVEN 鮮食</option>
+        <option value="brand:全家鮮食">全家鮮食</option>
+        <option value="brand:萊爾富鮮食">萊爾富鮮食</option>
+        <option value="brand:OK超商鮮食">OK 超商鮮食</option>
+        <option value="蛋白健康">蛋白健康新品</option>
+        <option value="咖啡輕食">咖啡與輕食</option>
+        <option value="夜市小吃">夜市小吃</option>
+        <option value="餃類點心">水餃・鍋貼・小籠包</option>
+        <option value="連鎖餐飲">連鎖餐飲</option>
+        <option value="好市多">好市多</option>
+        <option value="外食餐飲">外食餐飲</option>
+        <option value="基礎食材">基礎食材</option>
+        <option value="飲品點心">飲品點心</option>
+        <option value="我的常用">我的常用</option>
+      </select>
+    </div>
+    <div class="main-cat-scroll" id="mainCatBar" aria-hidden="true">
       <button class="main-cat-btn active" data-cat="all">全部食物</button>
       <button class="main-cat-btn" data-cat="超商鮮食">超商鮮食</button>
       <button class="main-cat-btn" data-cat="蛋白健康">蛋白健康新品</button>
@@ -501,8 +619,14 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
       <button class="main-cat-btn" data-cat="我的常用">我的常用</button>
     </div>
 
+    <div id="foodSubCategoryLabel" class="food-filter-heading hide">選擇超商品牌</div>
     <div class="sub-cat-scroll" id="subCatBar">
       <button class="sub-cat-btn active" data-sub="all">全部子類</button>
+    </div>
+    <div id="convenienceTypePanel" class="convenience-type-panel hide">
+      <div class="food-filter-heading">商品種類</div>
+      <div id="convenienceTypeBar" class="convenience-type-grid" role="group" aria-label="超商食品種類"></div>
+      <p class="mute" id="convenienceTypeHint">依現有商品名稱分類，未辨識的食品放在其他鮮食。</p>
     </div>
 
     <div id="dumplingKindBar" class="main-cat-scroll hide" style="margin:10px 0 12px" aria-label="餃類種類">
@@ -875,10 +999,11 @@ const MEALS = [
 let currentActiveView = "today";
 let currentMainCat = "all";
 let currentSubCat = "all";
+let currentConvenienceKind = "all";
 let currentDumplingKind = "all";
 let chosenFood = null;
 let communityFoodsCache = [];
-let foodListLimit = 50;
+let foodListLimit = 20;
 let foodCatalogCandidates = [];
 let foodCatalogLoaded = false;
 let foodCatalogError = false;
@@ -1503,19 +1628,33 @@ function renderSubCategoryBar() {
   const bar = $("subCatBar");
   if (!bar) return;
   const list = SUB_CAT_MAP[currentMainCat] || ["全部"];
-
-  bar.innerHTML = list.map((sub, idx) => {
-    const cleanSub = sub.replace(/\s+/g, "");
-    const val = (cleanSub === "全部" || cleanSub === "全部子類") ? "all" : cleanSub;
-    return `
-      <button class="sub-cat-btn ${idx === 0 ? 'active' : ''}" data-sub="${val}">
-        ${esc(sub)}
-      </button>
-    `;
+  const displayNames = {
+    "7-11鮮食":"7-ELEVEN",
+    "全家鮮食":"全家",
+    "萊爾富鮮食":"萊爾富",
+    "OK超商鮮食":"OK 超商"
+  };
+  const isStore = currentMainCat === "超商鮮食";
+  const showChildren = list.length > 1;
+  const heading = $("foodSubCategoryLabel");
+  if (heading) {
+    heading.textContent = isStore ? "選擇超商品牌" : "子分類";
+    heading.classList.toggle("hide", !showChildren);
+  }
+  bar.classList.toggle("hide", !showChildren);
+  bar.setAttribute("aria-label",isStore ? "選擇超商品牌" : "選擇食品子分類");
+  bar.innerHTML = list.map((sub,idx)=>{
+    const value = sub.replace(/\s+/g,"");
+    const key = value === "全部" || value === "全部子類" ? "all" : value;
+    const label = key === "all" && isStore ? "全部品牌" : displayNames[key] || sub;
+    return '<button type="button" class="sub-cat-btn '+(idx===0?"active":"")+
+      '" data-sub="'+esc(key)+'" aria-pressed="'+(idx===0?'true':'false')+'">'+esc(label)+'</button>';
   }).join("");
   currentSubCat = "all";
+  currentConvenienceKind = "all";
+  const mainSelect = $("foodMainSelect");
+  if (mainSelect) mainSelect.value=currentMainCat;
 }
-
 
 
 const CATALOG_CATEGORIES=["超商鮮食","蛋白健康","咖啡輕食","夜市小吃","連鎖餐飲","好市多","餃類點心"];
@@ -1677,6 +1816,65 @@ function catalogSubMatch(brand,sub,cat){
   }
   return true;
 }
+function renderConvenienceTypeBar(foods) {
+  const panel = $("convenienceTypePanel");
+  const bar = $("convenienceTypeBar");
+  if (!panel || !bar || !window.FoodTaxonomy) return;
+  const isStore = currentMainCat === "超商鮮食";
+  const picked = FoodTaxonomy.brands.find(b=>b.key===currentSubCat);
+  // Hierarchy: type is only shown after a store is chosen, preventing a
+  // long mixed set of buttons on iPhones.
+  panel.classList.toggle("hide",!isStore||!picked);
+  if(!isStore||!picked){bar.replaceChildren();return;}
+  const matchesBrand = x => FoodTaxonomy.brandOf(x) === picked.brand;
+  const existing = foods.filter(x => catalogMatch(x,"超商鮮食") && matchesBrand(x));
+  const additions = foodCatalogCandidates.filter(x =>
+    ["超商鮮食","蛋白健康"].includes(x.category) &&
+    matchesBrand(x) && x.market_status !== "discontinued" &&
+    !candidateHasCompleteDuplicate(x,foods)
+  );
+  const candidates = [...existing,...additions];
+  const counts = new Map(FoodTaxonomy.types.map(kind=>[kind,0]));
+  for(const x of candidates){
+    const kind = FoodTaxonomy.typeOf(x);
+    counts.set(kind,(counts.get(kind)||0)+1);
+  }
+  if(currentConvenienceKind !== "all" && !counts.get(currentConvenienceKind)){
+    currentConvenienceKind="all";
+  }
+  const activeType = currentConvenienceKind;
+  bar.replaceChildren();
+  const makeButton = (kind,label,count) => {
+    const button = document.createElement("button");
+    button.type="button";
+    button.className="convenience-type-btn"+(kind===activeType?" active":"");
+    button.dataset.type=kind;
+    button.setAttribute("aria-pressed",String(kind===activeType));
+    const name=document.createElement("span");name.textContent=label;
+    const num=document.createElement("span");
+    num.className="convenience-type-count";
+    num.textContent=String(count);
+    button.append(name,num);
+    button.disabled=kind!=="all" && count===0;
+    button.addEventListener("click",()=>{
+      if(button.disabled)return;
+      currentConvenienceKind=kind;
+      chosenFood=null;
+      $("selectedFoodInfo").classList.add("hide");
+      foodListLimit=20;
+      renderFoodList();
+    });
+    bar.append(button);
+  };
+  makeButton("all","全部品項",candidates.length);
+  const recommended=["御飯糰","飯糰","微波餐盒","三明治","漢堡","熱壓吐司"];
+  for(const kind of FoodTaxonomy.types){
+    const count=counts.get(kind)||0;
+    if(count||recommended.includes(kind))makeButton(kind,kind,count);
+  }
+}
+
+
 function renderCatalogSection(container,keyword,foods){
   const cat=currentMainCat;container.textContent="";
   const intro=document.createElement("p");intro.className="mute";
@@ -1686,21 +1884,26 @@ function renderCatalogSection(container,keyword,foods){
     "依品牌與口味選取，以顆計算。舊版估算及未具備完整營養標示的商品會顯示待核對；煎餃額外用油與沾醬請另外記錄。":
     cat==="好市多"?
     "好市多商品包含熟食、烘焙、冷凍冷藏及餐飲部。大包裝、秤重品項須依實際食用份量換算；營養待補品項請核對包裝。各店供應可能不同。":
+    cat==="超商鮮食"?
+    "先選超商品牌，再選御飯糰、微波餐盒、三明治等商品種類；無法辨識類型的商品列在其他鮮食。": 
     "有完整數值的既有食品可直接記錄；商品候選與估算值需核對。收錄不保證門市目前販售。";
   container.append(intro);
+  renderConvenienceTypeBar(foods);
   if(!foodCatalogLoaded||foodCatalogError){
     const st=document.createElement("p");st.className=foodCatalogError?"msg":"mute";
     st.textContent=foodCatalogError?"外食清單讀取失敗，請重新開啟食物清單。":"讀取商品資料中…";
     container.append(st);
   }
   const known=foods.filter(f=>catalogMatch(f,cat)&&catalogSubMatch(detectFoodBrand(f),f.subCat||"",cat)&&
+    (cat!=="超商鮮食"||currentConvenienceKind==="all"||FoodTaxonomy.typeOf(f)===currentConvenienceKind)&&
     (cat!=="餃類點心"||matchesDumplingKind(f))&&
     (!keyword||[f.name,f.subCat].join(" ").toLowerCase().includes(keyword)));
   const candidates=foodCatalogCandidates.filter(x=>{
     const match=cat==="餃類點心" ? (x.category==="餃類點心" || (x.category==="好市多" && x.unit_type==="piece" && !!x.food_kind)) :
       cat==="蛋白健康"?x.category==="蛋白健康":
       cat==="超商鮮食"?["超商鮮食","蛋白健康"].includes(x.category):x.category===cat;
-    return match&&(cat!=="餃類點心"||matchesDumplingKind(x))&&(x.market_status!=="discontinued"||!!keyword)&&
+    return match&&(cat!=="超商鮮食"||currentConvenienceKind==="all"||FoodTaxonomy.typeOf(x)===currentConvenienceKind)&&
+      (cat!=="餃類點心"||matchesDumplingKind(x))&&(x.market_status!=="discontinued"||!!keyword)&&
       catalogSubMatch(x.brand,x.sub_category||"",cat)&&candidateMatchesSearch(x,keyword)&&
       !candidateHasCompleteDuplicate(x,foods);
   });
@@ -1723,7 +1926,7 @@ function renderCatalogSection(container,keyword,foods){
   if(rows.length>foodListLimit){
     const more=document.createElement("button");more.className="ghost";
     more.textContent="載入更多（"+Math.min(foodListLimit,rows.length)+" / "+rows.length+"）";
-    more.onclick=()=>{foodListLimit+=50;renderFoodList()};container.append(more);
+    more.onclick=()=>{foodListLimit += 20;renderFoodList()};container.append(more);
   }
   if(!rows.length&&foodCatalogLoaded&&!foodCatalogError){
     const empty=document.createElement("p");empty.textContent="沒有符合的商品，請選別的分類或搜尋關鍵字。";container.append(empty);
@@ -1732,6 +1935,7 @@ function renderCatalogSection(container,keyword,foods){
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
+  if (currentMainCat !== "超商鮮食") $("convenienceTypePanel")?.classList.add("hide");
 
   const keyword = $("foodSearch").value.trim().toLowerCase();
   const allFoods = getCombinedFoodList();
@@ -1793,7 +1997,7 @@ function renderFoodList() {
   if (shown.length < filtered.length) {
     const more = document.createElement("button"); more.className = "ghost";
     more.textContent = "載入更多（" + shown.length + " / " + filtered.length + "）";
-    more.onclick = () => { foodListLimit += 50; renderFoodList(); };
+    more.onclick = () => { foodListLimit += 20; renderFoodList(); };
     container.append(more);
   }
   if (keyword && (currentMainCat === "all" || currentMainCat === "超商鮮食")) {
@@ -1948,19 +2152,37 @@ function enableDesktopDragScroll(el) {
   }, true);
 }
 
+$("foodMainSelect").addEventListener("change", () => {
+  const choice = $("foodMainSelect").value;
+  const isBrand = choice.startsWith("brand:");
+  const cat = isBrand ? "超商鮮食" : choice;
+  const catBtn = [...$("mainCatBar").querySelectorAll("[data-cat]")].find(b=>b.dataset.cat===cat);
+  if(!catBtn)return;
+  catBtn.click();
+  if(isBrand){
+    const key=choice.slice(6);
+    const brandBtn=[...$("subCatBar").querySelectorAll("[data-sub]")].find(b=>b.dataset.sub===key);
+    if(brandBtn)brandBtn.click();
+  }
+  $("foodMainSelect").value=choice;
+});
+
 $("mainCatBar").onclick = e => {
   const btn = e.target.closest(".main-cat-btn");
   if (!btn) return;
   document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentMainCat = btn.dataset.cat;
+  currentConvenienceKind = "all";
+  const categorySelect = $("foodMainSelect");
+  if(categorySelect) categorySelect.value=currentMainCat;
   const dumplingView=currentMainCat==="餃類點心";
   $("dumplingKindBar").classList.toggle("hide",!dumplingView);
   currentDumplingKind="all";
   $("dumplingKindBar").querySelectorAll("[data-kind]").forEach(b=>b.classList.toggle("active",b.dataset.kind==="all"));
   chosenFood = null;
   $("selectedFoodInfo").classList.add("hide");
-  foodListLimit = 50;
+  foodListLimit = 20;
   currentSubCat = "all";
   renderSubCategoryBar();
   renderFoodList();
@@ -1971,10 +2193,20 @@ $("subCatBar").onclick = e => {
   if (!btn) return;
   document.querySelectorAll(".sub-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  currentSubCat = btn.dataset.sub.replace(/\s+/g, "");
+  const nextSub = btn.dataset.sub.replace(/\s+/g, "");
+  if(currentSubCat !== nextSub)currentConvenienceKind="all";
+  currentSubCat = nextSub;
+  $("subCatBar").querySelectorAll(".sub-cat-btn").forEach(b=>
+    b.setAttribute("aria-pressed",String(b===btn)));
+  const categorySelect=$("foodMainSelect");
+  if(currentMainCat==="超商鮮食" && categorySelect){
+    const brandChoice="brand:"+currentSubCat;
+    categorySelect.value = [...categorySelect.options].some(o=>o.value===brandChoice)?
+      brandChoice:"超商鮮食";
+  }
   chosenFood = null;
   $("selectedFoodInfo").classList.add("hide");
-  foodListLimit = 50;
+  foodListLimit = 20;
   renderFoodList();
 };
 
@@ -1985,12 +2217,12 @@ $("dumplingKindBar").onclick = event => {
   $("dumplingKindBar").querySelectorAll("[data-kind]").forEach(b=>b.classList.toggle("active",b===btn));
   chosenFood=null;
   $("selectedFoodInfo").classList.add("hide");
-  foodListLimit=50;
+  foodListLimit = 20;
   renderFoodList();
 };
 $("foodSearch").oninput = () => {
   clearTimeout(searchDebounceTimer);
-  foodListLimit = 50;
+  foodListLimit = 20;
   searchDebounceTimer = setTimeout(renderFoodList, 200);
 };
 
