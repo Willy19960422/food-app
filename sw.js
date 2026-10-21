@@ -6,15 +6,20 @@ const APP_SHELL = [
   "./food-cloud.js","./food-trends.js","./food-account.js",
   "./food-admin-ui.js","./food-sheet.js"
 ];
+const STATIC_VENDOR=[
+ "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js",
+ "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"
+];
+const vendorFiles=new Set(STATIC_VENDOR);
 const staticFiles = new Set(APP_SHELL.map(p=>new URL(p,self.registration.scope).pathname));
 self.addEventListener("install",event=>{
  event.waitUntil((async()=>{
   const cache=await caches.open(CACHE_NAME);
   // One missing optional asset should not disable every offline resource.
-  await Promise.allSettled(APP_SHELL.map(async path=>{
-   const request=new Request(new URL(path,self.registration.scope),{cache:"reload"});
+  await Promise.allSettled([...APP_SHELL,...STATIC_VENDOR].map(async path=>{
+   const request=new Request(new URL(path,self.registration.scope),{cache:"reload",mode:STATIC_VENDOR.includes(path)?"no-cors":"same-origin"});
    const response=await fetch(request);
-   if(response.ok)await cache.put(request,response);
+   if(response.ok||response.type==="opaque")await cache.put(request,response);
   }));
   await self.skipWaiting();
  })());
@@ -32,12 +37,12 @@ self.addEventListener("fetch",event=>{
  if(req.method!=="GET")return;
  const url=new URL(req.url);
  // Do not cache Supabase/auth/AI responses or any third-party user data.
- if(url.origin!==self.location.origin||!staticFiles.has(url.pathname))return;
+ if((url.origin!==self.location.origin||!staticFiles.has(url.pathname)) && !vendorFiles.has(url.href))return;
  event.respondWith((async()=>{
   const cache=await caches.open(CACHE_NAME);
   try{
    const response=await fetch(req);
-   if(response.ok)event.waitUntil(cache.put(req,response.clone()).catch(()=>{}));
+   if(response.ok||response.type==="opaque")event.waitUntil(cache.put(req,response.clone()).catch(()=>{}));
    return response;
   }catch(_){
    return await cache.match(req,{ignoreSearch:true}) ||
