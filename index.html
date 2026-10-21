@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
+<script src="./food-taxonomy.js?v=20261021-1"></script>
 <script>
 // Apply the saved interface size before the first paint to avoid a resize flash.
 (function () {
@@ -235,6 +236,102 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
 /* Prevent iPhone input focus from triggering browser text auto-enlargement,
    especially at 90% CSS zoom. Still grow input text with 110-120% settings. */
 input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
+
+/* Food browser v2: fixed-height flex container squeezed cards under iPhone zoom.
+   Use page scrolling; let every card grow to its real content height. */
+#boxSelectFood{min-width:0}
+#boxSelectFood .food-list{
+  max-height:none;overflow:visible;height:auto;
+  display:flex;flex-direction:column;align-items:stretch;
+  padding:0;margin:12px 0 18px;gap:12px;
+}
+#boxSelectFood .food-list > .food-card{
+  flex:0 0 auto;flex-shrink:0;min-width:0;height:auto;
+  padding:14px;border-radius:14px;
+}
+#boxSelectFood .food-card:not([style*="display: block"]){
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;
+}
+#boxSelectFood .food-card > div:first-child{min-width:0;overflow-wrap:anywhere}
+#boxSelectFood .food-title{
+  display:flex;flex-wrap:wrap;align-items:flex-start;
+  gap:6px;line-height:1.4;margin:0 0 6px;
+  min-width:0;overflow-wrap:anywhere;word-break:break-word;
+}
+#boxSelectFood .food-title > span:first-child{min-width:0;overflow-wrap:anywhere}
+#boxSelectFood .food-subinfo{line-height:1.55;margin-bottom:8px;overflow-wrap:anywhere}
+#boxSelectFood .macro-pills{
+  display:flex;flex-wrap:wrap;align-items:flex-start;gap:5px;
+  min-width:0;white-space:normal;
+}
+#boxSelectFood .pill{flex:0 0 auto;line-height:1.5;padding:3px 6px;font-size:12px}
+#boxSelectFood .food-card > button{
+  width:auto;min-width:76px;min-height:46px;margin:0!important;
+  padding:8px 12px;white-space:normal;align-self:center;
+}
+#boxSelectFood .food-card:hover{transform:none}
+#boxSelectFood .cat-tag{
+  max-width:100%;white-space:normal;overflow-wrap:anywhere;
+  font-weight:500;line-height:1.4;font-size:11px;
+}
+#boxSelectFood #mainCatBar{display:none!important}
+#boxSelectFood .food-category-picker{margin-bottom:16px}
+#boxSelectFood .food-category-picker label{
+  margin:0 0 7px;font-weight:700;color:var(--ink);font-size:15px
+}
+#boxSelectFood #foodMainSelect{
+  display:block;min-height:54px;width:100%;padding:11px 13px;
+  font-size:17px!important;background:var(--card);border:1.5px solid var(--brand);
+  border-radius:12px;color:var(--ink);font-weight:600
+}
+#boxSelectFood #subCatBar{margin:0 0 14px;gap:8px}
+#boxSelectFood #subCatBar .sub-cat-btn{
+  min-height:48px;line-height:1.4;padding:9px 8px;
+  border:1px solid var(--line);background:var(--card);font-size:15px;
+  border-radius:12px;
+}
+#boxSelectFood #subCatBar .sub-cat-btn.active{
+  background:var(--brand-light);border:2px solid var(--brand);color:var(--brand)
+}
+#boxSelectFood .food-filter-heading{
+  font-size:15px;font-weight:700;margin:0 0 8px;color:var(--ink)
+}
+#boxSelectFood .convenience-type-panel{
+  margin:0 0 16px;padding:12px;
+  border:1px solid var(--line);border-radius:13px;
+  background:var(--bg)
+}
+#boxSelectFood .convenience-type-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+#boxSelectFood .convenience-type-btn{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:4px;min-width:0;width:100%;min-height:48px;margin:0;
+  background:var(--card);border:1px solid var(--line);border-radius:11px;
+  color:var(--ink);font-size:14px;line-height:1.4;font-weight:600;
+  text-align:left;padding:10px;
+}
+#boxSelectFood .convenience-type-btn.active{
+  color:var(--brand);border:2px solid var(--brand);background:var(--brand-light);
+}
+#boxSelectFood .convenience-type-btn:disabled{
+  opacity:.48;cursor:not-allowed;
+}
+#boxSelectFood .convenience-type-count{
+  display:inline-block;font-size:12px;font-weight:500;
+  color:var(--mute);
+}
+#boxSelectFood #convenienceTypeHint{margin:8px 0 0;line-height:1.5}
+#boxSelectFood .food-category-picker:focus-within select,
+#boxSelectFood .convenience-type-btn:focus-visible{
+  outline:2px solid var(--brand);outline-offset:2px;
+}
+@media(max-width:380px){
+  #boxSelectFood .food-card:not([style*="display: block"]){
+    grid-template-columns:minmax(0,1fr) 70px;gap:8px;
+  }
+  #boxSelectFood .food-card > button{min-width:70px;padding:8px}
+}
 </style>
 </head>
 <body>
@@ -486,7 +583,28 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
   <div id="boxSelectFood" class="card">
     <input id="foodSearch" placeholder="搜尋食品、星巴克輕食、夜市小吃與連鎖品牌" style="margin-bottom:12px">
 
-    <div class="main-cat-scroll" id="mainCatBar">
+    <div class="food-category-picker">
+      <label for="foodMainSelect">食品分類</label>
+      <select id="foodMainSelect" aria-label="選擇食品分類">
+        <option value="all">全部食物</option>
+        <option value="超商鮮食">超商鮮食（選擇品牌）</option>
+        <option value="brand:7-11鮮食">7-ELEVEN 鮮食</option>
+        <option value="brand:全家鮮食">全家鮮食</option>
+        <option value="brand:萊爾富鮮食">萊爾富鮮食</option>
+        <option value="brand:OK超商鮮食">OK 超商鮮食</option>
+        <option value="蛋白健康">蛋白健康新品</option>
+        <option value="咖啡輕食">咖啡與輕食</option>
+        <option value="夜市小吃">夜市小吃</option>
+        <option value="餃類點心">水餃・鍋貼・小籠包</option>
+        <option value="連鎖餐飲">連鎖餐飲</option>
+        <option value="好市多">好市多</option>
+        <option value="外食餐飲">外食餐飲</option>
+        <option value="基礎食材">基礎食材</option>
+        <option value="飲品點心">飲品點心</option>
+        <option value="我的常用">我的常用</option>
+      </select>
+    </div>
+    <div class="main-cat-scroll" id="mainCatBar" aria-hidden="true">
       <button class="main-cat-btn active" data-cat="all">全部食物</button>
       <button class="main-cat-btn" data-cat="超商鮮食">超商鮮食</button>
       <button class="main-cat-btn" data-cat="蛋白健康">蛋白健康新品</button>
@@ -503,6 +621,11 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
 
     <div class="sub-cat-scroll" id="subCatBar">
       <button class="sub-cat-btn active" data-sub="all">全部子類</button>
+    </div>
+    <div id="convenienceTypePanel" class="convenience-type-panel hide">
+      <div class="food-filter-heading">商品種類</div>
+      <div id="convenienceTypeBar" class="convenience-type-grid" role="group" aria-label="超商食品種類"></div>
+      <p class="mute" id="convenienceTypeHint">依現有商品名稱分類，未辨識的食品放在其他鮮食。</p>
     </div>
 
     <div id="dumplingKindBar" class="main-cat-scroll hide" style="margin:10px 0 12px" aria-label="餃類種類">
@@ -875,6 +998,7 @@ const MEALS = [
 let currentActiveView = "today";
 let currentMainCat = "all";
 let currentSubCat = "all";
+let currentConvenienceKind = "all";
 let currentDumplingKind = "all";
 let chosenFood = null;
 let communityFoodsCache = [];
