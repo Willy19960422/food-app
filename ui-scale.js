@@ -17,6 +17,7 @@
   function apply(size, persist) {
     const chosen = normalize(size);
     root.style.setProperty("--food-ui-scale", String(chosen / 100));
+    root.style.setProperty("--food-ui-control-font", chosen === 90 ? "18px" : "16px");
     root.dataset.uiScale = String(chosen);
     for (const button of options) {
       const on = Number(button.dataset.scale) === chosen;
