@@ -1808,7 +1808,7 @@ function buildOfficialCandidateCard(x){
     adjust.type="button";adjust.className="sm ghost";adjust.textContent="調整份量";
     adjust.onclick=()=>{
       selectFoodItem(officialCatalogToFoodItem(x));
-      $("selectedFoodInfo").scrollIntoView({block:"center",behavior:"smooth"});
+      window.foodV2OpenSheet?.();
     };
     actions.append(adjust);
   }
@@ -1944,7 +1944,7 @@ function renderCatalogSection(container,keyword,foods){
     sub.textContent=item.basis+"｜"+item.k+" kcal｜P "+item.p+"g｜F "+item.f+"g｜C "+item.c+"g"+
       (item.dataQuality==="legacy_10pieces_scaled_unreviewed"?"｜舊版10顆換算・未核對":"");
     const button=document.createElement("button");button.type="button";button.className="sm ghost";button.textContent=isPieceFood(item)?"按顆數記錄":"選取記錄";
-    button.onclick=()=>{selectFoodItem(item);$("selectedFoodInfo").scrollIntoView({block:"center",behavior:"smooth"})};
+    button.onclick=()=>{selectFoodItem(item);};
     card.append(h,sub,button);container.append(card);
   }
   if(rows.length>foodListLimit){
@@ -2060,12 +2060,12 @@ function selectFoodItem(item) {
   $("selectedFoodInfo").classList.remove("hide");
   $("selFoodName").textContent = item.name;
 
-  const is100g = item.basisType === "100g";
+  const is100g = item.basisType === "100g" || item.basisType === "100ml";
   const hasWeight = item.servingWeight && item.servingWeight > 0;
 
   if (is100g || hasWeight) {
     $("selModeWeight").classList.remove("hide");
-    $("selWeightLabel").textContent = is100g ? "實際食用重量 (g/ml，每 100g 基準)" : `實際食用重量 (g/ml，每份基準 ${item.servingWeight}g)`;
+    $("selWeightLabel").textContent = is100g ? (item.basisType==="100ml"?"實際食用容量（ml，每 100ml 基準）":"實際食用重量（g，每 100g 基準）") : `實際食用重量 (g/ml，每份基準 ${item.servingWeight}g)`;
   } else {
     $("selModeWeight").classList.add("hide");
   }
@@ -2076,6 +2076,7 @@ function selectFoodItem(item) {
 
   document.querySelectorAll("#cfChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
   renderFoodList();
+  window.foodV2OpenSheet?.();
 }
 
 function setSelCalcMode(mode) {
@@ -2101,7 +2102,7 @@ function updateSelFoodDetailDisplay() {
   } else {
     const w = +$("selWeightInput").value || 0;
     let ratio = 1;
-    if (item.basisType === "100g") {
+    if (item.basisType === "100g"||item.basisType==="100ml") {
       ratio = w / 100;
     } else if (item.servingWeight && item.servingWeight > 0) {
       ratio = w / item.servingWeight;
@@ -2266,14 +2267,14 @@ $("cfAdd").onclick = () => {
   } else {
     const w = +$("selWeightInput").value || 0;
     if (w <= 0) return alert("請輸入有效的食用重量！");
-    if (chosenFood.basisType === "100g") {
+    if (chosenFood.basisType === "100g"||chosenFood.basisType==="100ml") {
       multiplier = w / 100;
     } else if (chosenFood.servingWeight && chosenFood.servingWeight > 0) {
       multiplier = w / chosenFood.servingWeight;
     } else {
       return alert("此商品未提供每份重量基準，無法進行重量換算。");
     }
-    logName = `${chosenFood.name} (${w}g)`;
+    logName = `${chosenFood.name} (${w}${chosenFood.basisType==="100ml"?"ml":"g"})`;
     finalServings = multiplier;
   }
 
@@ -2286,6 +2287,7 @@ $("cfAdd").onclick = () => {
   }, finalServings);
 
   chosenFood = null;
+  window.foodV2CloseSheet?.();
   $("selectedFoodInfo").classList.add("hide");
   showView("today");
 };
@@ -2575,6 +2577,7 @@ function showView(v) {
   if (firstRender) window.scrollTo(0, 0);
 
   currentActiveView = v;
+  if(v!=="list")window.foodV2CloseSheet?.();
 
   VIEWS.forEach(p => {
     const el = $("p-" + p);
@@ -2596,6 +2599,7 @@ function showView(v) {
   }
   if (v === "me") renderMe();
   window.scrollTo(0, 0);
+  window.foodV2Refresh?.();
 }
 
 document.querySelectorAll("nav button").forEach(b => {
@@ -3518,6 +3522,8 @@ window.addEventListener("DOMContentLoaded", () => {
 <script defer src="./settings-menu.js?v=20261021-4"></script>
 <script defer src="./barcode-v2.js?v=20261021-1"></script>
 <script defer src="./ui-scale.js?v=20261021-1"></script>
+<script defer src="./food-v2.js?v=20261022-1"></script>
+<script defer src="./food-admin-ui.js?v=20261022-1"></script>
 
 </body>
 </html>
