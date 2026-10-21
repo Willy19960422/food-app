@@ -619,6 +619,7 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
       <button class="main-cat-btn" data-cat="我的常用">我的常用</button>
     </div>
 
+    <div id="foodSubCategoryLabel" class="food-filter-heading hide">選擇超商品牌</div>
     <div class="sub-cat-scroll" id="subCatBar">
       <button class="sub-cat-btn active" data-sub="all">全部子類</button>
     </div>
@@ -1634,6 +1635,13 @@ function renderSubCategoryBar() {
     "OK超商鮮食":"OK 超商"
   };
   const isStore = currentMainCat === "超商鮮食";
+  const showChildren = list.length > 1;
+  const heading = $("foodSubCategoryLabel");
+  if (heading) {
+    heading.textContent = isStore ? "選擇超商品牌" : "子分類";
+    heading.classList.toggle("hide", !showChildren);
+  }
+  bar.classList.toggle("hide", !showChildren);
   bar.setAttribute("aria-label",isStore ? "選擇超商品牌" : "選擇食品子分類");
   bar.innerHTML = list.map((sub,idx)=>{
     const value = sub.replace(/\s+/g,"");
