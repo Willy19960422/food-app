@@ -626,9 +626,9 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
       <button class="sub-cat-btn active" data-sub="all">全部子類</button>
     </div>
     <div id="convenienceTypePanel" class="convenience-type-panel hide">
-      <div class="food-filter-heading">商品種類</div>
+      <div class="food-filter-heading">商品種類與特色</div>
       <div id="convenienceTypeBar" class="convenience-type-grid" role="group" aria-label="超商食品種類"></div>
-      <p class="mute" id="convenienceTypeHint">依現有商品名稱分類，未辨識的食品放在其他鮮食。</p>
+      <p class="mute" id="convenienceTypeHint">先選品牌，再依商品形式或蛋白健康系列篩選；營養數值仍須核對包裝。</p>
     </div>
 
     <div id="dumplingKindBar" class="main-cat-scroll hide" style="margin:10px 0 12px" aria-label="餃類種類">
@@ -1705,7 +1705,8 @@ function isPieceFood(item){
 }
 function candidateMatchesSearch(x,keyword){
   const aliases=x.brand==="好市多"?"costco kirkland": "";
-  return !keyword||[x.brand,x.name,x.sub_category,aliases].join(" ").toLowerCase().includes(keyword);
+  return !keyword||[x.brand,x.name,x.category,x.sub_category,x.product_type,
+    ...(Array.isArray(x.dietary_tags)?x.dietary_tags:[]),aliases].join(" ").toLowerCase().includes(keyword);
 }
 function candidateDisplayName(x){
   return x.brand==="夜市通用"?x.name:(x.brand==="7-ELEVEN"?"7-11":x.brand)+" "+stripBrand(x.name,x.brand);
