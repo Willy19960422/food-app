@@ -1452,7 +1452,8 @@ function renderProteinCatalog(container,keyword,allFoods) {
       (!keyword || (food.name + " " + food.subCat).toLowerCase().includes(keyword));
   });
   const candidates = foodCatalogCandidates.filter(x =>
-    filterBrand(x.brand) && candidateMatchesSearch(x,keyword) &&
+    x.category === "蛋白健康" && filterBrand(x.brand) &&
+    candidateMatchesSearch(x,keyword) &&
     !candidateHasCompleteDuplicate(x,allFoods)
   );
   const allRows = [...candidates.map(item => ({type:"candidate",item})),
