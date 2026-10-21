@@ -1181,9 +1181,12 @@ save();
           console.error("個人資料讀取例外:", e);
         }
 
-        if (profileFailed) {
+        if (profileFailed && S.me && S.stateOwnerId === targetUid) {
+          console.warn("個人檔案雲端讀取失敗，使用相同帳號的本機副本，恢復連線後再同步");
+          window.foodV2SyncStatus?.("failed","無法連線雲端，使用本機個人資料及紀錄");
+        } else if (profileFailed) {
           $("authErrMsg").style.color = "var(--warn)";
-          $("authErrMsg").textContent = "讀取個人資料失敗，請確認網路後重新整理頁面。";
+          $("authErrMsg").textContent = "尚無可用的本機個人資料，請恢復網路後重新登入。";
           showOnlySection("p-auth");
           $("bottomNav").classList.add("hide");
           break;
