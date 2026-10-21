@@ -1,0 +1,17 @@
+name: Barcode v2 checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feature/barcode-v2-20261021]
+permissions:
+  contents: read
+jobs:
+  barcode-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node tests/barcode-v2.test.cjs
