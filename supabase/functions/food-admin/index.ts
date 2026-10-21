@@ -66,6 +66,43 @@ Deno.serve(async req=>{
   }
   return reply({items,total:count||0,page,state});
  }
+ if(action==="candidate_gaps"){
+  const page=Number.isInteger(body?.page)&&body.page>=0&&body.page<1000?body.page:0;
+  const {data,error,count}=await admin.from("food_catalog_candidates")
+   .select("id,brand,name,category,sub_category,basis,kcal,protein,fat,carbs,source_name,source_url,nutrition_status,source_quality,review_notes",{count:"exact"})
+   .eq("nutrition_status","awaiting_full_label")
+   .order("id",{ascending:true}).range(page*30,page*30+29);
+  if(error)return reply({error:"CANDIDATE_READ_FAILED"},503);
+  return reply({items:data||[],total:count||0,page});
+ }
+ if(action==="complete_candidate"){
+  const id=Number(body?.id),notes=String(body?.notes||"").trim().slice(0,1200);
+  const evidence=String(body?.evidence_url||"").trim().slice(0,1500);
+  if(!Number.isSafeInteger(id)||id<=0||body?.confirmed!==true||notes.length<10 ||
+     !/^https:\/\/[^ ]{5,}$/.test(evidence))return reply({error:"OFFICIAL_EVIDENCE_REQUIRED"},400);
+  const nutrientFields=["kcal","protein","fat","carbs"],limits=[3500,300,300,300];
+  const nut={};
+  for(let i=0;i<nutrientFields.length;i++){
+   const field=nutrientFields[i],value=body?.nutrition?.[field];
+   if(value===null||value===undefined||value==="" ||
+      !Number.isFinite(Number(value))||Number(value)<0||Number(value)>limits[i])
+    return reply({error:"INVALID_OR_INCOMPLETE_NUTRITION"},400);
+   nut[field]=Number(value);
+  }
+  const {data:existing,error:readErr}=await admin.from("food_catalog_candidates")
+   .select("id,nutrition_status").eq("id",id).maybeSingle();
+  if(readErr||!existing)return reply({error:"CANDIDATE_NOT_FOUND"},404);
+  if(existing.nutrition_status!=="awaiting_full_label")return reply({error:"CANDIDATE_ALREADY_COMPLETED"},409);
+  const basis=["每份","每100g","每100ml"].includes(body.basis)?body.basis:"每份";
+  const {error:editErr}=await admin.from("food_catalog_candidates").update({
+   ...nut,basis,source_name:"官方營養標示（管理員核對）",source_url:evidence,
+   source_quality:"official_nutrition",nutrition_status:"complete",
+   checked_at:new Date().toISOString().slice(0,10),
+   review_notes:notes
+  }).eq("id",id).eq("nutrition_status","awaiting_full_label");
+  if(editErr)return reply({error:"CANDIDATE_UPDATE_FAILED"},503);
+  return reply({ok:true});
+ }
  if(action==="review"){
   const id=String(body?.id||""),state=body?.state;
   const notes=String(body?.notes||"").trim().slice(0,1200);
@@ -92,7 +129,8 @@ Deno.serve(async req=>{
   const {data:existing,error:lookupError}=await admin.from("custom_foods")
    .select("barcode,name,is_verified").eq("barcode",item.barcode).maybeSingle();
   if(lookupError)return reply({error:"CATALOG_CHECK_FAILED"},503);
-  if(existing)return reply({error:"BARCODE_ALREADY_EXISTS_MERGE_MANUALLY"},409);
+  if(existing&&body.merge_existing!==true)
+    return reply({error:"BARCODE_ALREADY_EXISTS_MERGE_MANUALLY"},409);
   const basis=item.basis_type==="100g"?"每100g":item.basis_type==="100ml"?"每100ml":"每份";
   const record={
    barcode:item.barcode,name:item.name,basis,category:item.category,
@@ -103,7 +141,11 @@ Deno.serve(async req=>{
    source_name:"經管理員核對的商品營養標示",source_url:item.source_url||null,
    source_checked_at:new Date().toISOString().slice(0,10)
   };
-  const {error:writeErr}=await admin.from("custom_foods").insert(record);
+  const {error:writeErr}=existing ?
+    await admin.from("custom_foods")
+      .update((( {created_by,barcode,...editable} )=>editable)(record))
+      .eq("barcode",item.barcode):
+    await admin.from("custom_foods").insert(record);
   if(writeErr){
    console.error("review catalog insert",writeErr.message);
    return reply({error:"CATALOG_INSERT_FAILED"},503);
