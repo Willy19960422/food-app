@@ -29,7 +29,7 @@ check("Barcode controller loads once and legacy conflicting handlers are removed
   assert.ok(html.includes('async function addLog(it, n)'));
 });
 check("Critical barcode form IDs occur exactly once",()=>{
-  for(const id of ["manual","lookBtn","scanMsg","found","newForm","nName","nBrand","nK","nP","nF","nC","nB","nServingQty","nServingUnit","saveNew","submitProductBtn","submitProductStatus"]){
+  for(const id of ["manual","lookBtn","scanMsg","found","newForm","reportBarcodeBtn","nName","nBrand","nK","nP","nF","nC","nB","nServingQty","nServingUnit","saveNew","submitProductBtn","submitProductStatus"]){
     const count=(html.match(new RegExp('id="'+id+'"','g'))||[]).length;
     assert.equal(count,1,"id="+id+" count="+count);
   }
@@ -83,4 +83,53 @@ check("No automatic shared-food publication from scans",()=>{
   assert.ok(client.includes('from("food_product_submissions")'));
   assert.ok(backend.includes('food_barcode_cache'));
 });
-console.log("Barcode v2 tests passed:",passed);
+
+async function simulateLookup(result){
+  const nodes = Object.create(null);
+  const $ = id => {
+    if (!nodes[id]) {
+      const flags = new Set(["found","newForm","scanLoading"].includes(id)?["hide"]:[]);
+      nodes[id] = {value:"",textContent:"",disabled:false,
+        classList:{add:k=>flags.add(k),remove:k=>flags.delete(k),
+          toggle:(k,show)=>{if(show)flags.add(k);else flags.delete(k);},
+          contains:k=>flags.has(k)}};
+    }
+    return nodes[id];
+  };
+  const chain = {select(){return this;},eq(){return this;},
+    async maybeSingle(){return {data:null,error:null};}};
+  const context = vm.createContext({console,Number,String,Math,Date,
+    setTimeout,clearTimeout,AbortController,
+    $: $, sbClient:{from:()=>Object.create(chain),
+      auth:{getSession:async()=>({data:{session:{access_token:"unit-jwt"}}})}},
+    currentUser:{id:"unit-user"},loginSessionId:10,lookupSequenceId:0,photoSequenceId:0,
+    curBarcode:null,curItem:null,stopScan:()=>{},setScanCalcMode:()=>{},
+    SB_URL:"https://unit.example",
+    fetch:async()=>({ok:true,json:async()=>result}),
+    document:{querySelectorAll:()=>[]}
+  });
+  const head = client.split('$("lookBtn").onclick')[0];
+  vm.runInContext(head,context);
+  await vm.runInContext('lookup("4006381333931")',context);
+  return {nodes,food:context.curItem};
+}
+(async()=>{
+  const partial=await simulateLookup({state:"incomplete",source_url:"https://world.openfoodfacts.org/product/4006381333931",
+    item:{name:"部分營養資料",k:120,p:3,f:null,c:null,basisType:"100g",weightUnit:"g"}});
+  assert.equal(partial.nodes.nK.value,"120");
+  assert.equal(partial.nodes.nP.value,"3");
+  assert.equal(partial.nodes.nF.value,"");
+  assert.equal(partial.nodes.nC.value,"");
+  assert.equal(partial.nodes.newForm.classList.contains("hide"),false);
+  assert.equal(partial.nodes.found.classList.contains("hide"),true);
+  console.log("PASS End-to-end mocked incomplete barcode lookup preserves blanks");
+  const full=await simulateLookup({state:"complete",source_name:"Open Food Facts",
+    item:{name:"測試飲品",basis:"每100g",basisType:"100g",k:0,p:0,f:0,c:0,weightUnit:"g"}});
+  assert.equal(full.nodes.found.classList.contains("hide"),false);
+  assert.equal(full.nodes.newForm.classList.contains("hide"),true);
+  assert.equal(full.nodes.fName.textContent,"測試飲品");
+  assert.equal(full.food.k,0);
+  console.log("PASS End-to-end mocked complete barcode lookup supports real zero values");
+  console.log("Barcode v2 all tests passed:",passed+2);
+})().catch(error=>{console.error("FAIL Barcode flow integration",error);process.exitCode=1;});
+
