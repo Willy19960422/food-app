@@ -973,6 +973,7 @@ function loadUserData(uid) {
 const save = () => {
   if (!currentUser || S.stateOwnerId !== currentUser.id) return;
   try {
+    window.foodV2TrackPrefs?.(S);
     localStorage.setItem(getStorageKey(currentUser.id), JSON.stringify(S));
   } catch(e){}
 };
@@ -1910,7 +1911,7 @@ function renderCatalogSection(container,keyword,foods){
     "好市多商品包含熟食、烘焙、冷凍冷藏及餐飲部。大包裝、秤重品項須依實際食用份量換算；營養待補品項請核對包裝。各店供應可能不同。":
     cat==="超商鮮食"?
     "先選超商品牌，再選御飯糰、微波餐盒、三明治等商品種類；無法辨識類型的商品列在其他鮮食。": 
-    "有完整數值的既有食品可直接記錄；商品候選與估算值需核對。收錄不保證門市目前販售。";
+    "同時搜尋已收錄食品與官方候選；待補數據會標示狀態，不會誤當成完整營養。";
   container.append(intro);
   renderConvenienceTypeBar(foods);
   if(!foodCatalogLoaded||foodCatalogError){
@@ -1918,16 +1919,16 @@ function renderCatalogSection(container,keyword,foods){
     st.textContent=foodCatalogError?"外食清單讀取失敗，請重新開啟食物清單。":"讀取商品資料中…";
     container.append(st);
   }
-  const known=foods.filter(f=>catalogMatch(f,cat)&&catalogSubMatch(detectFoodBrand(f),f.subCat||"",cat)&&
+  const known=foods.filter(f=>(cat==="all"||catalogMatch(f,cat))&&(cat==="all"||catalogSubMatch(detectFoodBrand(f),f.subCat||"",cat))&&
     (cat!=="超商鮮食"||FoodTaxonomy.matchesKind(f,currentConvenienceKind))&&
     (cat!=="餃類點心"||matchesDumplingKind(f))&&
     (!keyword||[f.name,f.subCat].join(" ").toLowerCase().includes(keyword)));
   const candidates=foodCatalogCandidates.filter(x=>{
-    const match=cat==="餃類點心" ? (x.category==="餃類點心" || (x.category==="好市多" && x.unit_type==="piece" && !!x.food_kind)) :
+    const match=cat==="all" ? true : cat==="餃類點心" ? (x.category==="餃類點心" || (x.category==="好市多" && x.unit_type==="piece" && !!x.food_kind)) :
       cat==="超商鮮食"?FoodTaxonomy.canonicalCategory(x.category)==="超商鮮食":x.category===cat;
     return match&&(cat!=="超商鮮食"||FoodTaxonomy.matchesKind(x,currentConvenienceKind))&&
       (cat!=="餃類點心"||matchesDumplingKind(x))&&(x.market_status!=="discontinued"||!!keyword)&&
-      catalogSubMatch(x.brand,x.sub_category||"",cat)&&candidateMatchesSearch(x,keyword)&&
+      (cat==="all"||catalogSubMatch(x.brand,x.sub_category||"",cat))&&candidateMatchesSearch(x,keyword)&&
       !candidateHasCompleteDuplicate(x,foods);
   });
   const rows=[...known.map(item=>({type:"known",item})),...candidates.map(item=>({type:"candidate",item}))];
@@ -1962,7 +1963,7 @@ function renderFoodList() {
 
   const keyword = $("foodSearch").value.trim().toLowerCase();
   const allFoods = getCombinedFoodList();
-  if (CATALOG_CATEGORIES.includes(currentMainCat)) {
+  if (currentMainCat==="all" || CATALOG_CATEGORIES.includes(currentMainCat)) {
     renderCatalogSection(container,keyword,allFoods);
     return;
   }
@@ -2537,7 +2538,7 @@ $("qkAddBtn").onclick = () => {
   if (!kcalVal || kcalVal <= 0) return alert("請輸入有效的熱量數值！");
   const nameVal = $("qkName").value.trim() || "快速熱量";
 
-  addLog({ name: nameVal, k: kcalVal, p: 0, f: 0, c: 0 }, 1);
+  addLog({ name: nameVal, k: kcalVal, p: null, f: null, c: null, source:"quick_kcal" }, 1);
 
   $("qkKcal").value = "";
   $("qkName").value = "";
@@ -2674,11 +2675,12 @@ function sumList(L) {
   return (L || []).reduce((a, e) => {
     const n = Number(e.n) || 1;
     a.k += (Number(e.k) || 0) * n;
-    a.p += (Number(e.p) || 0) * n;
-    a.f += (Number(e.f) || 0) * n;
-    a.c += (Number(e.c) || 0) * n;
+    for(const [k,missing] of [["p","unknownP"],["f","unknownF"],["c","unknownC"]]){
+      if(e[k]===null||e[k]===undefined||!Number.isFinite(Number(e[k]))){a[missing]++;continue;}
+      a[k]+=Number(e[k])*n;
+    }
     return a;
-  }, { k: 0, p: 0, f: 0, c: 0 });
+  }, { k: 0, p: 0, f: 0, c: 0, unknownP:0, unknownF:0, unknownC:0 });
 }
 
 function bar(name, v, goal, col, u) {
@@ -2699,7 +2701,7 @@ function renderMealSection(dateKey, isEditable = true) {
       <div class="item">
         <div>
           ${e.t ? `<span class="mute">${e.t}</span> ` : ""}${esc(e.name)}
-          <div class="mute">${Math.round(e.n * 100) / 100} ${/（每顆）|（1顆）/.test(e.name)?"顆":"份"}・${Math.round(e.k * e.n)} 大卡・P ${Math.round(e.p * e.n)}g / F ${Math.round(e.f * e.n)}g / C ${Math.round(e.c * e.n)}g</div>
+          <div class="mute">${Math.round(e.n * 100) / 100} ${/（每顆）|（1顆）/.test(e.name)?"顆":"份"}・${Math.round(e.k * e.n)} 大卡・P ${e.p==null?"未知":Math.round(e.p*e.n)}g / F ${e.f==null?"未知":Math.round(e.f*e.n)}g / C ${e.c==null?"未知":Math.round(e.c*e.n)}g</div>
         </div>
         ${isEditable ? `
           <div style="display:flex;gap:6px">
@@ -2740,7 +2742,11 @@ function renderToday() {
     ${bar("碳水", T.c, g.c, "var(--carb)", "g")}
   `;
 
+  if(T.unknownP||T.unknownF||T.unknownC){
+    $("sum").insertAdjacentHTML("beforeend",'<p class="mute">部分紀錄的營養素未知，蛋白質／脂肪／碳水只顯示已知攝取量。</p>');
+  }
   $("logByMeal").innerHTML = renderMealSection(today(), true);
+  window.foodV2Refresh?.();
 }
 
 $("logByMeal").onclick = async e => {
@@ -3162,12 +3168,12 @@ async function addLog(it, n) {
   const timeStr = new Date().toTimeString().slice(0, 5);
   const logId = generateUUID();
 
-  const logItem = { id: logId, name: it.name, k: it.k, p: it.p, f: it.f, c: it.c, n: n, meal: mealKey, t: timeStr };
+  const logItem = { id: logId, name: it.name, k: it.k, p: it.p??null, f: it.f??null, c: it.c??null, n: n, meal: mealKey, t: timeStr, source:it.source||"manual" };
 
   (S.log[today()] = S.log[today()] || []).push(logItem);
   S.pendingSyncQueue.push({
     id: logId, date: today(), meal: mealKey, name: it.name, n: n,
-    k: it.k, p: it.p, f: it.f, c: it.c, t: timeStr
+    k: it.k, p: it.p??null, f: it.f??null, c: it.c??null, t: timeStr, source:it.source||"manual"
   });
   save();
   renderToday();
@@ -3299,6 +3305,9 @@ function renderHist() {
   const currentTargets = getTargets();
   const g = d === max ? currentTargets : S.dailyTargets?.[d];
   $("hSum").innerHTML = `<div class="big">${Math.round(T.k)} <span class="mute">大卡／${g ? `當日目標 ${g.kcal}` : "未保存當日目標"}</span></div><div class="mute">蛋白質 ${Math.round(T.p)} g・脂肪 ${Math.round(T.f)} g・碳水 ${Math.round(T.c)} g</div>`;
+  if(T.unknownP||T.unknownF||T.unknownC){
+    $("hSum").insertAdjacentHTML("beforeend",'<p class="mute">部分紀錄營養素未知；合計只代表已知攝取量。</p>');
+  }
   $("hSum").innerHTML += g
     ? `<div class="mute">當日目標：蛋白質 ${g.p} g・脂肪 ${g.f} g・碳水 ${g.c} g</div>`
     : '<div class="mute">舊日期不以今天的目標代替。</div>';
