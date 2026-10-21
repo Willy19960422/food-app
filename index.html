@@ -2144,12 +2144,30 @@ function enableDesktopDragScroll(el) {
   }, true);
 }
 
+$("foodMainSelect").addEventListener("change", () => {
+  const choice = $("foodMainSelect").value;
+  const isBrand = choice.startsWith("brand:");
+  const cat = isBrand ? "超商鮮食" : choice;
+  const catBtn = [...$("mainCatBar").querySelectorAll("[data-cat]")].find(b=>b.dataset.cat===cat);
+  if(!catBtn)return;
+  catBtn.click();
+  if(isBrand){
+    const key=choice.slice(6);
+    const brandBtn=[...$("subCatBar").querySelectorAll("[data-sub]")].find(b=>b.dataset.sub===key);
+    if(brandBtn)brandBtn.click();
+  }
+  $("foodMainSelect").value=choice;
+});
+
 $("mainCatBar").onclick = e => {
   const btn = e.target.closest(".main-cat-btn");
   if (!btn) return;
   document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentMainCat = btn.dataset.cat;
+  currentConvenienceKind = "all";
+  const categorySelect = $("foodMainSelect");
+  if(categorySelect) categorySelect.value=currentMainCat;
   const dumplingView=currentMainCat==="餃類點心";
   $("dumplingKindBar").classList.toggle("hide",!dumplingView);
   currentDumplingKind="all";
@@ -2167,7 +2185,17 @@ $("subCatBar").onclick = e => {
   if (!btn) return;
   document.querySelectorAll(".sub-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  currentSubCat = btn.dataset.sub.replace(/\s+/g, "");
+  const nextSub = btn.dataset.sub.replace(/\s+/g, "");
+  if(currentSubCat !== nextSub)currentConvenienceKind="all";
+  currentSubCat = nextSub;
+  $("subCatBar").querySelectorAll(".sub-cat-btn").forEach(b=>
+    b.setAttribute("aria-pressed",String(b===btn)));
+  const categorySelect=$("foodMainSelect");
+  if(currentMainCat==="超商鮮食" && categorySelect){
+    const brandChoice="brand:"+currentSubCat;
+    categorySelect.value = [...categorySelect.options].some(o=>o.value===brandChoice)?
+      brandChoice:"超商鮮食";
+  }
   chosenFood = null;
   $("selectedFoodInfo").classList.add("hide");
   foodListLimit = 20;
