@@ -1406,6 +1406,21 @@ function candidateHasCompleteDuplicate(x,foods){
     f.cat==="夜市小吃"&&normalizedFoodName(f.name)===normalizedFoodName(x.name):
     detectFoodBrand(f)===x.brand&&normalizedFoodName(stripBrand(f.name,x.brand))===normalizedFoodName(x.name));
 }
+function dumplingKindOf(item){
+  if(item.food_kind)return item.food_kind;
+  const name=String(item.name||"");
+  if(/小籠|湯包/.test(name))return "小籠包";
+  if(/蒸餃/.test(name))return "蒸餃";
+  if(/湯餃/.test(name))return "湯包／湯餃";
+  if(/鍋貼|煎餃/.test(name))return "煎餃／鍋貼";
+  return "水餃";
+}
+function matchesDumplingKind(item){
+  return currentDumplingKind==="all"||dumplingKindOf(item)===currentDumplingKind;
+}
+function isPieceFood(item){
+  return !!item&&(item.cat==="餃類點心"||/^1顆/.test(item.basis||"")||item.basis==="每顆");
+}
 function candidateMatchesSearch(x,keyword){
   const aliases=x.brand==="好市多"?"costco kirkland": "";
   return !keyword||[x.brand,x.name,x.sub_category,aliases].join(" ").toLowerCase().includes(keyword);
@@ -1415,22 +1430,28 @@ function candidateDisplayName(x){
 }
 function prefillOfficialFood(x){
   switchListMode("manual");
-  $("mCat").value=x.category==="蛋白健康"?"超商鮮食":x.category;
-  $("mSubCat").value=x.sub_category||x.brand;
+  const byPiece=x.unit_type==="piece"||x.category==="餃類點心";
+  $("mCat").value=byPiece?"餃類點心":x.category==="蛋白健康"?"超商鮮食":x.category;
+  $("mSubCat").value=byPiece?(x.brand==="好市多"?"奇美":x.brand):(x.sub_category||x.brand);
   $("mName").value=candidateDisplayName(x);
-  $("mBasisType").value=/100g|100ml/i.test(x.basis||"")?"100g":"serving";
+  $("mBasisType").value=byPiece?"serving":/100g|100ml/i.test(x.basis||"")?"100g":"serving";
   const weight=String(x.basis||"").match(/(\d+(?:\.\d+)?)\s*g\b/i);
-  $("mServingWeight").value=weight&&$("mBasisType").value==="serving"?weight[1]:"";
+  $("mServingWeight").value=x.piece_weight_g!=null?String(x.piece_weight_g):
+    weight&&$("mBasisType").value==="serving"?weight[1]:"";
+  if(byPiece)$("mPieceCount").value="1";
+  updateManualPieceMode();
   for(const [id,val] of [["mK",x.kcal],["mP",x.protein],["mF",x.fat],["mC",x.carbs]]){
     $(id).value=val==null?"":String(val);
   }
   $("mSaveFavorite").checked=true;
   const msg=$("officialFoodReminder");
-  if(msg)msg.textContent=x.brand==="好市多"?
-    "好市多常見大包裝或秤重商品：請先確定營養標示的每份重量，再輸入實際食用量。來源只代表確認品名；未知營養數值不能填 0。":
+  if(msg && byPiece)msg.textContent=(x.nutrition_derivation?x.nutrition_derivation+"。":"")+
+    "目前以每顆計算；若包裝是每100g營養值，請切換標示基準並填入每顆重量後換算。未確認數值請補齊；煎餃額外用油請另外記錄。";
+  else if(msg)msg.textContent=x.brand==="好市多"?
+    "好市多常見大包裝或秤重商品：請先確認營養標示每份重量，再輸入食用量。未知營養數值不能填0。":
     x.source_quality==="third_party_nutrition"?
-    "以下為第三方彙整／夜市份量估算，非官方檢驗資料。請依實際餐點核對份量與數值後再存入。":
-    "來源只有商品名稱或部分營養值，請依包裝補齊熱量、蛋白質、脂肪和碳水；未知不能填成 0。";
+    "資料為第三方整理或份量估算，請自行核對後記錄。":
+    "只有部分營養數值，請依包裝補齊熱量、蛋白質、脂肪和碳水，未知值不可填0。";
   $("boxManualFood").scrollIntoView({block:"start",behavior:"smooth"});
 }
 function buildOfficialCandidateCard(x){
@@ -1440,7 +1461,7 @@ function buildOfficialCandidateCard(x){
   const complete=["kcal","protein","fat","carbs"].every(k=>x[k]!=null);
   note.textContent=(x.source_quality==="third_party_nutrition"?"第三方估算／彙整":complete?"數值待確認":"營養資料待補")+
     (x.market_status==="seasonal"?"｜季節／限時商品":x.market_status==="discontinued"?"｜已下架（歷史保留）":"")+
-    (x.basis?"｜"+x.basis:"");
+    (x.unit_type==="piece"?"｜每顆計算"+(x.piece_weight_g?"・約"+x.piece_weight_g+"g":""):(x.basis?"｜"+x.basis:""));
   const pills=document.createElement("div");pills.className="macro-pills";
   for(const [label,key,cls,unit] of [["熱量","kcal","pill-kcal"," kcal"],["蛋白質","protein","pill-pro"," g"],
   ["脂肪","fat","pill-fat"," g"],["碳水","carbs","pill-carb"," g"]]){
@@ -1449,7 +1470,7 @@ function buildOfficialCandidateCard(x){
   }
   const actions=document.createElement("div");actions.style.cssText="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px";
   const button=document.createElement("button");button.type="button";button.className="sm ghost";
-  button.textContent=complete?"使用參考數值並核對":"補齊數值後記錄";button.onclick=()=>prefillOfficialFood(x);
+  button.textContent=complete?"核對營養並記錄":x.unit_type==="piece"?"補齊每顆營養":"補齊數值後記錄";button.onclick=()=>prefillOfficialFood(x);
   actions.append(button);
   if(/^https:\/\//i.test(x.source_url||"")){
     const a=document.createElement("a");a.href=x.source_url;a.target="_blank";a.rel="noopener noreferrer";
@@ -1480,7 +1501,9 @@ function catalogSubMatch(brand,sub,cat){
 function renderCatalogSection(container,keyword,foods){
   const cat=currentMainCat;container.textContent="";
   const intro=document.createElement("p");intro.className="mute";
-  intro.textContent=cat==="好市多"?
+  intro.textContent=cat==="餃類點心"?
+    "依品牌與口味選取，以顆計算。舊版估算及未具備完整營養標示的商品會顯示待核對；煎餃額外用油與沾醬請另外記錄。":
+    cat==="好市多"?
     "好市多商品包含熟食、烘焙、冷凍冷藏及餐飲部。大包裝、秤重品項須依實際食用份量換算；營養待補品項請核對包裝。各店供應可能不同。":
     "有完整數值的既有食品可直接記錄；商品候選與估算值需核對。收錄不保證門市目前販售。";
   container.append(intro);
@@ -1508,8 +1531,9 @@ function renderCatalogSection(container,keyword,foods){
     const item=r.item,card=document.createElement("div");card.className="food-card";card.style.display="block";
     const h=document.createElement("div");h.className="food-title";h.textContent=item.name;
     const sub=document.createElement("div");sub.className="food-subinfo";
-    sub.textContent=item.basis+"｜"+item.k+" kcal｜P "+item.p+"g｜F "+item.f+"g｜C "+item.c+"g";
-    const button=document.createElement("button");button.type="button";button.className="sm ghost";button.textContent="選取記錄";
+    sub.textContent=item.basis+"｜"+item.k+" kcal｜P "+item.p+"g｜F "+item.f+"g｜C "+item.c+"g"+
+      (item.dataQuality==="legacy_10pieces_scaled_unreviewed"?"｜舊版10顆換算・未核對":"");
+    const button=document.createElement("button");button.type="button";button.className="sm ghost";button.textContent=isPieceFood(item)?"按顆數記錄":"選取記錄";
     button.onclick=()=>{selectFoodItem(item);$("selectedFoodInfo").scrollIntoView({block:"center",behavior:"smooth"})};
     card.append(h,sub,button);container.append(card);
   }
@@ -1738,6 +1762,10 @@ $("mainCatBar").onclick = e => {
   document.querySelectorAll(".main-cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   currentMainCat = btn.dataset.cat;
+  const dumplingView=currentMainCat==="餃類點心";
+  $("dumplingKindBar").classList.toggle("hide",!dumplingView);
+  currentDumplingKind="all";
+  $("dumplingKindBar").querySelectorAll("[data-kind]").forEach(b=>b.classList.toggle("active",b.dataset.kind==="all"));
   chosenFood = null;
   $("selectedFoodInfo").classList.add("hide");
   foodListLimit = 50;
@@ -1758,6 +1786,16 @@ $("subCatBar").onclick = e => {
   renderFoodList();
 };
 
+$("dumplingKindBar").onclick = event => {
+  const btn=event.target.closest("[data-kind]");
+  if(!btn)return;
+  currentDumplingKind=btn.dataset.kind;
+  $("dumplingKindBar").querySelectorAll("[data-kind]").forEach(b=>b.classList.toggle("active",b===btn));
+  chosenFood=null;
+  $("selectedFoodInfo").classList.add("hide");
+  foodListLimit=50;
+  renderFoodList();
+};
 $("foodSearch").oninput = () => {
   clearTimeout(searchDebounceTimer);
   foodListLimit = 50;
