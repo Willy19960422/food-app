@@ -1590,7 +1590,7 @@ async function loadFoodCandidates(session,uid){
     const all=[];
     for(let offset=0;offset<3000;offset+=500){
       const {data,error}=await sbClient.from("food_catalog_candidates")
-        .select("id,brand,name,category,sub_category,kcal,protein,fat,carbs,basis,source_name,source_url,nutrition_status,source_quality,market_status,unit_type,food_kind,piece_weight_g,pieces_per_pack,nutrition_derivation")
+        .select("id,brand,name,category,sub_category,kcal,protein,fat,carbs,basis,source_name,source_url,nutrition_status,source_quality,market_status,unit_type,food_kind,piece_weight_g,pieces_per_pack,nutrition_derivation,product_type,dietary_tags")
         .order("id",{ascending:true}).range(offset,offset+499);
       if(error)throw error;
       if(loginSessionId!==session||currentUser?.id!==uid)return;
@@ -1664,6 +1664,8 @@ const CATALOG_CATEGORIES=["超商鮮食","咖啡輕食","夜市小吃","連鎖�
 const BRAND_NAMES=["麥當勞","肯德基","丹丹漢堡","漢堡王","摩斯漢堡","SUBWAY","星巴克","路易莎","八方雲集","吉野家","四海遊龍","及第","灣仔碼頭","奇美","義美","鼎泰豐","桂冠","台糖","龍鳳","禎祥","大阪王將","王品嚴選","水餃嫂"];
 function normalizedFoodName(x){return String(x||"").toLowerCase().replace(/[\s　_\-－]/g,"")}
 function detectFoodBrand(food){
+  const storeBrand=window.FoodTaxonomy?.brandOf(food)||"";
+  if(storeBrand && FoodTaxonomy.canonicalCategory(food.cat)==="超商鮮食")return storeBrand;
   const sub=food.subCat||"";
   if(food.cat==="好市多" || /^好市多[\s　]/.test(food.name||""))return "好市多";
   if(sub.includes("7-11"))return "7-ELEVEN";
@@ -1754,7 +1756,8 @@ function buildOfficialCandidateCard(x){
   const official=canQuickRecordOfficial(x);
   note.textContent=(official?"台灣品牌官方營養資訊":x.source_quality==="third_party_nutrition"?"第三方估算／彙整":complete?"數值待確認":"營養資料待補")+
     (x.market_status==="seasonal"?"｜季節／限時商品":x.market_status==="discontinued"?"｜已下架（歷史保留）":"")+
-    (x.unit_type==="piece"?"｜每顆計算"+(x.piece_weight_g?"・約"+x.piece_weight_g+"g":""):(x.basis?"｜"+x.basis:""));
+    (x.unit_type==="piece"?"｜每顆計算"+(x.piece_weight_g?"・約"+x.piece_weight_g+"g":""):(x.basis?"｜"+x.basis:""))+
+    (FoodTaxonomy.isProteinHealth(x)?"｜蛋白健康系列":"");
   const pills=document.createElement("div");pills.className="macro-pills";
   for(const [label,key,cls,unit] of [["熱量","kcal","pill-kcal"," kcal"],["蛋白質","protein","pill-pro"," g"],
   ["脂肪","fat","pill-fat"," g"],["碳水","carbs","pill-carb"," g"]]){
@@ -1803,8 +1806,7 @@ function catalogMatch(item,cat){
   if(cat==="好市多")return item.cat==="好市多"||brand==="好市多";
   if(cat==="咖啡輕食")return item.cat==="咖啡輕食";
   if(cat==="餃類點心")return item.cat==="餃類點心";
-  if(cat==="蛋白健康")return item.cat==="超商鮮食"&&(item.p>=20||/雞胸|蛋白|健身|舒肥|蔬滿/.test(item.name));
-  if(cat==="超商鮮食")return item.cat==="超商鮮食"||["7-ELEVEN","全家","萊爾富","OK超商"].includes(brand);
+  if(cat==="超商鮮食")return FoodTaxonomy.canonicalCategory(item.cat)==="超商鮮食";
   if(cat==="夜市小吃")return item.cat==="夜市小吃"||(item.cat==="外食餐飲"&&item.subCat==="台式小吃");
   if(cat==="連鎖餐飲")return item.cat==="連鎖餐飲"||BRAND_NAMES.includes(brand);
   return false;
@@ -1838,9 +1840,11 @@ function renderConvenienceTypeBar(foods) {
   );
   const candidates = [...existing,...additions];
   const counts = new Map(FoodTaxonomy.types.map(kind=>[kind,0]));
+  counts.set("protein",0);
   for(const x of candidates){
     const kind = FoodTaxonomy.typeOf(x);
     counts.set(kind,(counts.get(kind)||0)+1);
+    if(FoodTaxonomy.isProteinHealth(x))counts.set("protein",counts.get("protein")+1);
   }
   if(currentConvenienceKind !== "all" && !counts.get(currentConvenienceKind)){
     currentConvenienceKind="all";
@@ -1870,6 +1874,7 @@ function renderConvenienceTypeBar(foods) {
     bar.append(button);
   };
   makeButton("all","全部品項",candidates.length);
+  if(counts.get("protein"))makeButton("protein","蛋白健康系列",counts.get("protein"));
   const recommended=["御飯糰","飯糰","微波餐盒","三明治","漢堡","熱壓吐司"];
   for(const kind of FoodTaxonomy.types){
     const count=counts.get(kind)||0;
@@ -1898,14 +1903,13 @@ function renderCatalogSection(container,keyword,foods){
     container.append(st);
   }
   const known=foods.filter(f=>catalogMatch(f,cat)&&catalogSubMatch(detectFoodBrand(f),f.subCat||"",cat)&&
-    (cat!=="超商鮮食"||currentConvenienceKind==="all"||FoodTaxonomy.typeOf(f)===currentConvenienceKind)&&
+    (cat!=="超商鮮食"||FoodTaxonomy.matchesKind(f,currentConvenienceKind))&&
     (cat!=="餃類點心"||matchesDumplingKind(f))&&
     (!keyword||[f.name,f.subCat].join(" ").toLowerCase().includes(keyword)));
   const candidates=foodCatalogCandidates.filter(x=>{
     const match=cat==="餃類點心" ? (x.category==="餃類點心" || (x.category==="好市多" && x.unit_type==="piece" && !!x.food_kind)) :
-      cat==="蛋白健康"?x.category==="蛋白健康":
-      cat==="超商鮮食"?["超商鮮食","蛋白健康"].includes(x.category):x.category===cat;
-    return match&&(cat!=="超商鮮食"||currentConvenienceKind==="all"||FoodTaxonomy.typeOf(x)===currentConvenienceKind)&&
+      cat==="超商鮮食"?FoodTaxonomy.canonicalCategory(x.category)==="超商鮮食":x.category===cat;
+    return match&&(cat!=="超商鮮食"||FoodTaxonomy.matchesKind(x,currentConvenienceKind))&&
       (cat!=="餃類點心"||matchesDumplingKind(x))&&(x.market_status!=="discontinued"||!!keyword)&&
       catalogSubMatch(x.brand,x.sub_category||"",cat)&&candidateMatchesSearch(x,keyword)&&
       !candidateHasCompleteDuplicate(x,foods);
