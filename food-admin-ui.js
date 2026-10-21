@@ -30,8 +30,14 @@ function renderItem(row){
  field(card,"熱量 kcal",row.kcal);field(card,"蛋白質 g",row.protein);
  field(card,"脂肪 g",row.fat);field(card,"碳水 g",row.carbs);
  field(card,"來源類型",row.source_type);field(card,"提交時間",row.created_at?.slice(0,10));
+ let mergeControl=null;
  if(row.conflicting_food){
-  field(card,"條碼衝突","共用庫已有「"+row.conflicting_food.name+"」，請先人工合併");
+  field(card,"條碼衝突","共用庫已有「"+row.conflicting_food.name+"」，請核對是否同商品版本");
+  const mergeLabel=document.createElement("label");mergeLabel.className="check-inline";
+  mergeControl=document.createElement("input");mergeControl.type="checkbox";
+  const mergeText=document.createElement("span");
+  mergeText.textContent="已核對現有商品，明確同意用此份營養標示更新該條碼資料";
+  mergeLabel.append(mergeControl,mergeText);card.append(mergeLabel);
  }
  if(typeof row.source_url==="string" && /^https:\/\//i.test(row.source_url)){
   const link=document.createElement("a");link.href=row.source_url;link.target="_blank";
@@ -56,17 +62,20 @@ function renderItem(row){
  checkLabel.append(confirm,checkText);card.append(checkLabel);
  const actions=document.createElement("div");actions.className="food-admin-actions";
  const approve=document.createElement("button");approve.type="button";approve.textContent="核准上架";
- approve.disabled=!!row.conflicting_food || [row.kcal,row.protein,row.fat,row.carbs].some(x=>x==null);
+ approve.disabled=[row.kcal,row.protein,row.fat,row.carbs].some(x=>x==null);
  const reject=document.createElement("button");reject.type="button";reject.className="ghost";
  reject.textContent="退回更正";
  const detail=document.createElement("p");detail.className="mute";detail.setAttribute("role","status");
  const submit=async next=>{
   if(notes.value.trim().length<5){detail.textContent="請先填寫至少五個字的審核原因";return;}
   if(next==="approved"&&!confirm.checked){detail.textContent="請勾選已核對標示";return;}
+  if(next==="approved"&&mergeControl&&!mergeControl.checked){
+   detail.textContent="同條碼資料已有紀錄，請核對並勾選同意合併";return;
+  }
   if(!window.confirm(next==="approved"?"確定將此商品公布到共用庫？":"確定退回此商品？"))return;
   approve.disabled=true;reject.disabled=true;detail.textContent="處理中…";
   try{
-   await call("review",{id:row.id,state:next,notes:notes.value.trim(),confirmed:confirm.checked});
+   await call("review",{id:row.id,state:next,notes:notes.value.trim(),confirmed:confirm.checked,merge_existing:!!mergeControl?.checked});
    detail.textContent="已完成"+(next==="approved"?"核准":"退回");
    await refresh();
   }catch(e){detail.textContent="處理失敗："+e.message;}
