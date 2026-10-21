@@ -240,8 +240,18 @@
       #foodPushCard #foodPushSave{display:none}
     `;
     document.head.append(style);
-    const open=()=>{entryCard.classList.add("hide");card.classList.remove("hide");void loadSettings();window.scrollTo(0,0);};
-    const close=()=>{card.classList.add("hide");entryCard.classList.remove("hide");window.scrollTo(0,0);};
+    const settingsPage=card.parentElement;
+    // Move notification UI into its own screen instead of expanding within Settings.
+    const screen=document.createElement("section");
+    screen.id="foodPushScreen";
+    screen.className="hide food-push-screen";
+    screen.appendChild(card);
+    settingsPage.parentElement.insertBefore(screen,settingsPage.nextSibling);
+    const screenStyle=document.createElement("style");
+    screenStyle.textContent="#foodPushScreen{padding:16px 16px 100px;max-width:760px;margin:0 auto}#foodPushScreen.hide{display:none!important}#foodPushScreen #foodPushCard{margin:0}#foodPushScreen .food-push-back{margin-bottom:16px}";
+    document.head.append(screenStyle);
+    const open=()=>{settingsPage.classList.add("hide");screen.classList.remove("hide");card.classList.remove("hide");void loadSettings();window.scrollTo(0,0);};
+    const close=()=>{screen.classList.add("hide");card.classList.add("hide");settingsPage.classList.remove("hide");entryCard.classList.remove("hide");window.scrollTo(0,0);};
     entry.addEventListener("click",open);back.addEventListener("click",close);
     document.querySelectorAll("#bottomNav button").forEach(btn=>btn.addEventListener("click",close));
     el("foodPushMaster").addEventListener("change",e=>{
