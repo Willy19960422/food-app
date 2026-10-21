@@ -54,6 +54,20 @@ h1{font-size:22px;margin:4px 0 12px;font-weight:700}h2{font-size:17px;margin:0 0
 .fill{height:100%;border-radius:6px;transition:width .4s}
 label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 input,select{width:100%;padding:11px 12px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px}
+/* Notification settings: keep native iPhone time inputs within their fixed flex cell. */
+.food-push-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;min-width:0}
+.food-push-line .check-inline{flex:1 1 auto;min-width:0;margin:0}
+.food-push-time-control{position:relative;flex:0 0 112px;width:112px;max-width:50%;min-width:0;min-height:44px;
+  display:flex;align-items:center;justify-content:center;border:1px solid var(--line);
+  border-radius:10px;background:var(--bg);overflow:hidden;isolation:isolate}
+.food-push-time-text{font:inherit;font-size:14px;pointer-events:none}
+.food-push-time-control input[type="time"]{position:absolute;inset:0;display:block;
+  width:100%;max-width:100%;min-width:0;height:100%;margin:0;padding:0;
+  opacity:0;border:0;cursor:pointer;-webkit-appearance:none;appearance:none}
+.food-push-time-control:focus-within{outline:2px solid var(--brand);outline-offset:2px}
+.food-push-note{font-size:12px;color:var(--mute);margin-top:8px}
+.food-push-status{font-size:13px;color:var(--mute);background:var(--bg);border:1px solid var(--line);padding:10px 12px;border-radius:10px;margin:10px 0}
+
 /* iOS Safari 的原生 type=date 有內建最小寬度，可能撐破飲食紀錄卡片。
    僅限制歷史日期欄位，不影響其他表單與原生日期選擇器。 */
 /* The visible date field is an ordinary bounded element; iOS's native picker is
@@ -594,6 +608,37 @@ nav button.on{color:var(--brand);font-weight:700;box-shadow:inset 0 3px 0 var(--
       <label><input type="radio" name="appTheme" value="light"><span>淺色模式</span></label>
       <label><input type="radio" name="appTheme" value="dark"><span>深色模式</span></label>
     </div>
+  </div>
+
+  <div class="card" id="foodPushCard">
+    <h2>用餐提醒與每日摘要</h2>
+    <p class="mute">通知預設關閉。iPhone 請先從 Safari 將食養紀錄「加入主畫面」，再於此啟用手機通知。通知依台灣時間發送。</p>
+    <div id="foodPushStatus" class="food-push-status" role="status" aria-live="polite">正在確認通知狀態…</div>
+    <div class="food-push-line">
+      <label class="check-inline" for="foodPushBreakfast"><input id="foodPushBreakfast" type="checkbox" checked><span>早餐提醒</span></label>
+      <div class="food-push-time-control"><span class="food-push-time-text" id="foodPushBreakfastTimeDisplay" aria-hidden="true">09:00</span><input id="foodPushBreakfastTime" type="time" value="09:00" aria-label="早餐提醒時間"></div>
+    </div>
+    <div class="food-push-line">
+      <label class="check-inline" for="foodPushLunch"><input id="foodPushLunch" type="checkbox" checked><span>午餐提醒</span></label>
+      <div class="food-push-time-control"><span class="food-push-time-text" id="foodPushLunchTimeDisplay" aria-hidden="true">13:00</span><input id="foodPushLunchTime" type="time" value="13:00" aria-label="午餐提醒時間"></div>
+    </div>
+    <div class="food-push-line">
+      <label class="check-inline" for="foodPushDinner"><input id="foodPushDinner" type="checkbox" checked><span>晚餐提醒</span></label>
+      <div class="food-push-time-control"><span class="food-push-time-text" id="foodPushDinnerTimeDisplay" aria-hidden="true">19:00</span><input id="foodPushDinnerTime" type="time" value="19:00" aria-label="晚餐提醒時間"></div>
+    </div>
+    <div class="food-push-line">
+      <label class="check-inline" for="foodPushSummary"><input id="foodPushSummary" type="checkbox" checked><span>每日營養摘要</span></label>
+      <div class="food-push-time-control"><span class="food-push-time-text" id="foodPushSummaryTimeDisplay" aria-hidden="true">21:00</span><input id="foodPushSummaryTime" type="time" value="21:00" aria-label="營養摘要時間"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="foodPushEnable" type="button">啟用手機通知</button>
+      <button id="foodPushDisable" type="button" class="ghost">停用通知</button>
+    </div>
+    <div class="row">
+      <button id="foodPushSave" type="button" class="ghost">儲存提醒時間</button>
+      <button id="foodPushTest" type="button" class="ghost">傳送測試通知</button>
+    </div>
+    <p class="food-push-note">已有雲端紀錄的餐別不重複提醒；若尚未同步，提醒不代表你未用餐。摘要只統計已同步的資料，並受 iOS 通知／專注模式設定影響。</p>
   </div>
 
   <div class="card">
@@ -3405,6 +3450,7 @@ window.addEventListener("DOMContentLoaded", () => {
   renderSync(); checkDraft();
 })();
 </script>
+<script defer src="./push-settings.js"></script>
 
 </body>
 </html>
