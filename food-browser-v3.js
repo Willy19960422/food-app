@@ -30,7 +30,14 @@
 
   function categoryOf(item){
     const raw=item.cat===undefined?item.category:item.cat;
-    return ctx.taxonomy.canonicalCategory(raw);
+    const category=ctx.taxonomy.canonicalCategory(raw);
+    // Older official foods were flattened into 外食餐飲 on import. Keep
+    // McDonald's/KFC/etc. reachable under the original chain-restaurant menu.
+    if(category==="外食餐飲" && item.cat!==undefined){
+      const brand=ctx.detectBrand(item);
+      if((ctx.subCategories["連鎖餐飲"]||[]).includes(brand))return "連鎖餐飲";
+    }
+    return category;
   }
   function itemBrand(item){
     if(categoryOf(item)==="超商鮮食"){
