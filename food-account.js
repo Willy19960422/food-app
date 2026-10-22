@@ -77,6 +77,9 @@ async function exportRecords(format){
     profile:S.me,targets:S.customTargets||null,
     daily_targets:S.dailyTargets||{},favorites:S.customFavorites||[],
     combos:S.mealCombos||[],weights:weightRows,
+    // Keep locally detected legacy-only entries without silently uploading
+    // records that may have been intentionally deleted from the cloud.
+    recovered_local_only_logs:S.localRecovery||[],
     logs,source:cloud?"雲端與手機紀錄合併":"僅離線手機紀錄"};
    makeDownload("食養紀錄-個人完整備份-"+dt+".json",JSON.stringify(complete,null,2),
     "application/json;charset=utf-8");
@@ -111,7 +114,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const account=screens.find(x=>x.querySelector("h2")?.textContent==="帳號設定");
  if(!account)return;
  const backup=document.createElement("div");backup.className="card";
- backup.innerHTML='<h2>個人資料備份</h2><p class="mute">下載 JSON（包含體重、目標與套餐）或 CSV（飲食明細）。建議定期備份。</p>'+
+ backup.innerHTML='<h2>個人資料備份</h2><p class="mute">下載 JSON（包含體重、目標與套餐）或 CSV（飲食明細）。偵測到不同步的舊紀錄時，完整 JSON 也會包含獨立的復原區，不會自動重複上傳。</p>'+
   '<div class="food-account-actions"><button type="button" class="ghost" id="foodExportJson">下載完整 JSON</button>'+
   '<button type="button" class="ghost" id="foodExportCsv">下載 CSV 明細</button></div>'+
   '<p id="foodExportStatus" class="mute" role="status"></p>';
