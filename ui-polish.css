@@ -1,0 +1,361 @@
+/* Food Diary | cohesive compact UI · v2026-10-22
+   Presentation-only layer. No changes to food quantities, storage or network.
+   Applies to Today / Add / Scan / Catalog / History / Settings / Account.
+   Uses existing color tokens so native light/dark themes keep working. */
+:root {
+  --ui-radius:12px;
+  --ui-card-radius:16px;
+  --ui-shadow:0 2px 12px rgba(9,55,44,.035);
+  --ui-ease:cubic-bezier(.2,.75,.3,1);
+}
+body {
+  font-size:14px;
+  line-height:1.52;
+  overflow-x:hidden;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom,0px));
+  -webkit-font-smoothing:antialiased;
+}
+main {
+  max-width:540px;
+  padding:clamp(12px,3.5vw,18px);
+  min-width:0;
+}
+main > section {min-width:0;}
+main > section > h1 {
+  font-size:20px;
+  line-height:1.35;
+  letter-spacing:.015em;
+  margin:2px 0 12px;
+}
+h2 {font-size:16px;line-height:1.38;margin:0 0 10px;}
+h3 {font-size:14px;line-height:1.45;}
+.card {
+  min-width:0;
+  margin-bottom:11px;
+  padding:14px;
+  border-radius:var(--ui-card-radius);
+  box-shadow:var(--ui-shadow);
+}
+.big {font-size:29px;line-height:1.12;}
+.mute {font-size:12px;line-height:1.5;}
+label {font-size:12px;line-height:1.5;margin:10px 0 5px;}
+input,select,textarea {
+  min-width:0;
+  min-height:44px;
+  max-width:100%;
+  padding:10px 11px;
+  border-radius:10px;
+  font-size:16px; /* Avoid WebKit focus zoom */
+  line-height:1.35;
+}
+input[type="radio"],input[type="checkbox"] {
+  min-height:0;
+  accent-color:var(--brand);
+}
+input:focus-visible,select:focus-visible,textarea:focus-visible {
+  outline:2px solid var(--brand);
+  outline-offset:2px;
+  border-color:var(--brand);
+}
+button {
+  min-width:0;
+  min-height:44px;
+  font-size:14px;
+  line-height:1.4;
+  padding:10px 13px;
+  border-radius:11px;
+  font-weight:600;
+  transition:background-color .16s var(--ui-ease),
+    border-color .16s var(--ui-ease),
+    opacity .16s var(--ui-ease);
+  touch-action:manipulation;
+}
+button:focus-visible,[role="button"]:focus-visible,a:focus-visible {
+  outline:2px solid var(--brand);
+  outline-offset:2px;
+}
+button.ghost {
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--brand);
+}
+button.ghost:active {background:var(--brand-light);}
+button.sm {min-height:35px;padding:6px 9px;font-size:12px;}
+button:disabled {opacity:.48;}
+.row,.action-grid,.goals,.theme-options,.segmented {min-width:0;}
+.row > *, .segmented > *, .action-grid > * {min-width:0;}
+.segmented {gap:6px;margin:8px 0 12px;}
+.segmented button {
+  min-height:43px;
+  border-radius:10px;
+  margin:0;
+  padding:8px 5px;
+  font-size:13px;
+}
+.segmented button.active {box-shadow:none;}
+.theme-options label,.goals label {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:43px;
+  padding:8px 5px;
+  border-radius:10px;
+  font-size:12px;
+  text-align:center;
+  line-height:1.4;
+}
+.meal-tabs {gap:6px;margin:8px 0 12px;}
+.meal-tabs label {
+  display:flex;align-items:center;justify-content:center;
+  min-height:42px;
+  padding:8px 2px;
+  border-radius:10px;
+  font-size:12px;
+}
+.fold-box {padding:12px;border-radius:12px;}
+.tool-actions {grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.tool-actions #toggleCombosBtn {grid-column:1/-1;}
+.tool-btn {
+  min-height:43px;
+  font-size:12px;
+  line-height:1.45;
+  padding:9px 7px;
+}
+.action-grid {gap:8px;margin:10px 0;}
+.action-card {
+  min-height:82px;
+  gap:5px;
+  padding:12px 9px;
+  border-radius:13px;
+}
+.action-card .act-title {font-size:14px;}
+.action-card .act-desc {font-size:11px;line-height:1.35;}
+.meal-block {padding:10px 0 6px;}
+.meal-title {font-size:14px;}
+.meal-summary,.empty-meal {font-size:12px;}
+.item {min-width:0;gap:8px;padding:10px 0;}
+.item > :first-child {min-width:0;overflow-wrap:anywhere;}
+.loading-box {padding:12px 0;font-size:12px;}
+.msg,.auth-msg {font-size:12px;line-height:1.5;}
+.recent-box {padding:10px 11px;}
+.recent-chips-box {gap:5px;}
+/* Main navigation: preserve existing routing and active class. */
+#bottomNav {
+  min-height:62px;
+  align-items:stretch;
+  z-index:90;
+  border-top:1px solid var(--line);
+  box-shadow:0 -3px 13px rgba(5,40,31,.035);
+}
+#bottomNav button {
+  flex:1 1 0;
+  min-height:58px;
+  margin:0;
+  padding:11px 2px 10px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:var(--mute);
+  font-size:14px;
+  font-weight:500;
+  box-shadow:none;
+}
+#bottomNav button.on {
+  font-weight:700;
+  color:var(--brand);
+  box-shadow:inset 0 2px 0 var(--brand);
+}
+#bottomNav button:focus-visible {outline-offset:-3px;}
+/* Date and day history need shorter, readable cards. */
+#p-hist .history-date-control {min-height:46px;border-radius:10px;}
+#p-hist .history-date-display {font-size:15px;padding:9px 10px;}
+#p-hist #hSum,#p-hist #hLog,#p-hist #hDays {min-width:0;overflow-wrap:anywhere;}
+/* Food browse: compact hierarchy without weakening the full product labels. */
+#boxSelectFood .food-v3-tile {border-radius:12px;min-height:66px;padding:10px 6px;gap:3px;}
+#boxSelectFood .food-v3-tile-name {font-size:13px;}
+#boxSelectFood .food-v3-three .food-v3-tile-name {font-size:12px;}
+#boxSelectFood .food-v3-tile-count {font-size:10px;}
+#boxSelectFood .food-v3-heading {font-size:16px;}
+#boxSelectFood .food-v3-toolbar {margin:0 0 9px;gap:6px;}
+#boxSelectFood .food-v3-back {min-height:38px;font-size:12px;padding:7px 10px;}
+#boxSelectFood .food-v3-pagination button {min-height:42px;}
+/* Camera, barcode and manual-entry share the same form controls. */
+#p-cam .card,#p-list .card,#p-add .card {min-width:0;}
+#p-cam .segmented button {font-size:12px;}
+#reader {border-radius:12px;}
+#p-cam .loading-box {font-size:12px;}
+/* Settings entry tiles and independent subpages. */
+#p-me .card {min-width:0;}
+#settingsMenu {gap:8px!important;margin-bottom:12px!important;}
+#settingsMenu .settings-menu-item,
+#settingsMenu #foodPushOpen {
+  padding:13px 14px!important;
+  min-height:66px;
+  margin:0!important;
+  border:1px solid var(--line)!important;
+  border-radius:13px!important;
+  background:var(--card)!important;
+  box-shadow:var(--ui-shadow);
+  color:var(--ink)!important;
+  font-size:14px!important;
+  font-weight:650!important;
+  line-height:1.4!important;
+}
+#settingsMenu .settings-menu-item small,
+#settingsMenu #foodPushOpen small {
+  display:block;
+  font-size:11px!important;
+  margin-top:4px;
+  line-height:1.4;
+  font-weight:400;
+  color:var(--mute)!important;
+}
+#settingsMenu .settings-menu-item:active,
+#settingsMenu #foodPushOpen:active {background:var(--brand-light)!important;}
+#p-me .settings-back {
+  display:inline-flex;
+  min-height:40px;
+  width:auto;
+  padding:8px 11px;
+  margin:0 0 11px;
+  font-size:12px;
+  border-color:var(--line);
+}
+#p-me .settings-subpage > h2 {
+  margin:0 0 12px;
+  font-size:18px;
+  line-height:1.4;
+}
+#p-me .settings-subpage > .card {margin-bottom:10px;}
+#p-me .ui-scale-field {min-width:0;}
+#p-me #uiScaleOptions {min-width:0;}
+#p-me #uiScaleOptions button {font-size:12px;min-height:42px;}
+#p-me .check-inline input {width:18px;height:18px;min-height:0;flex-shrink:0;}
+#p-me .food-push-line {gap:9px;padding:8px 0;border-bottom:1px solid var(--line);}
+#p-me .food-push-line:last-of-type {border-bottom:0;}
+#p-me .food-push-line .check-inline {margin:0;font-size:13px;}
+#p-me .food-push-time-control {min-height:40px;border-radius:10px;}
+#p-me .food-push-time-text {font-size:13px;}
+#p-me .food-push-status {
+  font-size:12px;
+  line-height:1.5;
+  padding:9px 11px;
+  border-radius:10px;
+}
+#p-me .food-push-note {line-height:1.5;}
+/* Food selection sheet: header is a title + a small unobtrusive X. */
+#selectedFoodInfo .food-v2-sheet-header {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin:0 0 7px;
+  min-width:0;
+}
+#selectedFoodInfo #selFoodName {
+  flex:1 1 auto;
+  min-width:0;
+  margin:0!important;
+  font-size:17px!important;
+  line-height:1.42;
+  font-weight:700!important;
+  overflow-wrap:anywhere;
+}
+#selectedFoodInfo #selFoodDetail {
+  margin:0 0 11px!important;
+  font-size:12px!important;
+  line-height:1.55;
+  color:var(--mute);
+}
+#selectedFoodInfo .food-quantity-card {
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px!important;
+  margin:8px 0 11px!important;
+}
+#selectedFoodInfo #selQuantityHeading {font-size:13px;line-height:1.4;font-weight:700;}
+#selectedFoodInfo #cfQuantityLabel {font-size:11px;line-height:1.5;}
+#selectedFoodInfo #cfN,#selectedFoodInfo #selWeightInput {min-height:42px;}
+#selectedFoodInfo #cfChips {gap:6px;}
+#selectedFoodInfo #cfChips .serving-chip {font-size:12px;min-height:42px;}
+#selectedFoodInfo #cfAdd {
+  min-height:46px;
+  margin:7px 0 0;
+  font-size:14px;
+  font-weight:700;
+  border-radius:11px;
+}
+#selectedFoodInfo.food-v2-open {
+  border:1px solid var(--line)!important;
+  border-radius:18px!important;
+  box-shadow:0 16px 48px rgba(5,31,24,.2)!important;
+  background:var(--card)!important;
+}
+/* Smaller visible X, but still an accessible 40px tap target. */
+#selectedFoodInfo.food-v2-open .food-v2-close,
+#editLogModal .ui-dialog-close {
+  flex:0 0 40px;
+  width:40px!important;
+  height:40px!important;
+  min-height:40px!important;
+  padding:0!important;
+  margin:0!important;
+  border:1px solid var(--line)!important;
+  border-radius:50%!important;
+  background:var(--bg)!important;
+  color:var(--mute)!important;
+  box-shadow:none!important;
+  font-family:system-ui,sans-serif;
+  font-size:24px!important;
+  font-weight:400!important;
+  line-height:1!important;
+  display:flex!important;
+  align-items:center;
+  justify-content:center;
+}
+#selectedFoodInfo.food-v2-open .food-v2-close:active,
+#editLogModal .ui-dialog-close:active {
+  background:var(--brand-light)!important;
+  color:var(--brand)!important;
+}
+#foodV2SheetBackdrop {background:rgba(7,26,22,.42)!important;}
+/* Edit log dialog: same header and form language. */
+#editLogModal {
+  padding:clamp(10px,3.5vw,18px);
+  background:rgba(7,26,22,.45);
+}
+#editLogModal .modal-card {
+  max-width:430px;
+  min-width:0;
+  max-height:min(82dvh,660px);
+  overflow-y:auto;
+  padding:15px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:0 16px 48px rgba(5,31,24,.18);
+}
+#editLogModal .ui-dialog-header {
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:10px;margin-bottom:9px;
+}
+#editLogModal .ui-dialog-header h2 {flex:1;margin:5px 0 0;font-size:17px;}
+#editLogModal .row {gap:8px;}
+#editLogModal .row button {min-height:44px;font-size:13px;}
+/* Dark theme consistently uses existing semantic tokens. */
+:root[data-theme="dark"] {
+  --ui-shadow:0 3px 15px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) {--ui-shadow:0 3px 15px rgba(0,0,0,.12);}
+}
+@media (max-width:350px){
+  main {padding:11px;}
+  .card {padding:11px;}
+  #selectedFoodInfo #selFoodName {font-size:15px!important;}
+  #selectedFoodInfo #cfChips {gap:4px;}
+  #selectedFoodInfo #cfChips .serving-chip {font-size:11px;}
+  #boxSelectFood .food-v3-three {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after {scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important;}
+}
