@@ -147,4 +147,20 @@ check("Local-only diet entries stay recoverable without undoing cloud deletions"
  assert.ok(html.includes("偵測到本機舊紀錄備份"));
 });
 
+check("Offline backups do not require cached weight history",()=>{
+ const code=read("food-account.js");
+ assert.ok(code.includes('return window.foodV2GetWeights?.()||[];'));
+ assert.ok(code.includes("weights_complete:navigator.onLine"));
+ assert.ok(code.includes("recovered_local_only_logs:S.localRecovery||[]"));
+ assert.ok(code.includes("請連線後再下載完整備份"));
+});
+check("Food quantity modal traps keyboard Tab while preserving Escape",()=>{
+ const code=read("food-sheet.js");
+ assert.ok(code.includes('event.key!=="Tab"'));
+ assert.ok(code.includes('event.shiftKey'));
+ assert.ok(code.includes('event.preventDefault();first.focus()'));
+ assert.ok(code.includes('event.preventDefault();last.focus()'));
+ assert.ok(code.includes('event.key==="Escape"'));
+});
+
 console.log("Comprehensive v2 regression tests passed:",passed);
