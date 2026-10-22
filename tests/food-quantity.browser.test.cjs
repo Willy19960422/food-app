@@ -15,7 +15,9 @@ assert.ok(beginning>0&&ending>beginning);
 const markup=html.slice(beginning,ending);
 const selection=extract('let selCalcMode = "serv";','let scanCalcMode = "serv";');
 const saving=extract('$("cfAdd").onclick = () => {','function validateNutrition(');
-const bind=extract('function bindChipGroup(groupId, inputId) {','function enableDesktopDragScroll(');
+// Pull only the delegation function. The full App also initializes the scan
+// chip group, which is intentionally absent from this isolated food-sheet fixture.
+const bind=extract('function bindChipGroup(groupId, inputId) {','bindChipGroup("servChips", "serv");');
 const chrome=[process.env.CHROME_PATH,"google-chrome","chromium","google-chrome-stable","chromium-browser"]
  .filter(Boolean).find(bin=>cp.spawnSync("which",[bin],{encoding:"utf8"}).status===0);
 assert.ok(chrome,"Chromium browser required");
