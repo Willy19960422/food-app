@@ -18,9 +18,9 @@ check("All inline and new external scripts parse",()=>{
 check("Visual assets are versioned and included in the offline shell",()=>{
   assert.ok(html.includes('<link rel="stylesheet" href="./ui-polish.css?v=20261022-1">'));
   assert.ok(html.includes('src="./ui-polish.js?v=20261022-1"'));
-  assert.ok(html.includes('src="./food-sheet.js?v=20261022-ui1"'));
+  assert.ok(html.includes('src="./food-sheet.js?v=20261022-center1"'));
   assert.ok(sw.includes('"./ui-polish.css","./ui-polish.js"'));
-  assert.ok(sw.includes('food-shell-20261022-ui-polish-1'));
+  assert.ok(sw.includes('food-shell-20261022-centered-quantity-1'));
 });
 check("Food sheet Close control is only one unobtrusive accessible X",()=>{
   assert.ok(sheet.includes('exit.textContent="×"'));
