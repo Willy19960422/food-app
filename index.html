@@ -2188,73 +2188,133 @@ function renderFoodList() {
 
 let selCalcMode = "serv";
 
+// The nutrition basis is the only reliable way to interpret a quantity.
+// "半包" must never mean "0.5 份" unless the nutrition basis is per pack.
+function foodQuantitySpec(item) {
+  const basis=String(item?.basis||"").replace(/\s+/g,"");
+  const piece=isPieceFood(item);
+  const pack=!piece && /^(?:每|1|一)(?:包|袋)(?:$|[（(])/u.test(basis);
+  const packUnit=/袋/.test(basis)?"袋":"包";
+  const basisUnit=item?.basisType==="100ml"?"ml":"g";
+  const per100=item?.basisType==="100g"||item?.basisType==="100ml";
+  if(piece)return {
+    unit:"顆",label:"顆數（營養標示以每顆計）",mode:"按顆數",
+    presets:[[1,"1 顆"],[5,"5 顆"],[8,"8 顆"],[10,"10 顆"]], min:"1",step:"1",
+    kind:"piece"
+  };
+  if(pack)return {
+    unit:packUnit,label:packUnit+"數（營養標示以每"+packUnit+"計）",
+    mode:"按"+packUnit+"數",
+    presets:[[0.25,"¼ "+packUnit],[0.5,"半"+packUnit],[1,"整"+packUnit],[2,"2 "+packUnit]],
+    min:"0.25",step:"0.25",kind:"pack"
+  };
+  if(per100)return {
+    unit:"倍",label:"營養基準倍數（1 倍 = 100 "+basisUnit+"）",
+    mode:"按基準倍數",
+    presets:[[0.5,"0.5 倍"],[1,"1 倍"],[1.5,"1.5 倍"],[2,"2 倍"]],
+    min:"0.25",step:"0.25",kind:"per100",basisUnit
+  };
+  return {
+    unit:"份",label:"份數（營養標示以每份計）",mode:"按份數",
+    presets:[[0.5,"0.5 份"],[1,"1 份"],[1.5,"1.5 份"],[2,"2 份"]],
+    min:"0.25",step:"0.25",kind:"serving"
+  };
+}
+
+// One conversion for both the live preview and the saved log multiplier.
+function foodQuantityFactor(item, mode, countRaw, weightRaw) {
+  if(!item)return {error:"請先選取食物。"};
+  const spec=foodQuantitySpec(item);
+  if(mode==="serv"){
+    const raw=String(countRaw??"").trim(),n=Number(raw);
+    if(!raw||!Number.isFinite(n)||n<=0)
+      return {error:"請輸入大於 0 的有效"+spec.unit+"數。"};
+    if(spec.kind==="piece"&&(!Number.isInteger(n)||n>200))
+      return {error:"顆數請輸入 1 至 200 的整數。"};
+    if(n>200)return {error:"數量過大，請確認實際食用量。"};
+    const display=spec.kind==="per100"?
+      (Math.round(n*10000)/100)+" "+spec.basisUnit:
+      (Math.round(n*100)/100)+" "+spec.unit;
+    return {factor:n,display};
+  }
+  const raw=String(weightRaw??"").trim(),w=Number(raw);
+  if(!raw||!Number.isFinite(w)||w<=0)
+    return {error:"請輸入大於 0 的有效食用重量或容量。"};
+  const denominator=(item.basisType==="100g"||item.basisType==="100ml")?
+    100:Number(item.servingWeight);
+  if(!Number.isFinite(denominator)||denominator<=0)
+    return {error:"此商品缺少每份重量基準，無法依重量換算。"};
+  const factor=w/denominator;
+  if(!Number.isFinite(factor)||factor<=0||factor>200)
+    return {error:"食用量超出合理換算範圍，請檢查重量。"};
+  return {factor,weight:w,display:w+(item.basisType==="100ml"?" ml":" g")};
+}
+
 function selectFoodItem(item) {
-  chosenFood = item;
-  const pieces=isPieceFood(item);
-  $("cfQuantityLabel").textContent=pieces?"顆數":"份數";
-  $("selModeServ").textContent=pieces?"按顆數":"按份數";
-  $("cfN").min=pieces?"1":"0.5";
-  $("cfN").step=pieces?"1":"0.5";
-  const presets=pieces?[[1,"1 顆"],[5,"5 顆"],[8,"8 顆"],[10,"10 顆"]]:
-    [[0.5,"0.5 份"],[1,"1 份"],[1.5,"1.5 份"],[2,"2 份"]];
-  $("cfChips").innerHTML=presets.map(([num,label])=>
-    '<div class="serving-chip'+(num===1?' active':'')+'" data-v="'+num+'">'+label+'</div>').join("");
+  chosenFood=item;
+  const spec=foodQuantitySpec(item);
+  $("cfQuantityLabel").textContent=spec.label;
+  $("selModeServ").textContent=spec.mode;
+  $("cfN").min=spec.min;
+  $("cfN").step=spec.step;
+  $("cfN").inputMode=spec.kind==="piece"?"numeric":"decimal";
+  $("cfChips").innerHTML=spec.presets.map(([num,label])=>
+    '<button type="button" class="serving-chip'+(num===1?' active':'')+
+    '" data-v="'+num+'" aria-pressed="'+(num===1)+'">'+label+'</button>').join("");
   $("selectedFoodInfo").classList.remove("hide");
-  $("selFoodName").textContent = item.name;
+  $("selFoodName").textContent=item.name;
 
-  const is100g = item.basisType === "100g" || item.basisType === "100ml";
-  const hasWeight = item.servingWeight && item.servingWeight > 0;
-
-  if (is100g || hasWeight) {
-    $("selModeWeight").classList.remove("hide");
-    $("selWeightLabel").textContent = is100g ? (item.basisType==="100ml"?"實際食用容量（ml，每 100ml 基準）":"實際食用重量（g，每 100g 基準）") : `實際食用重量 (g/ml，每份基準 ${item.servingWeight}g)`;
-  } else {
-    $("selModeWeight").classList.add("hide");
+  const is100g=item.basisType==="100g"||item.basisType==="100ml";
+  const hasWeight=Number(item.servingWeight)>0;
+  const weightPossible=is100g||hasWeight;
+  $("selQuantityModes").classList.toggle("hide",!weightPossible);
+  $("selModeWeight").classList.toggle("hide",!weightPossible);
+  if(weightPossible){
+    $("selWeightLabel").textContent=is100g?
+      (item.basisType==="100ml"?"實際食用容量（ml，每 100ml 基準）":"實際食用重量（g，每 100g 基準）"):
+      "實際食用重量／容量（每份 "+item.servingWeight+" g/ml）";
   }
 
-  $("cfN").value = 1;
-  $("selWeightInput").value = is100g ? 100 : (hasWeight ? item.servingWeight : "");
+  $("cfN").value="1";
+  $("selWeightInput").value=is100g?"100":hasWeight?String(item.servingWeight):"";
   setSelCalcMode("serv");
-
-  document.querySelectorAll("#cfChips .serving-chip").forEach(c => c.classList.toggle("active", c.dataset.v === "1"));
   renderFoodList();
   window.foodV2OpenSheet?.();
 }
 
 function setSelCalcMode(mode) {
-  selCalcMode = mode;
-  $("selModeServ").classList.toggle("active", mode === "serv");
-  $("selModeWeight").classList.toggle("active", mode === "weight");
-  $("selBoxModeServ").classList.toggle("hide", mode !== "serv");
-  $("selBoxModeWeight").classList.toggle("hide", mode !== "weight");
+  if(mode==="weight" && $("selQuantityModes").classList.contains("hide"))
+    mode="serv";
+  selCalcMode=mode;
+  $("selModeServ").classList.toggle("active",mode==="serv");
+  $("selModeWeight").classList.toggle("active",mode==="weight");
+  $("selModeServ").setAttribute("aria-pressed",String(mode==="serv"));
+  $("selModeWeight").setAttribute("aria-pressed",String(mode==="weight"));
+  $("selBoxModeServ").classList.toggle("hide",mode!=="serv");
+  $("selBoxModeWeight").classList.toggle("hide",mode!=="weight");
   updateSelFoodDetailDisplay();
 }
 
-$("selModeServ").onclick = () => setSelCalcMode("serv");
-$("selModeWeight").onclick = () => setSelCalcMode("weight");
+$("selModeServ").onclick=()=>setSelCalcMode("serv");
+$("selModeWeight").onclick=()=>setSelCalcMode("weight");
 
 function updateSelFoodDetailDisplay() {
-  if (!chosenFood) return;
-  const item = chosenFood;
-  if (selCalcMode === "serv") {
-    const n = +$("cfN").value || 1;
-    $("selFoodDetail").textContent = (isPieceFood(item)?n+" 顆":"每 "+item.basis+"（"+Math.round(n*100)/100+" 份）")+
-      "："+Math.round(item.k*n)+" 大卡・蛋白質 "+Math.round(item.p*n*10)/10+"g・脂肪 "+
-      Math.round(item.f*n*10)/10+"g・碳水 "+Math.round(item.c*n*10)/10+"g";
-  } else {
-    const w = +$("selWeightInput").value || 0;
-    let ratio = 1;
-    if (item.basisType === "100g"||item.basisType==="100ml") {
-      ratio = w / 100;
-    } else if (item.servingWeight && item.servingWeight > 0) {
-      ratio = w / item.servingWeight;
-    }
-    $("selFoodDetail").textContent = `食用 ${w}g：${Math.round(item.k * ratio)} 大卡・蛋白質 ${Math.round(item.p * ratio * 10)/10}g・脂肪 ${Math.round(item.f * ratio * 10)/10}g・碳水 ${Math.round(item.c * ratio * 10)/10}g`;
+  if(!chosenFood)return;
+  const value=foodQuantityFactor(chosenFood,selCalcMode,$("cfN").value,$("selWeightInput").value);
+  if(value.error){
+    $("selFoodDetail").textContent=value.error;
+    return;
   }
+  const f=value.factor,item=chosenFood;
+  $("selFoodDetail").textContent="食用 "+value.display+"："+
+    Math.round(item.k*f)+" 大卡・蛋白質 "+
+    Math.round(item.p*f*10)/10+"g・脂肪 "+
+    Math.round(item.f*f*10)/10+"g・碳水 "+
+    Math.round(item.c*f*10)/10+"g";
 }
 
-$("cfN").oninput = updateSelFoodDetailDisplay;
-$("selWeightInput").oninput = updateSelFoodDetailDisplay;
+$("cfN").oninput=updateSelFoodDetailDisplay;
+$("selWeightInput").oninput=updateSelFoodDetailDisplay;
 
 let scanCalcMode = "serv";
 function setScanCalcMode(mode) {
@@ -2394,41 +2454,19 @@ $("foodSearch").oninput = () => {
 };
 
 $("cfAdd").onclick = () => {
-  if (!chosenFood) return alert("請先選取食物");
-  let finalServings = 1;
-  let logName = chosenFood.name + "（" + chosenFood.basis + "）";
-  let multiplier = 1;
-
-  if (selCalcMode === "serv") {
-    finalServings = Number($("cfN").value);
-    if(!Number.isFinite(finalServings)||finalServings<=0)return alert("請輸入有效的食用數量。");
-    if(isPieceFood(chosenFood)&&(!Number.isInteger(finalServings)||finalServings>200))
-      return alert("顆數請輸入 1 至 200 的整數。");
-    multiplier = finalServings;
-    if(isPieceFood(chosenFood))logName=chosenFood.name+"（每顆）";
-  } else {
-    const w = +$("selWeightInput").value || 0;
-    if (w <= 0) return alert("請輸入有效的食用重量！");
-    if (chosenFood.basisType === "100g"||chosenFood.basisType==="100ml") {
-      multiplier = w / 100;
-    } else if (chosenFood.servingWeight && chosenFood.servingWeight > 0) {
-      multiplier = w / chosenFood.servingWeight;
-    } else {
-      return alert("此商品未提供每份重量基準，無法進行重量換算。");
-    }
-    logName = `${chosenFood.name} (${w}${chosenFood.basisType==="100ml"?"ml":"g"})`;
-    finalServings = multiplier;
+  if(!chosenFood)return alert("請先選取食物。");
+  const selected=foodQuantityFactor(chosenFood,selCalcMode,$("cfN").value,$("selWeightInput").value);
+  if(selected.error)return alert(selected.error);
+  let logName=chosenFood.name+"（"+chosenFood.basis+"）";
+  if(selCalcMode==="weight"){
+    const unit=chosenFood.basisType==="100ml"?"ml":"g";
+    logName=chosenFood.name+" ("+selected.weight+unit+")";
+  }else if(isPieceFood(chosenFood)){
+    logName=chosenFood.name+"（每顆）";
   }
-
-  addLog({
-    name: logName,
-    k: chosenFood.k,
-    p: chosenFood.p,
-    f: chosenFood.f,
-    c: chosenFood.c
-  }, finalServings);
-
-  chosenFood = null;
+  addLog({name:logName,k:chosenFood.k,p:chosenFood.p,f:chosenFood.f,c:chosenFood.c},
+    selected.factor);
+  chosenFood=null;
   window.foodV2CloseSheet?.();
   $("selectedFoodInfo").classList.add("hide");
   showView("today");
