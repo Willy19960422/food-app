@@ -7,6 +7,9 @@ const backdrop=()=>document.getElementById("foodV2SheetBackdrop");
 function close(){
  const node=sheet();
  node?.classList.remove("food-v2-open");
+ // Leaving the dialog open in page flow after dismissing caused duplicate
+ // controls below the food grid. Always hide it on close, including backdrop.
+ node?.classList.add("hide");
  backdrop()?.classList.add("hide");
  document.body.classList.remove("food-v2-sheet-active");
  if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
@@ -24,7 +27,11 @@ function open(){
  if(!node||node.classList.contains("hide"))return;
  previousFocus=document.activeElement;
  fitToViewport(node);
- node.classList.add("food-v2-open");node.setAttribute("role","dialog");
+ node.classList.add("food-v2-open");
+ // Reopening the same DOM node otherwise preserves an old scroll position:
+ // the selected food title and close button can appear cut off above the top.
+ node.scrollTop=0;
+ node.setAttribute("role","dialog");
  node.setAttribute("aria-modal","true");node.setAttribute("aria-label","選取食品與食用份量");
  backdrop()?.classList.remove("hide");
  document.body.classList.add("food-v2-sheet-active");
@@ -67,7 +74,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  "z-index:95;touch-action:manipulation}"+
  "#selectedFoodInfo.food-v2-open{display:block!important;position:fixed;"+
  "left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));"+
- "width:min(calc(100vw - 24px),480px);max-height:min(65dvh,650px);overflow:auto;"+
+ "width:min(calc(100vw - 24px),480px);max-height:min(73dvh,600px);overflow:auto;"+
  "overscroll-behavior:contain;z-index:96;padding:16px!important;margin:0!important;"+
  "border:2px solid var(--brand);border-radius:17px;background:var(--card);"+
  "box-shadow:0 8px 36px rgba(0,0,0,.26)}"+

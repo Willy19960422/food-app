@@ -48,7 +48,8 @@ check("History and totals label unknown rather than claiming zero intake",()=>{
  assert.ok(read("food-trends.js").includes("無紀錄不代表攝取 0"));
 });
 check("Food selection supports 100ml and closes the bottom sheet",()=>{
- assert.ok(html.includes('item.basisType === "100g" || item.basisType === "100ml"'));
+ assert.ok(html.includes('function foodQuantityFactor(item, mode, countRaw, weightRaw)'));
+ assert.ok(html.includes('item.basisType==="100g"||item.basisType==="100ml"'));
  assert.ok(html.includes('chosenFood.basisType==="100ml"'));
  assert.ok(html.includes('window.foodV2OpenSheet?.()'));
  assert.ok(html.includes('window.foodV2CloseSheet?.()'));
