@@ -2077,8 +2077,9 @@ function renderFoodList() {
   if (!container) return;
   // Presentation-only v3: preserve old renderer as a fallback if its script fails.
   if (window.foodBrowserV3?.ready) {
+    const knownForBrowser=getCombinedFoodList();
     window.foodBrowserV3.render({
-      known:getCombinedFoodList(),
+      known:knownForBrowser,
       candidates:foodCatalogCandidates,
       candidateLoaded:foodCatalogLoaded,
       candidateError:foodCatalogError,
@@ -2092,7 +2093,7 @@ function renderFoodList() {
       chooseKnown:selectFoodItem,
       chooseCandidate:prefillOfficialFood,
       dumplingKindOf:dumplingKindOf,
-      isDuplicate:x=>candidateHasCompleteDuplicate(x,getCombinedFoodList())
+      isDuplicate:x=>candidateHasCompleteDuplicate(x,knownForBrowser)
     });
     return;
   }
