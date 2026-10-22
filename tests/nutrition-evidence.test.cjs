@@ -55,11 +55,24 @@ pass("Supermarket high-protein product retains distinct packaging and third-part
 });
 pass("The audit file enumerates every unresolved product with source",()=>{
  const matches=[...report.matchAll(/^\|\s*(\d{1,5})\s*\|/gm)].map(x=>Number(x[1]));
- assert.equal(matches.length,80);
- assert.equal(new Set(matches).size,80);
+ assert.equal(matches.length,79);
+ assert.equal(new Set(matches).size,79);
  assert.ok(report.includes("7-ELEVEN 63"));
- assert.ok(report.includes("全家 17"));
+ assert.ok(report.includes("全家 16"));
  assert.ok(report.includes("實際包裝版本"));
  assert.ok(report.includes("NULL"));
 });
+pass("Manufacturer food label provides matching per-100ml macros without approving automatically",()=>{
+ const third=fs.readFileSync(path.join(root,"db/nutrition_evidence_backfill_20261022_wave3.sql"),"utf8");
+ assert.ok(third.includes("id=48 AND brand='全家'"));
+ assert.ok(third.includes("name='元初無加糖6.0高蛋白濃豆乳'"));
+ assert.ok(third.includes("basis='每100ml' AND protein=6"));
+ assert.ok(third.includes("SET kcal=69.0,fat=3.8,carbs=2.7"));
+ assert.ok(third.includes("kcal IS NULL AND fat IS NULL AND carbs IS NULL"));
+ assert.ok(third.includes("n<>1"));
+ assert.ok(third.includes("nutrition_status='awaiting_full_label'"));
+ assert.ok(third.includes("https://www.dauling.com.tw/pages/daydaydauling"));
+ assert.ok(report.includes("8 筆有據補值"));
+});
+
 console.log("Nutrition evidence audit regression checks passed");
