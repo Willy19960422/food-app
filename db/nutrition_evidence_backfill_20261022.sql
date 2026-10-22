@@ -24,7 +24,7 @@ BEGIN
       review_notes=CASE
         WHEN COALESCE(c.review_notes,'') LIKE '%[2026-10-22有據補件]%'
           THEN c.review_notes
-        ELSE concat_ws(E'\n',NULLIF(c.review_notes,''),'[2026-10-22有據補件] '+e.details)
+        ELSE concat_ws(E'\n',NULLIF(c.review_notes,''),'[2026-10-22有據補件] '||e.details)
       END
   FROM evidence e
   WHERE c.id=e.id AND c.brand=e.brand AND c.name=e.name
