@@ -133,4 +133,18 @@ check("Removed privileged public database helper permissions",()=>{
  assert.ok(database.includes("REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC,anon,authenticated"));
  assert.ok(database.includes("user_id=(SELECT auth.uid())"));
 });
+check("Offline service-worker fallback cannot substitute HTML for missing JavaScript",()=>{
+ const sw=read("sw.js");
+ assert.ok(sw.includes('if(req.mode==="navigate" || req.destination==="document")'));
+ assert.ok(sw.includes('new Response("Offline asset not cached",{status:503'));
+ assert.ok(sw.includes('const cached=await cache.match(req,{ignoreSearch:true})'));
+});
+check("Local-only diet entries stay recoverable without undoing cloud deletions",()=>{
+ assert.ok(html.includes("S.localRecovery=[...previous.values()]"));
+ assert.ok(html.includes("const cloudIds=new Set(data.map(row=>row.id))"));
+ assert.ok(html.includes("!pendingIds.has(item.id) && !deletedIds.has(item.id)"));
+ assert.ok(read("food-account.js").includes("recovered_local_only_logs:S.localRecovery||[]"));
+ assert.ok(html.includes("偵測到本機舊紀錄備份"));
+});
+
 console.log("Comprehensive v2 regression tests passed:",passed);
