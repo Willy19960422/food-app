@@ -80,7 +80,9 @@
   }
   function fullText(row){
     const item=row.item;
-    return [row.name,row.brand,row.category,item.subCat,item.sub_category,item.product_type,
+    return [row.name,row.brand,row.category,item.barcode,item.subCat,item.sub_category,item.product_type,
+      row.brand==="7-ELEVEN"?"7-11 711 統一超商":null,
+      row.brand==="全家"?"familymart":null,
       ...(Array.isArray(item.dietary_tags)?item.dietary_tags:[])]
       .filter(Boolean).join(" ").toLocaleLowerCase();
   }
