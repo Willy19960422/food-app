@@ -1,4 +1,4 @@
-const CACHE_NAME = "food-shell-20261022-ui-polish-1";
+const CACHE_NAME = "food-shell-20261022-centered-quantity-1";
 const APP_SHELL = [
   "./","./index.html","./manifest.json","./icon-192.png","./icon-512.png",
   "./food-taxonomy.js","./barcode-v2.js","./ui-scale.js",
