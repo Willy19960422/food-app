@@ -48,7 +48,7 @@ check("Incomplete candidates stay incomplete, zero is preserved",()=>{
   assert.ok(script.includes(':"—"'));
   assert.ok(script.includes('if(ctx.isOfficial(item))ctx.chooseKnown'));
   assert.ok(script.includes('else ctx.chooseCandidate(item)'));
-  assert.ok(script.includes('fullCandidate(item)?"數值待複核"'));
+  assert.ok(script.includes('fullCandidate(item)?"數值待核對"'));
 });
 check("Recent and saved food use existing log/favorite models",()=>{
   assert.ok(script.includes('ctx.logs'));
@@ -58,6 +58,24 @@ check("Recent and saved food use existing log/favorite models",()=>{
 });
 check("Service Worker caches the new browser and changes version",()=>{
   assert.ok(sw.includes('"./food-browser-v3.js"'));
-  assert.ok(sw.includes('food-shell-20261022-v3-browser'));
+  assert.ok(sw.includes('food-shell-20261022-v3-compact-cards'));
 });
+check("Food cards use restrained readable typography and a single compact macro row",()=>{
+  assert.ok(html.includes('font-size:12px;font-weight:650;line-height:1.4'));
+  assert.ok(html.includes('font-size:16px;font-weight:750;line-height:1.25'));
+  assert.ok(html.includes('min-height:120px'));
+  assert.ok(html.includes('flex-direction:row;gap:2px;align-items:center'));
+  assert.ok(html.includes('background:transparent;border:0;color:var(--brand)'));
+  assert.ok(html.includes('font-size:10px;line-height:1.3'));
+  assert.ok(html.includes('food-browser-v3.js?v=20261022-2'));
+});
+check("Condensed store-card names preserve original product name for assistive access",()=>{
+  assert.ok(script.includes('const selectedStore=state.category==="超商鮮食"'));
+  assert.ok(script.includes('name.title=row.name'));
+  assert.ok(script.includes('button.title=row.name'));
+  assert.ok(script.includes('button.setAttribute("aria-label",row.name'));
+  assert.ok(script.includes('"來源待核對"'));
+  assert.ok(script.includes('else ctx.chooseCandidate(item)'));
+});
+
 console.log("Food browser v3 structural regression checks passed:",passed);
