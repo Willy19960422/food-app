@@ -78,7 +78,7 @@ const checks=[
  'ok("no horizontal overflow",document.documentElement.scrollWidth-document.documentElement.clientWidth<=4);',
  '}catch(err){bad.push("Exception: "+err.stack)}',
  'id("result").setAttribute("data-failed",encodeURIComponent(JSON.stringify(bad)));',
- '})();'
+ '})'
 ].join("\n");
 const fixture=[
  '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">',
