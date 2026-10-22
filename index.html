@@ -332,6 +332,88 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
   }
   #boxSelectFood .food-card > button{min-width:70px;padding:8px}
 }
+
+/* Hierarchical food browser v3, scoped so scanner, history and manual entry stay unchanged. */
+#boxSelectFood .food-browser-v3{display:none}
+#boxSelectFood.food-browser-v3-enabled .food-browser-v3{display:block;container-type:inline-size}
+#boxSelectFood.food-browser-v3-enabled .food-category-picker,
+#boxSelectFood.food-browser-v3-enabled #mainCatBar,
+#boxSelectFood.food-browser-v3-enabled #subCatBar,
+#boxSelectFood.food-browser-v3-enabled #foodSubCategoryLabel,
+#boxSelectFood.food-browser-v3-enabled #convenienceTypePanel,
+#boxSelectFood.food-browser-v3-enabled #dumplingKindBar{display:none!important}
+#boxSelectFood .food-v3-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+#boxSelectFood .food-v3-back{min-height:42px;padding:8px 12px;margin:0;width:auto;flex:0 0 auto;font-size:13px}
+#boxSelectFood .food-v3-trail{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0;
+  font-size:12px;color:var(--mute);line-height:1.5;overflow-wrap:anywhere}
+#boxSelectFood .food-v3-crumb{min-height:32px;padding:4px 5px;margin:0;width:auto;
+  font-size:12px;background:transparent;border:0;color:var(--brand);text-align:left;text-decoration:underline}
+#boxSelectFood .food-v3-current{font-weight:700;color:var(--ink)}
+#boxSelectFood .food-v3-separator{color:var(--mute)}
+#boxSelectFood .food-v3-heading{font-size:18px;line-height:1.35;margin:0 0 6px;color:var(--ink)}
+#boxSelectFood .food-v3-note{font-size:12px;line-height:1.5;margin:0 0 12px}
+#boxSelectFood .food-v3-tiles{display:grid;gap:10px;margin:0 0 12px;align-items:stretch}
+#boxSelectFood .food-v3-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+#boxSelectFood .food-v3-three{grid-template-columns:repeat(3,minmax(0,1fr))}
+#boxSelectFood .food-v3-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:0;min-height:76px;width:100%;margin:0;padding:10px 5px;gap:5px;
+  background:var(--card);border:1px solid var(--line);border-radius:13px;color:var(--ink);
+  text-align:center;white-space:normal;overflow-wrap:anywhere;touch-action:manipulation}
+#boxSelectFood .food-v3-three .food-v3-tile{min-height:74px;padding:9px 4px}
+#boxSelectFood .food-v3-tile-name{font-size:14px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+#boxSelectFood .food-v3-three .food-v3-tile-name{font-size:13px}
+#boxSelectFood .food-v3-tile-count{font-size:11px;color:var(--mute);line-height:1.35}
+#boxSelectFood .food-v3-tile:disabled{opacity:.45;cursor:not-allowed}
+#boxSelectFood .food-v3-tile:focus-visible,#boxSelectFood .food-v3-card-main:focus-visible,
+#boxSelectFood .food-v3-pagination button:focus-visible{
+  outline:3px solid var(--brand);outline-offset:2px}
+#boxSelectFood.food-browser-v3-enabled #foodContainer{
+  display:block;max-height:none;overflow:visible;height:auto;
+  padding:0;margin:8px 0 18px;min-width:0
+}
+#boxSelectFood .food-v3-summary{font-size:12px;color:var(--mute);line-height:1.45;margin-bottom:10px}
+#boxSelectFood .food-v3-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;gap:10px;min-width:0}
+#boxSelectFood .food-v3-card{display:flex;flex-direction:column;min-width:0;min-height:170px;
+  background:var(--card);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+#boxSelectFood .food-v3-card-main{display:flex;flex-direction:column;align-items:stretch;min-width:0;
+  flex:1;margin:0;padding:12px 10px;gap:7px;text-align:left;width:100%;height:100%;
+  border:0;border-radius:0;background:transparent;color:var(--ink);
+  white-space:normal;touch-action:manipulation}
+#boxSelectFood .food-v3-card-main:active{background:var(--bg)}
+#boxSelectFood .food-v3-product-name{font-size:14px;font-weight:700;line-height:1.4;
+  min-height:40px;overflow-wrap:anywhere;word-break:break-word}
+#boxSelectFood .food-v3-product-status{color:var(--mute);font-size:11px;line-height:1.45;
+  overflow-wrap:anywhere}
+#boxSelectFood .food-v3-kcal{font-size:18px;font-weight:800;line-height:1.3;
+  color:var(--ink);font-variant-numeric:tabular-nums;margin-top:auto}
+#boxSelectFood .food-v3-macros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:3px;min-width:0}
+#boxSelectFood .food-v3-macro{display:flex;flex-direction:column;gap:2px;align-items:center;
+  justify-content:center;min-width:0;border-radius:6px;padding:4px 1px;
+  background:var(--bg);font-size:10px;line-height:1.25;overflow-wrap:anywhere}
+#boxSelectFood .food-v3-macro-label{font-size:10px;color:var(--mute)}
+#boxSelectFood .food-v3-macro-value{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+#boxSelectFood .food-v3-card-action{display:block;padding:7px 4px;margin-top:4px;
+  text-align:center;background:var(--brand-light);border-radius:8px;color:var(--brand);
+  font-size:12px;font-weight:700;line-height:1.4}
+#boxSelectFood .food-v3-source{display:block;margin:0 8px 9px;text-align:center;
+  font-size:11px;line-height:1.6;overflow-wrap:anywhere;color:var(--brand)}
+#boxSelectFood .food-v3-empty{padding:24px 12px;text-align:center;
+  border:1px dashed var(--line);border-radius:12px;color:var(--mute);line-height:1.6}
+#boxSelectFood .food-v3-pagination{display:flex;align-items:center;justify-content:space-between;
+  gap:8px;margin:16px 0 3px}
+#boxSelectFood .food-v3-pagination button{width:auto;min-width:94px;min-height:46px;
+  border-radius:10px;margin:0;padding:8px;background:var(--card);border:1px solid var(--line);
+  color:var(--ink);font-size:13px}
+#boxSelectFood .food-v3-pagination button:disabled{opacity:.42;cursor:not-allowed}
+#boxSelectFood .food-v3-pagination span{font-size:13px;font-variant-numeric:tabular-nums;color:var(--mute)}
+@container (max-width:325px){
+  #boxSelectFood .food-v3-three{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:760px){
+  #boxSelectFood .food-v3-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 </style>
 </head>
 <body>
@@ -581,7 +663,17 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
   </div>
 
   <div id="boxSelectFood" class="card">
-    <input id="foodSearch" placeholder="搜尋食品、星巴克輕食、夜市小吃與連鎖品牌" style="margin-bottom:12px">
+    <input id="foodSearch" placeholder="搜尋食品、品牌或條碼…" aria-label="搜尋全部食品" autocomplete="off" style="margin-bottom:12px">
+    <div id="foodBrowserV3" class="food-browser-v3" aria-label="食品逐層選擇">
+      <div class="food-v3-toolbar">
+        <button type="button" class="ghost food-v3-back" id="foodV3Back" hidden>返回上一層</button>
+        <div class="food-v3-trail" id="foodV3Trail" aria-label="目前分類路徑"></div>
+      </div>
+      <h2 id="foodV3Heading" class="food-v3-heading" tabindex="-1">想吃什麼？</h2>
+      <p class="mute food-v3-note" id="foodV3Note">先選分類或直接搜尋。</p>
+      <div id="foodV3Tiles" class="food-v3-tiles food-v3-two" aria-label="分類選擇"></div>
+    </div>
+
 
     <div class="food-category-picker">
       <label for="foodMainSelect">食品分類</label>
@@ -1983,6 +2075,27 @@ function renderCatalogSection(container,keyword,foods){
 function renderFoodList() {
   const container = $("foodContainer");
   if (!container) return;
+  // Presentation-only v3: preserve old renderer as a fallback if its script fails.
+  if (window.foodBrowserV3?.ready) {
+    window.foodBrowserV3.render({
+      known:getCombinedFoodList(),
+      candidates:foodCatalogCandidates,
+      candidateLoaded:foodCatalogLoaded,
+      candidateError:foodCatalogError,
+      taxonomy:window.FoodTaxonomy,
+      subCategories:SUB_CAT_MAP,
+      logs:S.log||{},
+      detectBrand:detectFoodBrand,
+      candidateName:candidateDisplayName,
+      isOfficial:canQuickRecordOfficial,
+      candidateToFood:officialCatalogToFoodItem,
+      chooseKnown:selectFoodItem,
+      chooseCandidate:prefillOfficialFood,
+      dumplingKindOf:dumplingKindOf,
+      isDuplicate:x=>candidateHasCompleteDuplicate(x,getCombinedFoodList())
+    });
+    return;
+  }
   if (currentMainCat !== "超商鮮食") $("convenienceTypePanel")?.classList.add("hide");
 
   const keyword = $("foodSearch").value.trim().toLowerCase();
@@ -3553,6 +3666,7 @@ window.addEventListener("DOMContentLoaded", () => {
 <script defer src="./food-admin-ui.js?v=20261022-1"></script>
 <script defer src="./food-candidate-admin.js?v=20261022-1"></script>
 <script defer src="./food-sheet.js?v=20261022-1"></script>
+<script defer src="./food-browser-v3.js?v=20261022-1"></script>
 
 </body>
 </html>
