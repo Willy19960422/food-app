@@ -304,7 +304,8 @@
     rows.slice(start,start+pageSize).forEach(row=>grid.append(productCard(row)));
     results.append(grid);
     if(pages>1){
-      const pager=document.createElement("nav");pager.className="food-v3-pagination";
+      const pager=document.createElement("div");pager.className="food-v3-pagination";
+      pager.setAttribute("role","navigation");
       pager.setAttribute("aria-label","食品清單分頁");
       const prev=document.createElement("button");prev.type="button";prev.textContent="上一頁";
       prev.disabled=state.page<=1;
