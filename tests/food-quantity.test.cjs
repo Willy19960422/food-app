@@ -97,15 +97,20 @@ test("Quantity chip buttons are keyboard focusable and iPhone UI has compact con
  assert.ok(html.includes('font-size:16px!important'));
  assert.ok(html.includes('id="selQuantityModes"'));
 });
+test("Food quantity dialog is vertically centered, not bottom-anchored",()=>{
+  assert.ok(sheet.includes('top:50%;bottom:auto;transform:translate(-50%,-50%)'));
+  assert.ok(sheet.includes('calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))'));
+  assert.ok(!sheet.includes('bottom:calc(73px + env(safe-area-inset-bottom))'));
+});
 test("Modal resets old scroll position and hides cleanly on cancel",()=>{
  assert.ok(sheet.includes("node.scrollTop=0"));
  assert.ok(sheet.includes('node?.classList.add("hide")'));
- assert.ok(sheet.includes('max-height:min(73dvh,600px)'));
+ assert.ok(sheet.includes('max-height:min(78dvh,600px'));
  assert.ok(sheet.includes('event.key!=="Tab"'));
 });
 test("PWA updates both quantity view scripts and cached shell",()=>{
- assert.ok(html.includes('food-sheet.js?v=20261022-ui1'));
- assert.ok(sw.includes('food-shell-20261022-ui-polish-1'));
+ assert.ok(html.includes('food-sheet.js?v=20261022-center1'));
+ assert.ok(sw.includes('food-shell-20261022-centered-quantity-1'));
 });
 test("All inline JavaScript and sheet code remain syntactically valid",()=>{
  [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
