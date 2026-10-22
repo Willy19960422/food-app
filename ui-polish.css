@@ -359,3 +359,121 @@ button:disabled {opacity:.48;}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after {scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important;}
 }
+
+/* Notification-only page keeps the same margins as other settings screens. */
+#p-me #foodPushScreen {
+  max-width:540px;
+  padding:8px 0 calc(88px + env(safe-area-inset-bottom,0px));
+  margin:0 auto;
+}
+#p-me #foodPushScreen .food-push-back {
+  min-height:40px;
+  width:auto;
+  margin:0 0 11px;
+  padding:8px 11px;
+  border-color:var(--line);
+  border-radius:10px;
+  font-size:12px;
+}
+#p-me #foodPushScreen #foodPushCard {margin:0;}
+#p-me #foodPushScreen #foodPushCard > h2 {font-size:17px;}
+#p-me #foodPushScreen .food-push-master {
+  padding:13px 0;
+  gap:9px;
+}
+#p-me #foodPushScreen .food-push-master > span:first-child {min-width:0;}
+#p-me #foodPushScreen .food-push-master small {font-size:11px;line-height:1.45;}
+#p-me #foodPushScreen .food-push-switch {flex-shrink:0;}
+#p-me #foodPushScreen #foodPushSave,
+#p-me #foodPushScreen #foodPushTest {font-size:13px;min-height:43px;}
+/* Trend charts and weight history should never create side scrolling. */
+#p-me .food-v2-card,#p-today .food-v2-card {margin-top:12px;}
+#p-me .food-v2-period,#p-today .food-v2-period {gap:7px;margin:9px 0;}
+#p-me .food-v2-period button,#p-today .food-v2-period button {min-height:43px;font-size:12px;}
+#p-me .food-v2-chart,#p-today .food-v2-chart {min-width:0;gap:6px;margin:9px 0;}
+#p-me .food-v2-chart-row,#p-today .food-v2-chart-row {
+  grid-template-columns:37px minmax(0,1fr) 72px;
+  font-size:11px;
+  gap:5px;
+}
+#p-me .food-v2-chart-track,#p-today .food-v2-chart-track {height:9px;}
+#p-me .food-v2-weight-row,#p-today .food-v2-weight-row {
+  min-width:0;
+  flex-wrap:wrap;
+  gap:8px;
+  font-size:12px;
+}
+#p-me .food-v2-weight-row button,#p-today .food-v2-weight-row button {
+  min-height:38px;
+  max-width:76px;
+  font-size:12px;
+}
+/* Exports, administrative review and candidate nutrition forms. */
+#p-me .food-account-actions {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;
+  gap:8px;
+  margin:10px 0;
+}
+#p-me .food-account-actions button {
+  width:100%;
+  min-height:43px;
+  padding:9px 6px;
+  margin:0;
+  font-size:12px;
+  overflow-wrap:anywhere;
+}
+#p-me #foodDeleteButton {
+  background:transparent;
+  color:var(--warn);
+  border:1px solid var(--warn);
+  font-size:12px;
+}
+#p-me #foodDeleteButton:focus-visible {outline-color:var(--warn);}
+#p-me #foodAdminPanel,#p-me #foodCandidatePanel {min-width:0;}
+#p-me .food-admin-entry,#p-me .food-candidate-row {
+  padding:12px 0;
+  overflow-wrap:anywhere;
+}
+#p-me .food-admin-entry h3,#p-me .food-candidate-row h3 {
+  margin:0 0 7px;
+  font-size:14px;
+  line-height:1.45;
+}
+#p-me .food-admin-entry p,#p-me .food-candidate-row p {font-size:12px;line-height:1.5;}
+#p-me .food-admin-actions,#p-me .food-candidate-actions {gap:7px;margin:9px 0;}
+#p-me .food-admin-actions button,#p-me .food-candidate-actions button {
+  min-height:42px;
+  padding:8px 6px;
+  font-size:12px;
+}
+#p-me .food-admin-entry textarea,#p-me .food-candidate-row textarea {
+  min-height:80px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  border-radius:10px;
+  line-height:1.55;
+}
+#p-me .food-candidate-fields {gap:8px;}
+#p-me .food-candidate-fields > * {min-width:0;}
+/* Stable treatment of sync/error text across all screens. */
+.food-v2-sync {
+  padding:9px 11px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  font-size:11px;
+  line-height:1.55;
+}
+#foodExportStatus,#foodDeleteStatus,#v2WeightStatus,#foodCandidateMsg,
+#foodAdminStatus,#scanMsg,#mealMsg {
+  font-size:12px;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+/* Mobile safe area, small screens and assistive text scaling. */
+@media (max-width:390px) {
+  #p-me .food-account-actions {grid-template-columns:repeat(2,minmax(0,1fr));}
+  #p-me .food-candidate-fields {grid-template-columns:repeat(2,minmax(0,1fr));}
+  #p-me #foodPushScreen {padding-left:0;padding-right:0;}
+}
