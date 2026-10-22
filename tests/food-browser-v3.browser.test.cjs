@@ -42,6 +42,7 @@ const checks=[
  'try{',
  'test("initial home",stage()==="想吃什麼？");',
  'clickTile("超商鮮食");test("brands",stage()==="選擇品牌");',
+ 'test("stores exactly 2x2",tiles().length===4 && getComputedStyle(document.querySelector("#foodV3Tiles")).gridTemplateColumns.split(" ").length===2);',
  'clickTile("7-ELEVEN");test("types",stage()==="選擇食品種類");',
  'clickTile("微波餐盒");test("products",stage()==="挑選食品");',
  'test("12 cards",cards().length===12);',
