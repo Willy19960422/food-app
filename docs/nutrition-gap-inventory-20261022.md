@@ -4,12 +4,14 @@
 
 ## 補件成果
 - 候選食品共 351 筆。起初 87 筆缺至少一項熱量／蛋白質／脂肪／碳水。
-- 2026-10-22 第一批 6 筆與第二批 1 筆共完成 7 筆「有據補值」。
-- 剩餘 **80 筆**：7-ELEVEN 63、全家 17。
-- 本次沒有刪除已存在的數據、沒有將空值當成 0，也沒有自動將第三方數值標記官方驗證。
-- 蛋白質與熱量可能有來源差異；標示值的不同版本不可無條件合併。
+- 2026-10-22 共完成 **8 筆有據補值**：
+  - 首批 6 筆：7-ELEVEN 21Plus剝皮辣椒雞胸肉、肯德基香酥脆薯小中大、義美雞胸肉韭菜及高麗菜水餃。
+  - 次批 1 筆：7-ELEVEN 增雞蛋白餐。
+  - 第三批 1 筆：全家販售「元初無加糖6.0高蛋白濃豆乳」官方每100ml營養圖 P6.0 / F3.8 / C2.7 / 69.0kcal，品牌官網 https://www.dauling.com.tw/pages/daydaydauling 。注意其他活動有不同熱量換算，須核對批次。
+- 剩餘 **79 筆**：7-ELEVEN 63、全家 16。
+- 沒有刪除已存在數據、沒有將空值當成 0，**8筆皆維持** `nutrition_status='awaiting_full_label'`，沒有自動假稱官方審核完成。
 
-## 仍缺漏的 80 筆
+## 仍缺漏的 79 筆
 
 | ID | 品牌 | 品名 | 類型 | 仍缺欄位 | 已登錄來源 |
 |---:|---|---|---|---|---|
@@ -92,7 +94,6 @@
 | 849 | 全家 | 香鮭蛋炒飯 | 微波餐盒 | 熱量、P、F、C | [來源頁](https://www.family.com.tw/Marketing/zh/FreshFood/Product) |
 | 850 | 全家 | 黑胡椒鐵板雞腿排飯 | 微波餐盒 | 熱量、P、F、C | [來源頁](https://www.family.com.tw/Marketing/zh/FreshFood/Product) |
 | 18 | 全家 | 義美無加糖6.0高蛋白豆奶 | 飲品 | 熱量、F、C | [來源頁](https://www.family.com.tw/ESG/NewsShow?NSNO=202606300000178) |
-| 48 | 全家 | 元初無加糖6.0高蛋白濃豆乳 | 飲品 | 熱量、F、C | [來源頁](https://www.family.com.tw/ESG/NewsShow?NSNO=202606300000178) |
 
 ## 人工核對流程與資料標準
 
@@ -106,4 +107,4 @@
 ## 注意事項
 - 這張清單是缺**數值**的候選商品，不表示既有 358 筆共用食品已完成營養正確性驗證。舊庫部分數值原為人工匯入或未審核資料，需要獨立稽核來源。
 - 超商鮮食官網通常只列品名與熱量，完整 P／F／C 以包裝標示優先。
-- 本次補件 SQL：`db/nutrition_evidence_backfill_20261022.sql`、`db/nutrition_evidence_backfill_20261022_wave2.sql`。
+- 本次補件 SQL：`db/nutrition_evidence_backfill_20261022.sql`、`db/nutrition_evidence_backfill_20261022_wave2.sql`、`db/nutrition_evidence_backfill_20261022_wave3.sql`。
