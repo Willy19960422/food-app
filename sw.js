@@ -1,10 +1,11 @@
-const CACHE_NAME = "food-shell-20261022-v2";
+const CACHE_NAME = "food-shell-20261022-v3-browser";
 const APP_SHELL = [
   "./","./index.html","./manifest.json","./icon-192.png","./icon-512.png",
   "./food-taxonomy.js","./barcode-v2.js","./ui-scale.js",
   "./push-settings.js","./settings-menu.js",
   "./food-cloud.js","./food-trends.js","./food-account.js",
-  "./food-admin-ui.js","./food-candidate-admin.js","./food-sheet.js"
+  "./food-admin-ui.js","./food-candidate-admin.js","./food-sheet.js",
+  "./food-browser-v3.js"
 ];
 const STATIC_VENDOR=[
  "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js",
