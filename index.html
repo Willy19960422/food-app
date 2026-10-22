@@ -1346,6 +1346,21 @@ async function runSyncPipeline() {
         });
       });
 
+      // Preserve evidence of local-only records before a cloud replacement.
+      // These may be historical data from an older app or an incomplete migration.
+      // Do not silently re-publish them: the server may have an intentional deletion.
+      const cloudIds=new Set(data.map(row=>row.id));
+      const localOnly=Object.entries(S.log||{}).flatMap(([date,items])=>
+        (items||[]).filter(item=>item?.id && !cloudIds.has(item.id) &&
+          !pendingIds.has(item.id) && !deletedIds.has(item.id))
+          .map(item=>({date,item})));
+      if(localOnly.length){
+        const previous=new Map((S.localRecovery||[]).map(row=>[row.item.id,row]));
+        localOnly.forEach(row=>previous.set(row.item.id,row));
+        S.localRecovery=[...previous.values()].slice(-2000);
+        window.foodV2SyncStatus?.("failed",
+          "找到 "+localOnly.length+" 筆僅存於本機的舊紀錄，已保存在備份；請至帳號設定匯出完整 JSON");
+      }
       S.log = serverLogs;
       save();
       renderToday();
@@ -1355,8 +1370,10 @@ async function runSyncPipeline() {
     await loadCommunityFoods(currentSession, activeUid);
     if(loginSessionId===currentSession&&currentUser?.id===activeUid){
       await window.foodV2ReconcileCloud?.();
-      window.foodV2SyncStatus?.(syncFetchError?"failed":"ok",syncFetchError?
-        "雲端讀取失敗，手機紀錄沒有被刪除":"完整飲食歷史已同步");
+      window.foodV2SyncStatus?.(syncFetchError || (S.localRecovery||[]).length ?"failed":"ok",syncFetchError?
+        "雲端讀取失敗，手機紀錄沒有被刪除":
+        (S.localRecovery||[]).length ? "偵測到本機舊紀錄備份，請在帳號設定下載 JSON 核對" :
+        "完整飲食歷史已同步");
     }
 
   } catch(e) {
