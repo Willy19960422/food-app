@@ -45,8 +45,15 @@ self.addEventListener("fetch",event=>{
    if(response.ok||response.type==="opaque")event.waitUntil(cache.put(req,response.clone()).catch(()=>{}));
    return response;
   }catch(_){
-   return await cache.match(req,{ignoreSearch:true}) ||
-     await cache.match(new URL("./index.html",self.registration.scope));
+   const cached=await cache.match(req,{ignoreSearch:true});
+   if(cached)return cached;
+   // An HTML document must never be returned as JavaScript/CSS/image.
+   // Serve the offline shell only for page navigation, not asset fetches.
+   if(req.mode==="navigate" || req.destination==="document"){
+     return await cache.match(new URL("./index.html",self.registration.scope)) ||
+       new Response("離線且無法載入 App，請重新連線",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8"}});
+   }
+   return new Response("Offline asset not cached",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8"}});
   }
  })());
 });
