@@ -32,7 +32,8 @@ function open(){
  // the selected food title and close button can appear cut off above the top.
  node.scrollTop=0;
  node.setAttribute("role","dialog");
- node.setAttribute("aria-modal","true");node.setAttribute("aria-label","選取食品與食用份量");
+ node.setAttribute("aria-modal","true");
+ node.setAttribute("aria-labelledby","selFoodName");
  backdrop()?.classList.remove("hide");
  document.body.classList.add("food-v2-sheet-active");
  node.querySelector(".food-v2-close")?.focus({preventScroll:true});
@@ -66,20 +67,28 @@ document.addEventListener("DOMContentLoaded",()=>{
  overlay.addEventListener("click",close);
  document.body.append(overlay);
  const exit=document.createElement("button");exit.type="button";
- exit.className="ghost food-v2-close";exit.textContent="關閉";
+ exit.className="food-v2-close";exit.textContent="×";
+ exit.title="關閉";exit.setAttribute("aria-label","關閉份量視窗");
  exit.addEventListener("click",close);
- node.prepend(exit);
+ const header=document.createElement("div");
+ header.className="food-v2-sheet-header";
+ const title=node.querySelector("#selFoodName");
+ if(title)header.append(title);
+ header.append(exit);
+ node.prepend(header);
  const style=document.createElement("style");
  style.textContent="#foodV2SheetBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.50);"+
  "z-index:95;touch-action:manipulation}"+
  "#selectedFoodInfo.food-v2-open{display:block!important;position:fixed;"+
- "left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));"+
+ "left:50%;transform:translateX(-50%);bottom:calc(73px + env(safe-area-inset-bottom));"+
  "width:min(calc(100vw - 24px),480px);max-height:min(73dvh,600px);overflow:auto;"+
- "overscroll-behavior:contain;z-index:96;padding:16px!important;margin:0!important;"+
- "border:2px solid var(--brand);border-radius:17px;background:var(--card);"+
- "box-shadow:0 8px 36px rgba(0,0,0,.26)}"+
- "#selectedFoodInfo.food-v2-open button{min-height:46px}"+
- ".food-v2-close{width:auto!important;display:block;margin:0 0 10px auto!important}";
+ "overscroll-behavior:contain;z-index:96;padding:14px!important;margin:0!important;"+
+ "border:1px solid var(--line);border-radius:18px;background:var(--card);"+
+ "box-shadow:0 16px 48px rgba(5,31,24,.2)}"+
+ "#selectedFoodInfo.food-v2-open button{min-height:44px}"+
+ "#selectedFoodInfo.food-v2-open .food-v2-close{"+
+ "width:40px!important;height:40px!important;min-height:40px!important;"+
+ "margin:0!important;padding:0!important;border-radius:50%!important}";
  document.head.append(style);
 });
 })();
