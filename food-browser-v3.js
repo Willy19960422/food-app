@@ -247,12 +247,20 @@
     const card=document.createElement("div");card.className="food-v3-card";
     const button=document.createElement("button");button.type="button";
     button.className="food-v3-card-main";
-    const name=document.createElement("span");name.className="food-v3-product-name";name.textContent=row.name;
+    const name=document.createElement("span");name.className="food-v3-product-name";
+    // The selected brand already appears in the breadcrumb. Avoid repeating
+    // "7-11" or "全家" at the start of every small product card.
+    const selectedStore=state.category==="超商鮮食"&&state.brand!==null&&
+      state.brand!=="all"&&!state.query;
+    const shortened=selectedStore?
+      row.name.replace(/^(?:7[\s-]?(?:11|ELEVEN)|全家|萊爾富|OK\s*超商)[\s　:：\-]*/i,"").trim():"";
+    name.textContent=shortened||row.name;
+    name.title=row.name;
     const status=document.createElement("span");status.className="food-v3-product-status";
     status.textContent=row.type==="candidate"?
-      row.verified?"官方完整營養":
-      fullCandidate(item)?"數值待複核":"營養待補・需核對":
-      item.dataQuality==="legacy_unreviewed"?"既有數值・來源待核對":
+      row.verified?"官方營養":
+      fullCandidate(item)?"數值待核對":"營養待補":
+      item.dataQuality==="legacy_unreviewed"?"來源待核對":
       row.type==="recent"?"最近記錄":"既有食品";
     const kcal=document.createElement("span");kcal.className="food-v3-kcal";
     const val=row.type==="candidate"?item.kcal:item.k;
@@ -268,7 +276,10 @@
       col.append(title,value);macros.append(col);
     }
     const action=document.createElement("span");action.className="food-v3-card-action";
-    action.textContent=row.recordable?"調整份量":"查看並補齊";
+    action.textContent=row.recordable?"點選調整份量 ›":"查看並補齊 ›";
+    button.title=row.name;
+    button.setAttribute("aria-label",row.name+"；"+status.textContent+"；"+
+      (row.recordable?"點選調整份量":"查看並補齊營養"));
     button.append(name,status,kcal,macros,action);
     button.addEventListener("click",()=>{
       if(row.type==="candidate"){
