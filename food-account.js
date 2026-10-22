@@ -25,9 +25,9 @@ async function allCloudLogs(uid){
 }
 async function allCloudWeights(uid){
  if(!navigator.onLine){
-  const cached=window.foodV2GetWeights?.()||[];
-  if(!cached.length)throw new Error("離線時尚無完整體重資料可供備份，請恢復網路後匯出");
-  return cached;
+  // Offline exports are useful even when no weight trend has ever been loaded.
+  // Mark the snapshot incomplete rather than blocking all diet history backups.
+  return window.foodV2GetWeights?.()||[];
  }
  const result=[];
  for(let offset=0;offset<10000;offset+=500){
@@ -77,6 +77,7 @@ async function exportRecords(format){
     profile:S.me,targets:S.customTargets||null,
     daily_targets:S.dailyTargets||{},favorites:S.customFavorites||[],
     combos:S.mealCombos||[],weights:weightRows,
+    weights_complete:navigator.onLine,
     // Keep locally detected legacy-only entries without silently uploading
     // records that may have been intentionally deleted from the cloud.
     recovered_local_only_logs:S.localRecovery||[],
@@ -84,7 +85,8 @@ async function exportRecords(format){
    makeDownload("食養紀錄-個人完整備份-"+dt+".json",JSON.stringify(complete,null,2),
     "application/json;charset=utf-8");
   }
-  status("foodExportStatus","已整理 "+logs.length+" 筆飲食紀錄並產生檔案。");
+  status("foodExportStatus",(navigator.onLine?"已整理 ":"已產生離線備份（以本機紀錄為主，請連線後再下載完整備份）：")+
+    logs.length+" 筆飲食紀錄。");
  }catch(e){status("foodExportStatus","匯出失敗："+e.message);}
 }
 async function deleteAccount(){
