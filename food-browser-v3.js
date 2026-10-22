@@ -368,8 +368,10 @@
         if(!brands.some(x=>x[0]===label))brands.push([label,label]);
       }
       const rows=all.filter(x=>x.category===state.category);
-      const options=[makeTile("全部品牌",rows.length,()=>setRoute({
-        brand:"all",kind:state.category==="超商鮮食"||state.category==="餃類點心"?null:"all"
+      // Convenience stores have exactly four brands: one compact 2×2 screen.
+      // Other multi-brand categories retain an optional "all brands" shortcut.
+      const options=state.category==="超商鮮食"?[]:[makeTile("全部品牌",rows.length,()=>setRoute({
+        brand:"all",kind:state.category==="餃類點心"?null:"all"
       }))];
       for(const [key,label] of brands){
         const count=rows.filter(x=>x.brand===key).length;
