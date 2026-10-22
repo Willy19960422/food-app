@@ -140,7 +140,8 @@
   function setRoute(fields){
     Object.assign(state,fields,{page:1});
     refresh();
-    root.scrollIntoView({behavior:"auto",block:"start"});
+    input.scrollIntoView({behavior:"auto",block:"start"});
+    heading.focus({preventScroll:true});
   }
   function returnTo(step){
     if(state.query){
