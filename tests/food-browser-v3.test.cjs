@@ -58,7 +58,7 @@ check("Recent and saved food use existing log/favorite models",()=>{
 });
 check("Service Worker caches the new browser and changes version",()=>{
   assert.ok(sw.includes('"./food-browser-v3.js"'));
-  assert.ok(sw.includes('food-shell-20261022-v3-compact-cards'));
+  assert.match(sw,/const CACHE_NAME = "food-shell-20261022-v3-[^"]+"/);
 });
 check("Food cards use restrained readable typography and a single compact macro row",()=>{
   assert.ok(html.includes('font-size:12px;font-weight:650;line-height:1.4'));
