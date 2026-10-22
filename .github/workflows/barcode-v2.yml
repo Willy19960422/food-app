@@ -24,6 +24,8 @@ jobs:
       - run: node tests/food-browser-v3.browser.test.cjs
       - run: node tests/food-layout.browser.test.cjs
       - run: node tests/full-v2.test.cjs
+      - run: node tests/food-quantity.test.cjs
+      - run: node tests/food-quantity.browser.test.cjs
       - run: node tests/food-v2-offline.test.cjs
       - run: node tests/nutrition-evidence.test.cjs
       - run: node tests/v2-interface.browser.test.cjs
