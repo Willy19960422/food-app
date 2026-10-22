@@ -104,8 +104,8 @@ test("Modal resets old scroll position and hides cleanly on cancel",()=>{
  assert.ok(sheet.includes('event.key!=="Tab"'));
 });
 test("PWA updates both quantity view scripts and cached shell",()=>{
- assert.ok(html.includes('food-sheet.js?v=20261022-2'));
- assert.ok(sw.includes('food-shell-20261022-v3-quantity-fix'));
+ assert.ok(html.includes('food-sheet.js?v=20261022-ui1'));
+ assert.ok(sw.includes('food-shell-20261022-ui-polish-1'));
 });
 test("All inline JavaScript and sheet code remain syntactically valid",()=>{
  [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
