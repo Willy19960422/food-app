@@ -741,25 +741,25 @@ input,select,textarea{font-size:var(--food-ui-control-font,16px)!important}
       <div style="font-weight:700;font-size:16px" id="selFoodName"></div>
       <div class="mute" id="selFoodDetail" style="margin-bottom:8px"></div>
 
-      <div style="background:var(--bg);padding:10px;border-radius:10px;margin:10px 0">
-        <label style="margin-top:0">食用計量方式</label>
-        <div class="segmented" style="margin:6px 0">
-          <button id="selModeServ" class="active">按份數</button>
-          <button id="selModeWeight">按重量 (g/ml)</button>
+      <div id="selQuantityCard" class="food-quantity-card">
+        <label id="selQuantityHeading" style="margin-top:0">食用份量</label>
+        <div class="segmented hide" id="selQuantityModes">
+          <button type="button" id="selModeServ" class="active">按份數</button>
+          <button type="button" id="selModeWeight">按重量 (g/ml)</button>
         </div>
         <div id="selBoxModeServ">
-          <label id="cfQuantityLabel">份數</label>
-          <input id="cfN" type="number" step="0.5" min="0.5" value="1">
-          <div class="serving-chips" id="cfChips" style="margin-top:6px">
-            <div class="serving-chip" data-v="0.5">0.5 份</div>
-            <div class="serving-chip active" data-v="1">1 份</div>
-            <div class="serving-chip" data-v="1.5">1.5 份</div>
-            <div class="serving-chip" data-v="2">2 份</div>
+          <label for="cfN" id="cfQuantityLabel">份數（營養標示以每份計）</label>
+          <input id="cfN" type="number" inputmode="decimal" step="0.25" min="0.25" value="1">
+          <div class="serving-chips" id="cfChips" role="group" aria-label="快捷份量">
+            <button type="button" class="serving-chip" data-v="0.5">0.5 份</button>
+            <button type="button" class="serving-chip active" data-v="1">1 份</button>
+            <button type="button" class="serving-chip" data-v="1.5">1.5 份</button>
+            <button type="button" class="serving-chip" data-v="2">2 份</button>
           </div>
         </div>
         <div id="selBoxModeWeight" class="hide">
-          <label id="selWeightLabel">實際食用重量 (公克 / 毫升)</label>
-          <input id="selWeightInput" type="number" step="1" min="1" placeholder="例如 150">
+          <label for="selWeightInput" id="selWeightLabel">實際食用重量（g/ml）</label>
+          <input id="selWeightInput" type="number" inputmode="decimal" step="any" min="0.01" placeholder="例如 150">
         </div>
       </div>
 
@@ -3484,45 +3484,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const validUser = () => currentUser && S.stateOwnerId === currentUser.id;
   const node = (tag, text) => { const e = document.createElement(tag); if (text) e.textContent = text; return e; };
 
-  // 整包／半包：直接換算為既有的營養基準倍數。
-  function packagePanel(anchorId, getItem, inputId, setMode) {
-    const panel = node('div'); panel.className = 'card';
-    const label = node('label'), input = node('input');
-    input.type = 'number'; input.min = '0'; input.step = 'any';
-    const hint = node('div'); hint.className = 'mute';
-    const buttons = node('div'); buttons.className = 'row';
-    panel.append(label, input, buttons, hint);
-    $(anchorId).before(panel);
-    let previousItem = null;
-    const refresh = () => {
-      const item = getItem(); if (!item) return;
-      if (item !== previousItem) { input.value = ''; hint.textContent = ''; previousItem = item; }
-      label.textContent = item.basisType === '100g'
-        ? '包裝總量（須與營養標示同單位：g 或 ml）'
-        : '每包有幾份？請依包裝標示填寫';
-      input.placeholder = item.basisType === '100g' ? '例如 250' : '例如 2.5';
-    };
-    [[1, '整包'], [0.5, '半包'], [0.25, '¼ 包']].forEach(([fraction, title]) => {
-      const button = node('button', title); button.type = 'button'; button.className = 'ghost';
-      button.onclick = () => {
-        const item = getItem(), amount = Number(input.value);
-        if (!item || !Number.isFinite(amount) || amount <= 0) return alert('請先填寫包裝總量或每包份數。');
-        const ratio = amount * fraction / (item.basisType === '100g' ? 100 : 1);
-        setMode('serv'); $(inputId).value = ratio;
-        $(inputId).dispatchEvent(new Event('input', { bubbles: true }));
-        hint.textContent = `${title}合計約 ${Math.round(item.k * ratio)} 大卡，按「加入」才會記錄。`;
-      };
-      buttons.append(button);
-    });
-    return refresh;
-  }
-  const refreshScan = packagePanel('addBtn', () => curItem, 'serv', setScanCalcMode);
-  const refreshFood = packagePanel('cfAdd', () => chosenFood, 'cfN', setSelCalcMode);
-  const originalLookup = lookup;
-  lookup = async function(...args) { try { return await originalLookup(...args); } finally { refreshScan(); } };
-  const originalSelect = selectFoodItem;
-  selectFoodItem = function(...args) { const result = originalSelect(...args); refreshFood(); return result; };
-
+  // Only one quantity controller lives in the barcode view and the food
+  // selection sheet. The old packagePanel unconditionally injected a second
+  // empty form plus whole/half/quarter package shortcuts with unknown bases.
+  // Never assume "half a pack" equals "half a serving".
   // 飲食紀錄同步狀態；不把其他設定或照片草稿誤標為雲端同步。
   const status = node('div'); status.className = 'card';
   const statusText = node('span'), retry = node('button', '重試同步');
