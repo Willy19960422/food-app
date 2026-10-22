@@ -1,4 +1,4 @@
-/* Accessible food-selection bottom sheet: no long-list scrolling after selecting. */
+/* Accessible centered food-selection dialog: no long-list scrolling after selecting. */
 (()=>{
 "use strict";
 let previousFocus=null;
@@ -80,8 +80,9 @@ document.addEventListener("DOMContentLoaded",()=>{
  style.textContent="#foodV2SheetBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.50);"+
  "z-index:95;touch-action:manipulation}"+
  "#selectedFoodInfo.food-v2-open{display:block!important;position:fixed;"+
- "left:50%;transform:translateX(-50%);bottom:calc(73px + env(safe-area-inset-bottom));"+
- "width:min(calc(100vw - 24px),480px);max-height:min(73dvh,600px);overflow:auto;"+
+ "left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);"+
+ "width:min(calc(100vw - 24px),480px);max-height:min(78dvh,600px,"+
+ "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));overflow:auto;"+
  "overscroll-behavior:contain;z-index:96;padding:14px!important;margin:0!important;"+
  "border:1px solid var(--line);border-radius:18px;background:var(--card);"+
  "box-shadow:0 16px 48px rgba(5,31,24,.2)}"+
