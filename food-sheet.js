@@ -33,8 +33,22 @@ function open(){
 window.foodV2OpenSheet=open;window.foodV2CloseSheet=close;
 window.addEventListener("resize",()=>{if(sheet()?.classList.contains("food-v2-open"))fitToViewport(sheet());});
 document.addEventListener("keydown",event=>{
- if(event.key==="Escape"&&sheet()?.classList.contains("food-v2-open")){
-  event.preventDefault();close();
+ const node=sheet();
+ if(!node?.classList.contains("food-v2-open"))return;
+ if(event.key==="Escape"){
+  event.preventDefault();close();return;
+ }
+ if(event.key!=="Tab")return;
+ // A modal sheet should not allow keyboard focus to leave its controls.
+ const focusable=[...node.querySelectorAll(
+  'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href]'
+ )].filter(el=>el.getClientRects().length>0);
+ if(!focusable.length){event.preventDefault();return;}
+ const first=focusable[0],last=focusable[focusable.length-1];
+ if(event.shiftKey&&(document.activeElement===first||!node.contains(document.activeElement))){
+  event.preventDefault();last.focus();
+ }else if(!event.shiftKey&&(document.activeElement===last||!node.contains(document.activeElement))){
+  event.preventDefault();first.focus();
  }
 });
 document.addEventListener("DOMContentLoaded",()=>{
